@@ -1,0 +1,94 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environments
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Testing
+.tox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Home Assistant
+.storage/
+deps/
+tts/
+*.log
+home-assistant.log*
+home-assistant_v2.db
+*.db-shm
+*.db-wal
+
+# Build & Distribution
+dist/
+build/
+*.spec
+
+# Git
+*.orig
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Node modules (if any frontend build tools)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Secrets (just in case)
+secrets.yaml
+*.key
+*.pem
+*.crt
+
+# Development
+.ruff_cache/
+.pylint.d/
