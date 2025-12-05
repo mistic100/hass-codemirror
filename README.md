@@ -11,7 +11,9 @@
 <div align="center">
   <img src="https://dummyimage.com/800x60/0d1117/ffffff&text=Blueprint+Studio+-+Edit+Your+HA+Configs+Like+a+Pro" alt="Hero Banner">
   <br><br>
-  <strong>A modern, feature-rich file editor for Home Assistant. Edit your YAML configuration files and other text-based files directly from the Home Assistant UI with a professional VS Code-like experience. Say goodbye to clunky SSH sessions and hello to seamless editing! ✨</strong> ![Logo](icon.png)
+  <strong>A modern, feature-rich file editor for Home Assistant. Edit your YAML configuration files and other text-based files directly from the Home Assistant UI with a professional VS Code-like experience. Say goodbye to clunky SSH sessions and hello to seamless editing! ✨</strong> 
+  <br><br> 
+<img src="icon.png" alt="Logo" style="width: 100px; height: auto;">
 </div>
 
 ---
