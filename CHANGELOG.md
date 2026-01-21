@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-01-20
+## [Unreleased]
+
+## [1.2.1] - 2026-01-21
+
+### ✨ New Features
+*   **Pre-Save YAML Validation**: Blueprint Studio now automatically validates your YAML files when you click "Save". If an error is found, you'll be shown a confirmation dialog with the details and an option to "Save Anyway".
+*   **User-Friendly YAML Errors**: Technical YAML error messages are now translated into simple, helpful advice for common issues, improving clarity during validation checks.
+*   **Recent Files Panel**: A new section at the top of the file explorer provides quick access to recently opened files, with a toggle in settings to show/hide it.
+
+### 🚀 Improvements
+
+*   **Toggle Switch Visibility**: Improved the visibility of toggle switches in their "off" state.
+*   **Pixel-Perfect Icon Centering**: Adjusted CSS to ensure the 'x' icon in toast notifications is perfectly centered.
+*   **Modal Close Button Styling**: The close button in modal headers now blends with the modal background until hovered.
+*   **Toast Action Button Styling**: The background and text color of action buttons in toast notifications have been updated for better visibility and consistency.
+
+
+## [1.2.0] - 2026-01-18
 
 ### 🌟 Added - GitHub Integration & Advanced Features
 
@@ -126,11 +143,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.2.1** - Enhanced UX, YAML Validation 
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 - **0.1.0** - Beta version
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v1.2.1...HEAD
 [1.2.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.2.0
 [1.0.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.0.0
 [0.1.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v0.1.0
