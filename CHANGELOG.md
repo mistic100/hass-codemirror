@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.1] - 2026-01-21
+## [1.3.0] - 2026-01-22
+
+### ✨ New Features
+*   **Onboarding Wizard**: A guided tour for new users to initialize their repo, configure ignores, and connect to GitHub.
+*   **Reset Application**: A "Danger Zone" option in Settings to reset app state, clear credentials, or delete the local repo.
+*   **Visual Sync Status**: Real-time arrows (↑/↓) in the Git panel header showing ahead/behind commit counts.
+*   **Advanced .gitignore Editor**: Full interactive tree view with collapsible folders, cascading selection, and file sizes.
+*   **Total Size Calculator**: Real-time calculation of selected files' size in the ignore manager, warning if >100MB.
+*   **Remove Remote**: Ability to delete configured remotes from the Settings UI.
+*   **Restart Home Assistant**: A dedicated button in the toolbar to restart HA with safety confirmation.
+*   **Smart Commit Messages**: Auto-generates default commit messages based on staged files.
+*   **Folder Sizes**: File explorer now displays the size of directories.
+
+### 🚀 Improvements
+*   **Robust Git Operations**: Fixed "not a full refname" and "no tracking info" errors by explicitly targeting branches.
+*   **Auto-Repair**: Detects "index.lock" and corrupt index errors, offering one-click "Clean" or "Repair" buttons.
+*   **Safety Checks**: Proactively prompts to commit staged changes before pushing.
+*   **Clearer Terminology**: Added beginner-friendly tooltips to all Git buttons.
+*   **Persistent Errors**: Error toasts now remain visible until dismissed.
+
+### 🐞 Bug Fixes
+*   **Ignore Manager**: Fixed "File type not allowed" and cascading checkbox logic.
+*   **Hidden Files**: Ensure `.ha_run.lock` and other hidden files are visible for ignoring.
+*   **Upload Z-Index**: Fixed confirmation dialog appearing behind loading overlay.
+
+## [1.2.1] - 2026-01-19
 
 ### ✨ New Features
 *   **Pre-Save YAML Validation**: Blueprint Studio now automatically validates your YAML files when you click "Save". If an error is found, you'll be shown a confirmation dialog with the details and an option to "Save Anyway".
@@ -15,12 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 *   **Recent Files Panel**: A new section at the top of the file explorer provides quick access to recently opened files, with a toggle in settings to show/hide it.
 
 ### 🚀 Improvements
-
+*   **File Size Display**: File sizes are now displayed next to filenames in the file explorer.
+*   **Smart "Toggle All" Button**: The "Collapse All" and "Expand All" buttons have been merged into a single dynamic toggle in the file tree header.
+*   **Enhanced Login Flow**: The GitHub login process is more responsive with a "Check Now" button added to the authorization popup.
+*   **Contextual Toast Actions**: Toast notifications now include action buttons (e.g., "Clean & Retry" for Git locks, "Open Git Panel" for no-commits warnings).
+*   **Improved Empty States**: Enhanced the welcome screen with "Create New File" and "Upload File" buttons, and the Git panel's empty state with "Pull" and "Refresh" actions.
+*   **Consistent Confirmation Dialogs**: Replaced native browser `confirm()` with styled modals for Git Reset, Init, and Pull actions.
 *   **Toggle Switch Visibility**: Improved the visibility of toggle switches in their "off" state.
 *   **Pixel-Perfect Icon Centering**: Adjusted CSS to ensure the 'x' icon in toast notifications is perfectly centered.
 *   **Modal Close Button Styling**: The close button in modal headers now blends with the modal background until hovered.
 *   **Toast Action Button Styling**: The background and text color of action buttons in toast notifications have been updated for better visibility and consistency.
 
+### 🐞 Bug Fixes
+*   **OAuth Background Polling**: Fixed a bug where OAuth polling could continue in the background, causing "slow down" errors, especially after navigating away from the panel.
+*   **"Unstage All" Crash**: Resolved an issue causing a crash when using "Unstage All" in new Git repositories without prior commits.
+*   **Cache Invalidation**: Implemented a cache-busting mechanism for `blueprint_studio.js` to ensure the latest updates are loaded.
 
 ## [1.2.0] - 2026-01-18
 
@@ -143,7 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
-- **1.2.1** - Enhanced UX, YAML Validation 
+- **1.2.1** - Enhanced UX, YAML Validation & Bug Fixes
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 - **0.1.0** - Beta version

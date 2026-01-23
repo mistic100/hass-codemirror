@@ -555,6 +555,7 @@
     elements.btnMenu = document.getElementById("btn-menu");
     elements.btnSearch = document.getElementById("btn-search");
     elements.btnRefresh = document.getElementById("btn-refresh");
+    elements.btnRestartHa = document.getElementById("btn-restart-ha");
     elements.btnAppSettings = document.getElementById("btn-app-settings");
     elements.btnValidate = document.getElementById("btn-validate");
     elements.btnToggleAll = document.getElementById("btn-toggle-all");
@@ -587,6 +588,7 @@
     elements.btnGitPush = document.getElementById("btn-git-push");
     elements.btnGitStatus = document.getElementById("btn-git-status");
     elements.btnGitSettings = document.getElementById("btn-git-settings");
+    elements.btnGitHelp = document.getElementById("btn-git-help");
     elements.btnGitRefresh = document.getElementById("btn-git-refresh");
     elements.btnGitCollapse = document.getElementById("btn-git-collapse");
     elements.btnStageSelected = document.getElementById("btn-stage-selected");
@@ -604,6 +606,17 @@
   // ============================================
   // Utility Functions
   // ============================================
+
+  // List of extensions considered text files that CodeMirror can handle
+  const TEXT_FILE_EXTENSIONS = new Set([
+    "yaml", "yml", "json", "py", "js", "css", "html", "txt",
+    "md", "conf", "cfg", "ini", "sh", "log", "svg" // SVG is XML, hence text
+  ]);
+
+  function isTextFile(filename) {
+    const ext = filename.split(".").pop().toLowerCase();
+    return TEXT_FILE_EXTENSIONS.has(ext);
+  }
 
   function isMobile() {
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -710,6 +723,11 @@
   }
 
   function showToast(message, type = "success", duration = 3000, action = null) {
+    // Make error toasts persistent by default (duration 0)
+    if (type === "error" && duration === 3000) {
+        duration = 0;
+    }
+
     const toast = document.createElement("div");
     toast.className = `toast ${type}`;
 
@@ -742,7 +760,7 @@
         });
       }
       // If action is present, toast won't auto-remove; user must click action or close button
-    } else {
+    } else if (duration > 0) {
       setTimeout(() => {
         toast.style.opacity = "0";
         toast.style.transform = "translateY(100%)";
@@ -1104,7 +1122,7 @@
   }
 
   function showModal(options) {
-    const { title, message, placeholder, hint, value = "", confirmText = "Confirm", isDanger = false } = options;
+    const { title, message, image, placeholder, hint, value = "", confirmText = "Confirm", isDanger = false } = options;
 
     // Ensure modal is in default state before showing
     resetModalToDefault();
@@ -1113,7 +1131,18 @@
     elements.modalConfirm.textContent = confirmText;
     elements.modalConfirm.className = isDanger ? "modal-btn danger" : "modal-btn primary";
     
-    if (message) {
+    if (image) {
+        // Image viewer mode
+        elements.modalInput.style.display = "none";
+        elements.modalHint.innerHTML = `<div style="text-align: center; padding: 10px; background: var(--bg-primary); border-radius: 4px;">
+            <img src="${image}" style="max-width: 100%; max-height: 70vh; border-radius: 2px; display: block; margin: 0 auto;">
+        </div>`;
+        elements.modalHint.style.fontSize = "14px";
+        elements.modalCancel.style.display = "none";
+        // Make modal wider for images
+        elements.modal.style.maxWidth = "90vw";
+        elements.modal.style.width = "auto";
+    } else if (message) {
         // Message mode
         elements.modalInput.style.display = "none";
         elements.modalHint.innerHTML = message;
@@ -1382,7 +1411,8 @@
       const data = await fetchWithAuth(
         `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}`
       );
-      return data.content;
+      // loadFile must now return the full data object, not just data.content
+      return data; // returns {content: ..., is_base64: ...}
     } catch (error) {
       showToast("Failed to load file: " + error.message, "error");
       throw error;
@@ -1413,12 +1443,12 @@
     }
   }
 
-  async function createFile(path, content = "") {
+  async function createFile(path, content = "", is_base64 = false) {
     try {
       await fetchWithAuth(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create_file", path, content }),
+        body: JSON.stringify({ action: "create_file", path, content, is_base64 }),
       });
       showToast(`Created ${path.split("/").pop()}`, "success");
       await loadFiles();
@@ -1544,12 +1574,12 @@
     }
   }
 
-  async function uploadFile(path, content, overwrite = false) {
+  async function uploadFile(path, content, overwrite = false, is_base64 = false) {
     try {
       await fetchWithAuth(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "upload_file", path, content, overwrite }),
+        body: JSON.stringify({ action: "upload_file", path, content, overwrite, is_base64 }),
       });
       showToast(`Uploaded ${path.split("/").pop()}`, "success");
       await loadFiles();
@@ -1583,17 +1613,35 @@
 
   async function downloadFileByPath(path) {
     try {
-      const content = await loadFile(path);
-      const filename = path.split("/").pop();
-      downloadContent(filename, content);
+      const data = await fetchWithAuth( // data will contain { content: ..., is_base64: ... }
+        `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}`
+      );
+      downloadContent(path.split("/").pop(), data.content, data.is_base64);
     } catch (error) {
       // Error already shown by loadFile
     }
   }
 
-  function downloadContent(filename, content) {
-    // Create blob and download link
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  function downloadContent(filename, content, is_base64 = false, mimeType = "application/octet-stream") {
+    let blobContent;
+    let blobType = mimeType;
+
+    if (is_base64) {
+      const binaryString = atob(content);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      blobContent = [bytes];
+    } else {
+      blobContent = [content];
+      if (!blobType || blobType === "application/octet-stream") {
+          blobType = "text/plain;charset=utf-8";
+      }
+    }
+
+    // Create blob and URL
+    const blob = new Blob(blobContent, { type: blobType });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
@@ -1602,7 +1650,9 @@
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // Revoke after a delay to ensure download starts
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 
     showToast(`Downloaded ${filename}`, "success");
   }
@@ -1618,35 +1668,59 @@
     if (!files || files.length === 0) return;
 
     const basePath = state.currentFolderPath || "";
+    let uploadedCount = 0;
+    const totalFiles = files.length;
 
-    showGlobalLoading(`Uploading ${files.length} file(s)...`);
+    showGlobalLoading(`Uploading 0 of ${totalFiles} file(s)...`); // Initial message
 
     for (const file of files) {
+      uploadedCount++;
+      showGlobalLoading(`Uploading ${uploadedCount} of ${totalFiles} file(s): ${file.name}...`); // Update for current file
+
       try {
-        const content = await readFileAsText(file);
+        const isBinaryFile = !isTextFile(file.name);
+        let content;
+        if (isBinaryFile) {
+          content = await readFileAsBase64(file);
+        } else {
+          content = await readFileAsText(file);
+        }
+
         let filePath = basePath ? `${basePath}/${file.name}` : file.name;
 
         // Check if file exists
         const existingFile = state.files.find(f => f.path === filePath);
         if (existingFile) {
-          hideGlobalLoading();
-          const overwrite = confirm(`File "${file.name}" already exists. Overwrite?`);
-          if (!overwrite) continue;
-          showGlobalLoading(`Uploading ${file.name}...`);
-          await uploadFile(filePath, content, true);
+          // Changed native confirm to showConfirmDialog for consistency
+          const overwrite = await showConfirmDialog({
+            title: "File Already Exists",
+            message: `File "${file.name}" already exists.<br><br>Do you want to overwrite it?`,
+            confirmText: "Overwrite",
+            cancelText: "Cancel",
+            isDanger: true
+          });
+
+          if (!overwrite) {
+            continue; // Skip this file
+          }
+          // The showGlobalLoading will be updated by the loop's next iteration or after this if it's the last.
+          // No need to restore it here as it will be updated right away or hidden.
+          await uploadFile(filePath, content, true, isBinaryFile); // Pass isBinaryFile as is_base64
         } else {
-          await uploadFile(filePath, content, false);
+          await uploadFile(filePath, content, false, isBinaryFile); // Pass isBinaryFile as is_base64
         }
 
-        // Open the uploaded file
-        await openFile(filePath);
+        // Open the uploaded file only if it was successfully uploaded (not skipped due to overwrite=false)
+        // Note: uploadFile already calls loadFiles and gitStatus
       } catch (error) {
-        hideGlobalLoading();
+        showGlobalLoading(`Uploading ${uploadedCount} of ${totalFiles} file(s): ${file.name}...`); // Restore message after error toast
         showToast(`Failed to upload ${file.name}: ${error.message}`, "error");
+        // Continue to the next file if an error occurs for one file
       }
     }
 
     hideGlobalLoading();
+    showToast(`Successfully uploaded ${totalFiles} file(s).`, "success"); // Final success toast
 
     // Reset input so same file can be uploaded again
     event.target.value = "";
@@ -1792,6 +1866,10 @@
 
   // Git state management
   const gitState = {
+    isInitialized: false,
+    hasRemote: false,
+    ahead: 0,
+    behind: 0,
     files: {
       modified: [],
       added: [],
@@ -1818,6 +1896,11 @@
 
       if (data.success) {
         // Update git state
+        gitState.isInitialized = data.is_initialized;
+        gitState.hasRemote = data.has_remote;
+        gitState.ahead = data.ahead || 0;
+        gitState.behind = data.behind || 0;
+        
         gitState.files = data.files || {
           modified: [],
           added: [],
@@ -2382,6 +2465,28 @@
     }
   }
 
+  // Repair Git Index
+  async function gitRepairIndex() {
+    try {
+      const data = await fetchWithAuth(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "git_repair_index" }),
+      });
+
+      if (data.success) {
+        showToast(data.message, "success");
+        return true;
+      } else {
+        showToast("Failed to repair Git index", "error");
+        return false;
+      }
+    } catch (error) {
+      showToast("Failed to repair Git index: " + error.message, "error");
+      return false;
+    }
+  }
+
   async function gitUnstage(files) {
     if (!files || files.length === 0) return;
 
@@ -2447,7 +2552,33 @@
         return true;
       }
     } catch (error) {
-      showToast("Git commit failed: " + error.message, "error");
+      const errorMsg = error.message || "";
+      if (errorMsg.includes("index.lock") || errorMsg.includes("File exists")) {
+        showToast("Git lock detected. Commit failed.", "error", 0, {
+          text: "Clean & Retry",
+          callback: async () => {
+            const cleaned = await gitCleanLocks();
+            if (cleaned) {
+                // We can't easily retry the commit because we lost the message context
+                // But cleaning allows them to try again immediately
+                showToast("Locks cleaned. Please try committing again.", "success");
+            }
+          }
+        });
+      } else if (errorMsg.includes("index file smaller than expected") || errorMsg.includes("bad index file")) {
+        showToast("Git repository corrupted. Repair needed.", "error", 0, {
+          text: "Repair Repo",
+          callback: async () => {
+            const repaired = await gitRepairIndex();
+            if (repaired) {
+                showToast("Repository repaired. Please try again.", "success");
+                await gitStatus();
+            }
+          }
+        });
+      } else {
+        showToast("Git commit failed: " + error.message, "error");
+      }
       return false;
     }
   }
@@ -2490,6 +2621,24 @@
 
   async function gitPush() {
     try {
+      // Proactive safety check: If there are staged changes, ask to commit them first
+      if (gitState.files.staged.length > 0) {
+        const shouldCommit = await showConfirmDialog({
+          title: "Staged Changes Detected",
+          message: `You have ${gitState.files.staged.length} prepared changes that haven't been saved (committed).<br><br>Would you like to commit and push these changes now?`,
+          confirmText: "Commit & Push",
+          cancelText: "Push Existing Only"
+        });
+
+        if (shouldCommit) {
+          // Trigger the commit flow
+          await commitStagedFiles();
+          // After commit (or if cancelled inside commit), the status will refresh.
+          // If they successfully committed, gitStatus polling or the refresh will update staged count.
+          // We should re-check or just continue to the push logic which will check for HEAD.
+        }
+      }
+
       setButtonLoading(elements.btnGitPush, true);
       showToast("Pushing to remote...", "info");
 
@@ -2582,24 +2731,100 @@
     const container = document.getElementById("git-files-container");
     const badge = document.getElementById("git-changes-count");
     const commitBtn = document.getElementById("btn-commit-staged");
+    const actions = panel.querySelector(".git-panel-actions");
 
     // Update badge
     badge.textContent = gitState.totalChanges;
 
-    // Show/hide panel based on changes
-    if (gitState.totalChanges > 0) {
-      panel.classList.add("visible");
+    // Remove any existing sync indicators to prevent duplicates
+    const oldIndicators = actions.querySelectorAll(".git-sync-indicator");
+    oldIndicators.forEach(i => i.remove());
 
-      // Auto-resize sidebar if needed to fit stage buttons cleanly
-      // Only do this on desktop (not mobile) and if sidebar is too narrow
-      if (!isMobile() && elements.sidebar) {
-        const currentWidth = parseInt(window.getComputedStyle(elements.sidebar).width);
-        // If sidebar is less than 340px, resize to 360px for better button layout
-        if (currentWidth < 340) {
-          elements.sidebar.style.width = "360px";
+    // Add ahead/behind indicators
+    if (gitState.isInitialized && gitState.hasRemote) {
+        if (gitState.ahead > 0) {
+            const pushBtn = document.createElement("button");
+            pushBtn.className = "git-panel-btn git-sync-indicator";
+            pushBtn.id = "btn-git-push-sync";
+            pushBtn.title = `${gitState.ahead} commits to push`;
+            pushBtn.innerHTML = `
+                <span class="material-icons" style="font-size: 18px; color: var(--success-color);">arrow_upward</span>
+                <span style="font-size: 10px; margin-left: -2px; font-weight: bold; color: var(--success-color);">${gitState.ahead}</span>
+            `;
+            actions.insertBefore(pushBtn, actions.firstChild);
         }
-      }
+        if (gitState.behind > 0) {
+            const pullBtn = document.createElement("button");
+            pullBtn.className = "git-panel-btn git-sync-indicator";
+            pullBtn.id = "btn-git-pull-sync";
+            pullBtn.title = `${gitState.behind} commits to pull`;
+            pullBtn.innerHTML = `
+                <span class="material-icons" style="font-size: 18px; color: var(--warning-color);">arrow_downward</span>
+                <span style="font-size: 10px; margin-left: -2px; font-weight: bold; color: var(--warning-color);">${gitState.behind}</span>
+            `;
+            actions.insertBefore(pullBtn, actions.firstChild);
+        }
+    }
 
+    // Show panel if not initialized or no remote, to guide user
+    if (!gitState.isInitialized || !gitState.hasRemote) {
+        panel.classList.add("visible");
+        
+        // Resize sidebar if needed
+        if (!isMobile() && elements.sidebar) {
+            const currentWidth = parseInt(window.getComputedStyle(elements.sidebar).width);
+            if (currentWidth < 340) {
+                elements.sidebar.style.width = "360px";
+            }
+        }
+    } else if (gitState.totalChanges > 0) {
+        panel.classList.add("visible");
+        if (!isMobile() && elements.sidebar) {
+            const currentWidth = parseInt(window.getComputedStyle(elements.sidebar).width);
+            if (currentWidth < 340) {
+                elements.sidebar.style.width = "360px";
+            }
+        }
+    }
+
+    if (!gitState.isInitialized) {
+        container.innerHTML = `
+            <div class="git-empty-state">
+                <span class="material-icons" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;">source</span>
+                <p style="margin: 0 0 10px 0; font-weight: 500;">Git Not Initialized</p>
+                <p style="font-size: 12px; margin-bottom: 15px; max-width: 200px; color: var(--text-secondary);">Start tracking changes by initializing a repository.</p>
+                <button class="btn-primary" id="btn-git-init-panel" style="padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons" style="font-size: 18px;">play_circle</span> Initialize Repo
+                </button>
+            </div>
+        `;
+        commitBtn.disabled = true;
+        return;
+    }
+
+    if (!gitState.hasRemote) {
+        // If there are changes, we show them, but maybe add a warning? 
+        // Or for simplicity, if no remote, we guide them to connect first/alongside.
+        // Actually, let's allow local commits without remote.
+        // But if there are NO changes, show the Connect prompt.
+        if (gitState.totalChanges === 0) {
+             container.innerHTML = `
+                <div class="git-empty-state">
+                    <span class="material-icons" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;">link_off</span>
+                    <p style="margin: 0 0 10px 0; font-weight: 500;">No Remote Configured</p>
+                    <p style="font-size: 12px; margin-bottom: 15px; max-width: 200px; color: var(--text-secondary);">Connect to GitHub to push your changes to the cloud.</p>
+                    <button class="btn-primary" id="btn-git-connect-panel" style="padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <svg class="octicon" viewBox="0 0 16 16" width="16" height="16" style="fill: white;"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"></path></svg>
+                        Connect to GitHub
+                    </button>
+                </div>
+            `;
+            commitBtn.disabled = true;
+            return;
+        }
+    }
+
+    if (gitState.totalChanges > 0) {
       renderGitFiles(container);
     } else {
       container.innerHTML = `
@@ -2758,11 +2983,24 @@
 
   // Commit staged files
   async function commitStagedFiles() {
+    const stagedCount = gitState.files.staged.length;
+    if (stagedCount === 0) return;
+
+    // Generate a smart default commit message
+    let defaultMessage = "Update via Blueprint Studio";
+    if (stagedCount === 1) {
+        const filename = gitState.files.staged[0].split("/").pop();
+        defaultMessage = `Update ${filename}`;
+    } else if (stagedCount > 1) {
+        const filename = gitState.files.staged[0].split("/").pop();
+        defaultMessage = `Update ${filename} and ${stagedCount - 1} others`;
+    }
+
     const commitMessage = await showModal({
       title: "Commit Changes",
       placeholder: "Commit message",
-      value: "Update via Blueprint Studio",
-      hint: `Committing ${gitState.files.staged.length} staged file(s)`,
+      value: defaultMessage,
+      hint: `Committing ${stagedCount} staged file(s)`,
     });
 
     if (!commitMessage) {
@@ -2817,9 +3055,31 @@
             </label>
           </div>
 
+          <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
+            <div style="flex: 1;">
+              <div style="font-weight: 500; margin-bottom: 4px;">Git Exclusions (.gitignore)</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Select which files and folders to include in your repository</div>
+            </div>
+            <button class="btn-secondary" id="btn-manage-exclusions" style="padding: 6px 12px; font-size: 12px;">
+              Manage Exclusions
+            </button>
+          </div>
+
           <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; font-size: 13px;">
             <span class="material-icons" style="font-size: 16px; vertical-align: middle; color: var(--info-color, #2196f3);">info</span>
             <span style="margin-left: 8px;">Changes will take effect immediately</span>
+          </div>
+
+          <div class="git-settings-section" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <div class="git-settings-label" style="color: var(--error-color);">Danger Zone</div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: 12px; color: var(--text-secondary); max-width: 70%;">
+                    Reset all application settings, theme preferences, and onboarding status. This does not delete your files.
+                </div>
+                <button class="btn-secondary" id="btn-reset-app" style="padding: 6px 12px; font-size: 12px; color: var(--error-color); border-color: var(--error-color);">
+                    Reset Application
+                </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2873,6 +3133,474 @@
         renderFileTree();
       });
     }
+
+    // Handle Manage Exclusions button
+    const btnManageExclusions = document.getElementById("btn-manage-exclusions");
+    if (btnManageExclusions) {
+      btnManageExclusions.addEventListener("click", () => {
+        closeSettings();
+        showGitExclusions();
+      });
+    }
+
+    // Handle Reset Application button
+    const btnResetApp = document.getElementById("btn-reset-app");
+    if (btnResetApp) {
+      btnResetApp.addEventListener("click", () => {
+        // Manually build modal to include checkbox
+        resetModalToDefault();
+        elements.modalTitle.textContent = "Reset Application?";
+        
+        elements.modalInput.style.display = "none";
+        elements.modalHint.innerHTML = `
+            <div style="font-size: 14px; color: var(--text-primary);">
+                <p>This will reset all your saved settings, theme preferences, and onboarding progress.</p>
+                <br>
+                <label style="display: flex; align-items: center; background: var(--bg-tertiary); padding: 10px; border-radius: 4px; cursor: pointer; margin-bottom: 8px;">
+                    <input type="checkbox" id="reset-clear-creds" checked style="margin-right: 10px; width: 16px; height: 16px; accent-color: var(--error-color);">
+                    <div>
+                        <div style="font-weight: 500;">Sign out from GitHub</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Clear saved credentials from server</div>
+                    </div>
+                </label>
+                <label style="display: flex; align-items: center; background: var(--bg-tertiary); padding: 10px; border-radius: 4px; cursor: pointer;">
+                    <input type="checkbox" id="reset-delete-repo" style="margin-right: 10px; width: 16px; height: 16px; accent-color: var(--error-color);">
+                    <div>
+                        <div style="font-weight: 500;">Delete Git Repository (.git)</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">WARNING: Permanently deletes all version history!</div>
+                    </div>
+                </label>
+                <br>
+                <p><b>Your actual config files will NOT be deleted.</b></p>
+            </div>
+        `;
+        
+        elements.modalConfirm.textContent = "Reset & Reload";
+        elements.modalConfirm.className = "modal-btn danger";
+        
+        elements.modalOverlay.classList.add("visible");
+
+        // Handle Confirm
+        const handleConfirm = async () => {
+            const clearCreds = document.getElementById("reset-clear-creds").checked;
+            const deleteRepo = document.getElementById("reset-delete-repo").checked;
+            
+            showGlobalLoading("Resetting...");
+            
+            if (clearCreds) {
+                await gitClearCredentials();
+            }
+
+            if (deleteRepo) {
+                try {
+                    await fetchWithAuth(API_BASE, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "git_delete_repo" }),
+                    });
+                } catch (e) {
+                    console.error("Failed to delete repo:", e);
+                }
+            }
+            
+            localStorage.clear();
+            window.location.reload();
+        };
+
+        // One-time listener for this specific modal instance
+        const cleanup = () => {
+            elements.modalConfirm.removeEventListener("click", handleConfirm);
+            elements.modalCancel.removeEventListener("click", hideModal); // Re-bind default hide
+        };
+
+        elements.modalConfirm.addEventListener("click", handleConfirm, { once: true });
+        // We don't need to re-bind cancel because hideModal is global, 
+        // but showConfirmDialog usually handles cleanup. 
+        // Here we just let the global hideModal handle the Cancel button click (it's already bound in initEventListeners).
+      });
+    }
+  }
+
+  // Show Git Exclusions modal
+  async function showGitExclusions() {
+    showGlobalLoading("Loading file list...");
+
+    try {
+      // 1. Fetch all files/folders (including hidden) - Use specialized git list to see ALL files
+      const items = await fetchWithAuth(`${API_BASE}?action=list_git_files`);
+      
+      // Build tree structure
+      const tree = buildFileTree(items);
+
+      // Create a map for quick size lookup
+      const sizeMap = new Map();
+      items.forEach(item => {
+          sizeMap.set(item.path, { size: item.size || 0, type: item.type });
+      });
+
+      // 2. Fetch current .gitignore content
+      let gitignoreContent = "";
+      try {
+        const data = await loadFile(".gitignore");
+        gitignoreContent = data.content;
+      } catch (e) {
+        // It's okay if .gitignore doesn't exist yet
+      }
+
+      hideGlobalLoading();
+
+      // 3. Parse .gitignore to find what's currently ignored
+      const ignoredLines = new Set(
+        gitignoreContent.split("\n")
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith("#"))
+      );
+
+      // Default ignores if .gitignore is empty/new
+      if (ignoredLines.size === 0) {
+        ["__pycache__", ".cloud", ".storage", "deps", ".ha_run.lock"].forEach(item => ignoredLines.add(item));
+      }
+
+      // 4. Create Modal Content
+      const modalOverlay = document.getElementById("modal-overlay");
+      const modal = document.getElementById("modal");
+      const modalTitle = document.getElementById("modal-title");
+      const modalBody = document.getElementById("modal-body");
+      const modalFooter = document.querySelector(".modal-footer");
+
+      modalTitle.textContent = "Manage Git Exclusions";
+
+      // Helper to render tree recursively
+      function renderExclusionTreeHtml(treeNode, depth = 0) {
+        let html = "";
+        
+        const folders = Object.keys(treeNode)
+          .filter(k => !k.startsWith("_"))
+          .sort();
+        const files = (treeNode._files || []).sort((a, b) => a.name.localeCompare(b.name));
+
+        // Render folders
+        folders.forEach(folderName => {
+            const folderData = treeNode[folderName];
+            const folderPath = folderData._path;
+            
+            const isIgnored = ignoredLines.has(folderPath) || ignoredLines.has(folderPath + "/");
+            const isChecked = !isIgnored;
+            const isDisabled = folderPath === ".git";
+            const forcedState = folderPath === ".git" ? "" : (isChecked ? "checked" : "");
+            
+            const itemSize = sizeMap.get(folderPath)?.size || 0;
+            const paddingLeft = 4 + (depth * 20); 
+
+            // Note: We put the click handler on the header div
+            html += `
+              <div class="exclusion-folder-group">
+                <div class="exclusion-folder-header" style="display: flex; align-items: center; padding: 8px 12px; padding-left: ${paddingLeft}px; border-bottom: 1px solid var(--border-color); background: var(--bg-tertiary); cursor: pointer;">
+                  <span class="material-icons exclusion-chevron" style="margin-right: 4px; font-size: 20px; color: var(--text-secondary); transition: transform 0.2s;">chevron_right</span>
+                  <label style="display: flex; align-items: center; flex: 1; cursor: ${isDisabled ? 'not-allowed' : 'pointer'}; pointer-events: none;">
+                    <input type="checkbox" class="exclusion-checkbox" data-path="${folderPath}" data-type="folder" ${forcedState} ${isDisabled ? 'disabled' : ''} style="margin-right: 12px; width: 16px; height: 16px; pointer-events: auto;">
+                    <span class="material-icons" style="margin-right: 8px; font-size: 20px; color: var(--icon-folder);">folder</span>
+                    <span style="font-size: 14px; flex: 1;">${folderName}</span>
+                    <span style="font-size: 12px; color: var(--text-secondary); margin-right: 8px;">${formatBytes(itemSize)}</span>
+                    ${isIgnored ? '<span style="font-size: 10px; padding: 2px 6px; background: var(--bg-secondary); border-radius: 4px; color: var(--text-secondary);">Ignored</span>' : ''}
+                  </label>
+                </div>
+                <div class="exclusion-children" style="display: none;">
+                  ${renderExclusionTreeHtml(folderData, depth + 1)}
+                </div>
+              </div>
+            `;
+        });
+
+        // Render files
+        files.forEach(file => {
+            const isIgnored = ignoredLines.has(file.path);
+            const isChecked = !isIgnored;
+            const isDisabled = file.path === ".gitignore"; 
+            const forcedState = isDisabled ? "checked" : (isChecked ? "checked" : "");
+            
+            const itemSize = sizeMap.get(file.path)?.size || 0;
+            const isLarge = itemSize > 100 * 1024 * 1024;
+            const paddingLeft = 4 + (depth * 20) + 24; 
+            
+            html += `
+              <label style="display: flex; align-items: center; padding: 8px 12px; padding-left: ${paddingLeft}px; border-bottom: 1px solid var(--border-color); cursor: ${isDisabled ? 'not-allowed' : 'pointer'}; background: var(--bg-tertiary);">
+                <input type="checkbox" class="exclusion-checkbox" data-path="${file.path}" data-type="file" data-size="${itemSize}" ${forcedState} ${isDisabled ? 'disabled' : ''} style="margin-right: 12px; width: 16px; height: 16px;">
+                <span class="material-icons" style="margin-right: 8px; font-size: 20px; color: var(--text-secondary);">insert_drive_file</span>
+                <span style="font-size: 14px; flex: 1; ${isLarge ? 'color: var(--error-color); font-weight: bold;' : ''}">${file.name}</span>
+                <span style="font-size: 12px; color: ${isLarge ? 'var(--error-color)' : 'var(--text-secondary)'}; margin-right: 8px;">${formatBytes(itemSize)}</span>
+                ${isIgnored ? '<span style="font-size: 10px; padding: 2px 6px; background: var(--bg-secondary); border-radius: 4px; color: var(--text-secondary);">Ignored</span>' : ''}
+              </label>
+            `;
+        });
+
+        return html;
+      }
+
+      // Clear body
+      modalBody.innerHTML = '';
+
+      // Info Header
+      const infoHeader = document.createElement('div');
+      infoHeader.innerHTML = `
+        <div class="git-settings-info" style="margin-bottom: 16px; flex-direction: column;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                <span class="material-icons">info</span>
+                <div>
+                    <div style="font-weight: 500;">Check items to PUSH to GitHub</div>
+                    <div style="font-size: 12px;">Unchecked items will be added to .gitignore</div>
+                </div>
+            </div>
+            <label style="display: flex; align-items: center; cursor: pointer; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 4px;">
+                <input type="checkbox" id="git-exclude-select-all" style="margin-right: 6px;">
+                <span style="font-size: 12px; font-weight: 500;">Select All</span>
+            </label>
+          </div>
+          <div id="git-total-size" style="margin-top: 12px; padding: 8px; background: var(--bg-primary); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
+            <span>Total Selected Size:</span>
+            <span id="git-total-size-value">Calculating...</span>
+          </div>
+        </div>
+      `;
+      modalBody.appendChild(infoHeader);
+
+      // Handle Select All
+      infoHeader.addEventListener("change", (e) => {
+        if (e.target.id === "git-exclude-select-all") {
+            const isChecked = e.target.checked;
+            const allCheckboxes = container.querySelectorAll(".exclusion-checkbox");
+            allCheckboxes.forEach(cb => {
+                if (!cb.disabled) {
+                    cb.checked = isChecked;
+                }
+            });
+            updateTotalSize();
+        }
+      });
+
+      // List Container
+      const container = document.createElement('div');
+      container.className = 'git-exclusion-list';
+      container.style.maxHeight = '50vh';
+      container.style.overflowY = 'auto';
+      container.style.border = '1px solid var(--border-color)';
+      container.style.borderRadius = '4px';
+      
+      container.innerHTML = renderExclusionTreeHtml(tree);
+      modalBody.appendChild(container);
+      
+      // Reset modal buttons
+      modalFooter.style.display = "flex";
+      const btnCancel = document.getElementById("modal-cancel");
+      const btnConfirm = document.getElementById("modal-confirm");
+      
+      btnConfirm.textContent = "Save Changes";
+      btnConfirm.className = "modal-btn primary";
+
+      modalOverlay.classList.add("visible");
+      // make modal wider
+      modal.style.maxWidth = "600px";
+
+      // Function to recalculate total size
+      const updateTotalSize = () => {
+        let totalSize = 0;
+        let hasLargeFile = false;
+        const checkboxes = modalBody.querySelectorAll(".exclusion-checkbox[data-type='file']");
+        
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const size = parseInt(cb.dataset.size || 0);
+                totalSize += size;
+                if (size > 100 * 1024 * 1024) hasLargeFile = true;
+            }
+        });
+
+        const sizeDisplay = document.getElementById("git-total-size-value");
+        const sizeContainer = document.getElementById("git-total-size");
+        
+        if (sizeDisplay && sizeContainer) {
+            sizeDisplay.textContent = formatBytes(totalSize);
+            
+            // Warn if total > 100MB (soft limit warning) or single file > 100MB (hard limit)
+            if (hasLargeFile) {
+                sizeContainer.style.color = "var(--error-color)";
+                sizeDisplay.textContent += " (⚠️ File > 100MB detected!)";
+            } else if (totalSize > 100 * 1024 * 1024) {
+                sizeContainer.style.color = "var(--warning-color)";
+                sizeDisplay.textContent += " (⚠️ Large push)";
+            } else {
+                sizeContainer.style.color = "var(--success-color)";
+            }
+        }
+      };
+
+      // Initial calculation
+      updateTotalSize();
+
+      // Handle events (Toggle collapse + Cascading Checkboxes)
+      container.addEventListener("click", (e) => {
+        // Handle Collapse/Expand (Header click)
+        const header = e.target.closest(".exclusion-folder-header");
+        if (header) {
+            // Don't toggle if clicking the checkbox directly
+            if (e.target.classList.contains("exclusion-checkbox")) return;
+
+            const group = header.parentElement; // .exclusion-folder-group
+            const children = group.querySelector(".exclusion-children");
+            const chevron = header.querySelector(".exclusion-chevron");
+            
+            if (children) {
+                const isHidden = children.style.display === "none";
+                children.style.display = isHidden ? "block" : "none";
+                if (chevron) chevron.style.transform = isHidden ? "rotate(90deg)" : "";
+            }
+            return;
+        }
+      });
+
+      container.addEventListener("change", (e) => {
+        // Handle Cascading Checkboxes
+        if (e.target.classList.contains("exclusion-checkbox")) {
+            const isChecked = e.target.checked;
+            const target = e.target;
+            
+            // 1. Cascade DOWN (Parent -> Children)
+            if (target.dataset.type === "folder") {
+                const group = target.closest(".exclusion-folder-group");
+                if (group) {
+                    const childrenContainer = group.querySelector(".exclusion-children");
+                    if (childrenContainer) {
+                        const childCheckboxes = childrenContainer.querySelectorAll(".exclusion-checkbox");
+                        childCheckboxes.forEach(cb => {
+                            if (!cb.disabled) {
+                                cb.checked = isChecked;
+                            }
+                        });
+                    }
+                }
+            }
+
+            // 2. Bubble UP (Child -> Parent)
+            let current = target;
+            while (current) {
+                // Find immediate parent group container
+                const childrenContainer = current.closest(".exclusion-children");
+                if (!childrenContainer) break;
+                
+                const parentGroup = childrenContainer.parentElement; // .exclusion-folder-group
+                if (!parentGroup) break;
+
+                const parentHeader = parentGroup.querySelector(".exclusion-folder-header");
+                const parentCheckbox = parentHeader ? parentHeader.querySelector(".exclusion-checkbox") : null;
+                
+                if (parentCheckbox && !parentCheckbox.disabled) {
+                    // Check if ANY descendant is checked
+                    const allDescendants = childrenContainer.querySelectorAll(".exclusion-checkbox");
+                    let anyChecked = false;
+                    for (let i = 0; i < allDescendants.length; i++) {
+                        if (allDescendants[i].checked) {
+                            anyChecked = true;
+                            break;
+                        }
+                    }
+                    parentCheckbox.checked = anyChecked;
+                }
+                
+                current = parentGroup; // Continue up
+            }
+            
+            updateTotalSize();
+        }
+      });
+
+      // Handle Save
+      const saveHandler = async () => {
+        const checkboxes = modalBody.querySelectorAll(".exclusion-checkbox");
+        const itemsToIgnore = new Set();
+        const itemsToInclude = new Set();
+
+        checkboxes.forEach(cb => {
+          if (!cb.disabled) {
+              if (!cb.checked) {
+                itemsToIgnore.add(cb.dataset.path);
+              } else {
+                itemsToInclude.add(cb.dataset.path);
+              }
+          }
+        });
+
+        // Update .gitignore logic...
+        let newContentLines = gitignoreContent.split("\n").filter(line => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("#")) return true;
+            const path = trimmed.replace(/\/$/, "");
+            if (itemsToInclude.has(path)) return false;
+            return true;
+        });
+
+        if (itemsToIgnore.size > 0) {
+            newContentLines.push("");
+            newContentLines.push("# Exclusions via Blueprint Studio");
+            itemsToIgnore.forEach(path => {
+                if (!newContentLines.includes(path) && !newContentLines.includes(path + "/")) {
+                    newContentLines.push(path);
+                }
+            });
+        }
+
+        const newContent = newContentLines.join("\n").trim() + "\n";
+
+        showGlobalLoading("Saving .gitignore...");
+        const success = await saveFile(".gitignore", newContent);
+        
+        if (success) {
+            if (itemsToIgnore.size > 0) {
+                showGlobalLoading("Updating git index...");
+                try {
+                    await fetchWithAuth(API_BASE, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            action: "git_stop_tracking", 
+                            files: Array.from(itemsToIgnore) 
+                        }),
+                    });
+                } catch (e) {
+                    console.error("Failed to stop tracking files:", e);
+                }
+            }
+
+            hideGlobalLoading();
+            modalOverlay.classList.remove("visible");
+            await gitStatus();
+        } else {
+            hideGlobalLoading();
+        }
+        
+        cleanup();
+      };
+
+      const cancelHandler = () => {
+        modalOverlay.classList.remove("visible");
+        cleanup();
+      };
+
+      const cleanup = () => {
+        btnConfirm.removeEventListener("click", saveHandler);
+        btnCancel.removeEventListener("click", cancelHandler);
+        container.removeEventListener("change", updateTotalSize);
+        resetModalToDefault(); 
+        modal.style.maxWidth = ""; 
+      };
+
+      btnConfirm.addEventListener("click", saveHandler);
+      btnCancel.addEventListener("click", cancelHandler);
+
+    } catch (error) {
+      hideGlobalLoading();
+      showToast("Failed to load file list: " + error.message, "error");
+    }
   }
 
   // Apply Git visibility based on localStorage setting
@@ -2924,8 +3652,13 @@
       for (const [name, url] of Object.entries(remotes)) {
         remotesHtml += `
           <div class="git-remote-item">
-            <span class="git-remote-name">${name}</span>
-            <span class="git-remote-url">${url}</span>
+            <div style="flex: 1; min-width: 0;">
+                <span class="git-remote-name">${name}</span>
+                <span class="git-remote-url">${url}</span>
+            </div>
+            <button class="btn-icon-only remove-remote-btn" data-remote-name="${name}" title="Remove Remote" style="background: transparent; border: none; cursor: pointer; color: var(--text-secondary); padding: 4px;">
+                <span class="material-icons" style="font-size: 18px;">delete</span>
+            </button>
           </div>
         `;
       }
@@ -3168,6 +3901,41 @@
         await showCreateGithubRepoDialog();
       }, { once: true });
     }
+
+    // Attach event handlers for Remove Remote buttons
+    const removeRemoteBtns = modalBody.querySelectorAll('.remove-remote-btn');
+    removeRemoteBtns.forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const remoteName = e.currentTarget.dataset.remoteName;
+            const confirmed = await showConfirmDialog({
+                title: "Remove Remote",
+                message: `Are you sure you want to remove the remote '${remoteName}'?`,
+                confirmText: "Remove",
+                cancelText: "Cancel",
+                isDanger: true
+            });
+
+            if (confirmed) {
+                try {
+                    const data = await fetchWithAuth(API_BASE, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "git_remove_remote", name: remoteName }),
+                    });
+
+                    if (data.success) {
+                        showToast(data.message, "success");
+                        // Refresh settings modal
+                        setTimeout(() => showGitSettings(), 300);
+                    } else {
+                        showToast("Failed to remove remote: " + data.message, "error");
+                    }
+                } catch (error) {
+                    showToast("Error removing remote: " + error.message, "error");
+                }
+            }
+        });
+    });
 
     // Mobile optimization: prevent iOS zoom on input focus
     if (isMobile()) {
@@ -3470,55 +4238,11 @@
       const isExpanded = state.expandedFolders.has(folderPath);
       const item = createTreeItem(folderName, depth, true, isExpanded, folderPath);
 
-      // Gesture detection for mobile
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let touchStartTime = 0;
-      let isTouchMove = false;
-
-      item.addEventListener("touchstart", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        touchStartTime = Date.now();
-        isTouchMove = false;
-      });
-
-      item.addEventListener("touchmove", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        const touchX = e.touches[0].clientX;
-        const touchY = e.touches[0].clientY;
-        const deltaX = Math.abs(touchX - touchStartX);
-        const deltaY = Math.abs(touchY - touchStartY);
-
-        // If moved more than 10px, consider it scrolling
-        if (deltaX > 10 || deltaY > 10) {
-          isTouchMove = true;
-        }
-      });
-
-      item.addEventListener("touchend", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-
-        const touchDuration = Date.now() - touchStartTime;
-
-        // Only trigger if it was a quick tap (not a long press) and not a scroll
-        if (!isTouchMove && touchDuration < 300) {
-          e.preventDefault();
-          e.stopPropagation();
-          state.currentFolderPath = folderPath;
-          toggleFolder(folderPath);
-        }
-      });
-
       item.addEventListener("click", (e) => {
         if (e.target.closest(".tree-action-btn")) return;
-        // Only handle click on desktop (when not a touch device)
-        if (!('ontouchstart' in window)) {
-          e.stopPropagation();
-          state.currentFolderPath = folderPath;
-          toggleFolder(folderPath);
-        }
+        e.stopPropagation();
+        state.currentFolderPath = folderPath;
+        toggleFolder(folderPath);
       });
 
       // Context menu
@@ -3543,54 +4267,10 @@
 
       const item = createTreeItem(file.name, depth, false, false, file.path);
 
-      // Gesture detection for mobile
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let touchStartTime = 0;
-      let isTouchMove = false;
-
-      item.addEventListener("touchstart", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        touchStartTime = Date.now();
-        isTouchMove = false;
-      });
-
-      item.addEventListener("touchmove", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        const touchX = e.touches[0].clientX;
-        const touchY = e.touches[0].clientY;
-        const deltaX = Math.abs(touchX - touchStartX);
-        const deltaY = Math.abs(touchY - touchStartY);
-
-        // If moved more than 10px, consider it scrolling
-        if (deltaX > 10 || deltaY > 10) {
-          isTouchMove = true;
-        }
-      });
-
-      item.addEventListener("touchend", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-
-        const touchDuration = Date.now() - touchStartTime;
-
-        // Only trigger if it was a quick tap (not a long press) and not a scroll
-        if (!isTouchMove && touchDuration < 300) {
-          e.preventDefault();
-          e.stopPropagation();
-          openFile(file.path);
-          if (isMobile()) hideSidebar();
-        }
-      });
-
       item.addEventListener("click", (e) => {
         if (e.target.closest(".tree-action-btn")) return;
-        // Only handle click on desktop (when not a touch device)
-        if (!('ontouchstart' in window)) {
-          openFile(file.path);
-          if (isMobile()) hideSidebar();
-        }
+        openFile(file.path);
+        if (isMobile()) hideSidebar();
       });
 
       // Context menu
@@ -3662,13 +4342,22 @@
     item.appendChild(icon);
     item.appendChild(nameSpan);
 
-    // Add file size if it's a file and size is available
-    if (!isFolder && itemPath) {
-      const file = state.files.find(f => f.path === itemPath);
-      if (file && typeof file.size === 'number') {
+    // Add size if available (for both files and folders)
+    if (itemPath) {
+      let itemData;
+      if (isFolder) {
+          // state.folders is populated in loadFiles
+          if (state.folders) {
+            itemData = state.folders.find(f => f.path === itemPath);
+          }
+      } else {
+          itemData = state.files.find(f => f.path === itemPath);
+      }
+
+      if (itemData && typeof itemData.size === 'number') {
         const sizeSpan = document.createElement("span");
         sizeSpan.className = "tree-file-size";
-        sizeSpan.textContent = formatBytes(file.size);
+        sizeSpan.textContent = formatBytes(itemData.size);
         sizeSpan.style.marginLeft = "auto"; // Push to the right
         sizeSpan.style.marginRight = "10px"; // Some spacing
         sizeSpan.style.fontSize = "0.75em"; // Smaller font
@@ -3735,11 +4424,77 @@
   // ============================================
 
   async function openFile(path) {
+    // Check if it's a binary file (not meant for CodeMirror)
+    if (!isTextFile(path)) {
+      const filename = path.split("/").pop();
+      const ext = filename.split(".").pop().toLowerCase();
+      const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
+      const isPdf = ext === "pdf";
+
+      if (isImage || isPdf) {
+        showToast(`Opening ${filename}...`, "info");
+        try {
+          const data = await loadFile(path);
+          if (isImage) {
+            const dataUrl = `data:${data.mime_type};base64,${data.content}`;
+            await showModal({
+              title: filename,
+              image: dataUrl,
+              confirmText: "Close"
+            });
+          } else {
+            // PDF Viewer with fallback buttons
+            const binaryString = atob(data.content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: "application/pdf" });
+            const blobUrl = URL.createObjectURL(blob);
+
+            await showModal({
+              title: filename,
+              message: `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;">
+                    <span class="material-icons" style="font-size: 64px; color: var(--text-secondary); margin-bottom: 20px;">picture_as_pdf</span>
+                    <div style="font-size: 16px; margin-bottom: 30px; text-align: center;">
+                        This PDF cannot be previewed directly. Please download it to view.
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <a href="${blobUrl}" download="${filename}" class="modal-btn primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;">
+                            <span class="material-icons">download</span> Download PDF
+                        </a>
+                    </div>
+                </div>
+              `,
+              confirmText: "Close"
+            });
+            
+            // Clean up the blob URL after the modal is likely closed
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 120000); // 2 minutes
+
+            // Ensure modal is sized appropriately
+            elements.modal.style.maxWidth = "500px";
+            elements.modal.style.width = "90vw";
+          }
+        } catch (error) {
+          console.error("Failed to open media:", error);
+        }
+        return;
+      }
+
+      // For other binary files (like .zip), just download them
+      showToast(`Downloading ${filename}...`, "info");
+      downloadFileByPath(path);
+      return;
+    }
+
     let tab = state.openTabs.find((t) => t.path === path);
 
     if (!tab) {
       try {
-        const content = await loadFile(path);
+        const data = await loadFile(path); // data is now {content: ..., is_base64: ...}
+        const content = data.content; // This backend call will only work for text files
 
         tab = {
           path,
@@ -3761,6 +4516,7 @@
         }
 
       } catch (error) {
+        // loadFile will show a toast if it fails (e.g., trying to read binary as text)
         return;
       }
     }
@@ -3768,7 +4524,7 @@
     activateTab(tab);
     renderTabs();
     renderFileTree();
-    saveSettings();  // Save open tabs state
+    saveSettings();  // Save open tabs state (now also includes recent files)
   }
 
   function activateTab(tab) {
@@ -4342,6 +5098,34 @@
       elements.btnRefresh.addEventListener("click", loadFiles);
     }
 
+    // Restart HA
+    if (elements.btnRestartHa) {
+      elements.btnRestartHa.addEventListener("click", async () => {
+        const confirmed = await showConfirmDialog({
+            title: "Restart Home Assistant?",
+            message: "Are you sure you want to restart Home Assistant? Blueprint Studio will be unavailable until the restart completes.",
+            confirmText: "Restart",
+            cancelText: "Cancel",
+            isDanger: true
+        });
+
+        if (confirmed) {
+            try {
+                const data = await fetchWithAuth(API_BASE, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "restart_home_assistant" }),
+                });
+                if (data.success) {
+                    showToast("Restarting Home Assistant...", "success");
+                }
+            } catch (error) {
+                showToast("Failed to trigger restart: " + error.message, "error");
+            }
+        }
+      });
+    }
+
     // App Settings
     if (elements.btnAppSettings) {
       elements.btnAppSettings.addEventListener("click", showAppSettings);
@@ -4475,6 +5259,27 @@
     if (elements.btnGitRefresh) {
       elements.btnGitRefresh.addEventListener("click", gitStatus);
     }
+    if (elements.btnGitHelp) {
+      elements.btnGitHelp.addEventListener("click", () => {
+        showModal({
+          title: "Git for Beginners",
+          message: `
+            <div style="line-height: 1.6;">
+              <p>Git helps you track changes and sync them with GitHub. Here is the typical workflow:</p>
+              <br>
+              <p><b>1. Stage (Prepare):</b> Select the files you've changed and click "Stage". This is like putting items into a box before shipping.</p>
+              <br>
+              <p><b>2. Commit (Save Checkpoint):</b> Give your prepared changes a name (message) and click "Commit". This saves a "checkpoint" of your work on your local device.</p>
+              <br>
+              <p><b>3. Push (Upload):</b> Click the "↑" arrow or "Git Push" to upload your saved checkpoints to GitHub.</p>
+              <br>
+              <p><b>4. Pull (Download):</b> Click the "↓" arrow or "Git Pull" to download any new changes from GitHub to your device.</p>
+            </div>
+          `,
+          confirmText: "Got it!"
+        });
+      });
+    }
     if (elements.btnGitCollapse) {
       elements.btnGitCollapse.addEventListener("click", () => {
         const panel = document.getElementById("git-panel");
@@ -4498,6 +5303,21 @@
     }
     if (elements.btnCommitStaged) {
       elements.btnCommitStaged.addEventListener("click", commitStagedFiles);
+    }
+
+    // Git panel header sync indicators (delegation)
+    const gitPanelActions = document.querySelector(".git-panel-actions");
+    if (gitPanelActions) {
+      gitPanelActions.addEventListener("click", (e) => {
+        const target = e.target.closest(".git-sync-indicator");
+        if (target) {
+          if (target.id === "btn-git-push-sync") {
+            gitPush();
+          } else if (target.id === "btn-git-pull-sync") {
+            gitPull();
+          }
+        }
+      });
     }
 
     // Git panel event delegation for dynamically created elements
@@ -4527,6 +5347,10 @@
             gitPull();
           } else if (target.id === "btn-git-refresh-empty-state") {
             gitStatus();
+          } else if (target.id === "btn-git-init-panel") {
+            gitInit();
+          } else if (target.id === "btn-git-connect-panel") {
+            showGitSettings();
           }
         }
       });
@@ -4893,8 +5717,13 @@
         body: JSON.stringify({ action: "git_status" }),
       });
 
-      if (data.success && data.files) {
+      if (data.success) {
         gitState.files = data.files;
+        gitState.isInitialized = data.is_initialized;
+        gitState.hasRemote = data.has_remote;
+        gitState.ahead = data.ahead || 0;
+        gitState.behind = data.behind || 0;
+        
         gitState.totalChanges = [
           ...gitState.files.modified,
           ...gitState.files.added,
@@ -4908,9 +5737,109 @@
       console.log("Git status not available:", error.message);
     }
 
+    // Start onboarding if new user
+    startOnboarding();
+
     // Start periodic git status polling (every 30 seconds)
     // This catches changes made outside Blueprint Studio
     startGitStatusPolling();
+  }
+
+  async function startOnboarding() {
+    if (localStorage.getItem("onboardingCompleted")) return;
+
+    // Step 1: Welcome
+    await showModal({
+      title: "Welcome to Blueprint Studio! 🚀",
+      message: `
+        <div style="text-align: center;">
+          <p>The modern, Git-powered file editor for Home Assistant.</p>
+          <br>
+          <p>Let's get you set up in just a few steps.</p>
+        </div>
+      `,
+      confirmText: "Get Started"
+    });
+
+    // Step 2: Initialize Git (if needed)
+    if (!gitState.isInitialized) {
+      const initResult = await showConfirmDialog({
+        title: "Step 1: Track Your Changes",
+        message: `
+          <div style="text-align: center;">
+            <span class="material-icons" style="font-size: 48px; color: var(--accent-color);">source</span>
+            <p>First, we need to initialize a Git repository to track your file changes.</p>
+            <p style="font-size: 12px; color: var(--text-secondary);">This creates a hidden .git folder in your config directory.</p>
+          </div>
+        `,
+        confirmText: "Initialize Repo",
+        cancelText: "Skip"
+      });
+
+      if (initResult) {
+        await gitInit();
+        gitState.isInitialized = true; // Assume success for flow
+      }
+    }
+
+    // Step 2: Git Ignore (New)
+    if (gitState.isInitialized) {
+        const ignoreResult = await showConfirmDialog({
+            title: "Step 2: Ignore Files",
+            message: `
+                <div style="text-align: center;">
+                    <span class="material-icons" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 10px;">visibility_off</span>
+                    <p style="margin-bottom: 10px;">Configure which files to hide from GitHub (like passwords or temp files).</p>
+                    <p style="font-size: 12px; color: var(--text-secondary);">We've already configured safe defaults for you.</p>
+                </div>
+            `,
+            confirmText: "Manage Exclusions",
+            cancelText: "Use Defaults"
+        });
+
+        if (ignoreResult) {
+            await showGitExclusions();
+            localStorage.setItem("onboardingCompleted", "true");
+            return;
+        }
+    }
+
+    // Step 3: Connect to GitHub (if needed)
+    if (gitState.isInitialized && !gitState.hasRemote) {
+      const connectResult = await showConfirmDialog({
+        title: "Step 2: Connect to Cloud",
+        message: `
+          <div style="text-align: center;">
+            <span class="material-icons" style="font-size: 48px; color: var(--text-secondary);">cloud_upload</span>
+            <p>Connect to GitHub to backup your configuration and track history.</p>
+          </div>
+        `,
+        confirmText: "Connect GitHub",
+        cancelText: "Skip"
+      });
+
+      if (connectResult) {
+        await showGitSettings();
+        // If they go to settings, we consider onboarding "interrupted" but effectively done for the wizard part.
+        localStorage.setItem("onboardingCompleted", "true");
+        return;
+      }
+    }
+
+    // Step 4: Finish
+    await showModal({
+      title: "You're All Set! 🎉",
+      message: `
+        <div style="text-align: center;">
+          <p>Explore your files on the left.</p>
+          <p>Use the <b>Git Panel</b> to stage, commit, and push changes.</p>
+          <br>
+          <p style="font-size: 12px;">Need help? Click the <span class="material-icons" style="font-size: 14px; vertical-align: middle;">help_outline</span> icon in the Git panel.</p>
+        </div>
+      `,
+      confirmText: "Start Editing"
+    });
+    localStorage.setItem("onboardingCompleted", "true");
   }
 
   // Periodic git status polling

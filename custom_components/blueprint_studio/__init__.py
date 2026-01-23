@@ -11,6 +11,7 @@ import subprocess
 import zipfile
 from pathlib import Path
 from typing import Any
+import mimetypes
 
 import aiohttp
 import yaml
@@ -97,7 +98,22 @@ class BlueprintStudioApiView(HomeAssistantView):
     # File extensions allowed for editing
     ALLOWED_EXTENSIONS = {
         ".yaml", ".yml", ".json", ".py", ".js", ".css", ".html", ".txt",
-        ".md", ".conf", ".cfg", ".ini", ".sh", ".log",
+        ".md", ".conf", ".cfg", ".ini", ".sh", ".log", ".gitignore",
+        # New image extensions
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".ico",
+        # New document/archive extensions
+        ".pdf", ".zip",
+    }
+
+    # Binary file extensions that should be base64 encoded
+    BINARY_EXTENSIONS = {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip"
+    }
+
+    # Specific filenames allowed even if they don't have an extension
+    ALLOWED_FILENAMES = {
+        ".gitignore",
+        ".ha_run.lock"
     }
 
     # Directories/patterns to exclude
@@ -107,7 +123,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         ".cache",
         "deps",
         "tts",
-        ".storage",
     }
 
     # Protected paths that cannot be deleted
@@ -145,6 +160,13 @@ class BlueprintStudioApiView(HomeAssistantView):
             return True
         return path.strip("/") in self.PROTECTED_PATHS
 
+    def _is_file_allowed(self, path: Path) -> bool:
+        """Check if file type/name is allowed."""
+        return (
+            path.suffix.lower() in self.ALLOWED_EXTENSIONS
+            or path.name in self.ALLOWED_FILENAMES
+        )
+
     async def get(self, request: web.Request) -> web.Response:
         """Handle GET requests."""
         params = request.query
@@ -163,6 +185,10 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "list_all":
             show_hidden = params.get("show_hidden", "false").lower() == "true"
             items = await hass.async_add_executor_job(self._list_all, show_hidden)
+            return self.json(items)
+
+        if action == "list_git_files":
+            items = await hass.async_add_executor_job(self._list_git_files)
             return self.json(items)
 
         if action == "read_file":
@@ -203,9 +229,10 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "create_file":
             path = data.get("path")
             content = data.get("content", "")
+            is_base64_from_payload = data.get("is_base64", False)
             if not path:
                 return self.json_message("Missing path", status_code=400)
-            return await self._create_file(hass, path, content)
+            return await self._create_file(hass, path, content, is_base64_from_payload)
 
         if action == "create_folder":
             path = data.get("path")
@@ -243,9 +270,10 @@ class BlueprintStudioApiView(HomeAssistantView):
             path = data.get("path")
             content = data.get("content")
             overwrite = data.get("overwrite", False)
+            is_base64_from_payload = data.get("is_base64", False)
             if not path or content is None:
                 return self.json_message("Missing path or content", status_code=400)
-            return await self._upload_file(hass, path, content, overwrite)
+            return await self._upload_file(hass, path, content, overwrite, is_base64_from_payload)
 
         if action == "upload_folder":
             path = data.get("path")
@@ -280,6 +308,22 @@ class BlueprintStudioApiView(HomeAssistantView):
             if not url:
                 return self.json_message("Missing remote URL", status_code=400)
             return await self._git_add_remote(hass, name, url)
+
+        if action == "git_remove_remote":
+            name = data.get("name")
+            if not name:
+                return self.json_message("Missing remote name", status_code=400)
+            return await self._git_remove_remote(hass, name)
+
+        if action == "git_delete_repo":
+            return await self._git_delete_repo(hass)
+
+        if action == "git_repair_index":
+            return await self._git_repair_index(hass)
+
+        if action == "restart_home_assistant":
+            await hass.services.async_call("homeassistant", "restart")
+            return self.json({"success": True, "message": "Home Assistant is restarting..."})
 
         if action == "github_create_repo":
             repo_name = data.get("repo_name")
@@ -341,7 +385,34 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "git_clean_locks":
             return await self._git_clean_locks(hass)
 
+        if action == "git_stop_tracking":
+            files = data.get("files", [])
+            if not files:
+                return self.json_message("Missing files", status_code=400)
+            return await self._git_stop_tracking(hass, files)
+
         return self.json_message("Unknown action", status_code=400)
+
+    def _get_dir_size(self, path: Path) -> int:
+        """Calculate total size of a directory."""
+        total = 0
+        try:
+            for root, dirs, files in os.walk(path):
+                # Filter excluded directories to avoid counting them
+                dirs[:] = [d for d in dirs if d not in self.EXCLUDED_PATTERNS]
+                
+                for f in files:
+                    fp = Path(root) / f
+                    # Optional: skip disallowed files to match tree view? 
+                    # Usually folder size includes everything, but let's stick to what we show?
+                    # No, true disk usage is better.
+                    try:
+                        total += fp.stat().st_size
+                    except (OSError, FileNotFoundError):
+                        pass
+        except Exception:
+            pass
+        return total
 
     def _list_files(self, show_hidden: bool = False) -> list[dict[str, Any]]:
         """List files recursively."""
@@ -369,7 +440,7 @@ class BlueprintStudioApiView(HomeAssistantView):
                 # Filter hidden files unless show_hidden is True
                 if not show_hidden and name.startswith("."):
                     continue
-                if file_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+                if not self._is_file_allowed(file_path):
                     continue
 
                 result.append({
@@ -402,10 +473,15 @@ class BlueprintStudioApiView(HomeAssistantView):
             # Add directories
             for name in sorted(dirs):
                 rel_path = rel_root / name if str(rel_root) != "." else Path(name)
+                dir_path = Path(root) / name
+                
+                size = self._get_dir_size(dir_path)
+
                 result.append({
                     "path": str(rel_path),
                     "name": name,
                     "type": "folder",
+                    "size": size,
                 })
 
             # Add files
@@ -416,8 +492,51 @@ class BlueprintStudioApiView(HomeAssistantView):
                 # Filter hidden files unless show_hidden is True
                 if not show_hidden and name.startswith("."):
                     continue
-                if file_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+                if not self._is_file_allowed(file_path):
                     continue
+                
+                try:
+                    size = file_path.stat().st_size
+                except (OSError, FileNotFoundError):
+                    size = 0
+
+                result.append({
+                    "path": str(rel_path),
+                    "name": name,
+                    "type": "file",
+                    "size": size,
+                })
+
+        return sorted(result, key=lambda x: x["path"])
+
+    def _list_git_files(self) -> list[dict[str, Any]]:
+        """List ALL files and folders for gitignore management (no extension filter)."""
+        result: list[dict[str, Any]] = []
+
+        for root, dirs, files in os.walk(self.config_dir):
+            rel_root = Path(root).relative_to(self.config_dir)
+
+            # Skip .git folder traversal
+            if ".git" in dirs:
+                dirs.remove(".git")
+
+            # Add directories
+            for name in sorted(dirs):
+                rel_path = rel_root / name if str(rel_root) != "." else Path(name)
+                dir_path = Path(root) / name
+                size = self._get_dir_size(dir_path)
+
+                result.append({
+                    "path": str(rel_path),
+                    "name": name,
+                    "type": "folder",
+                    "size": size,
+                })
+
+            # Add files
+            for name in sorted(files):
+                file_path = Path(root) / name
+                rel_path = rel_root / name if str(rel_root) != "." else Path(name)
                 
                 try:
                     size = file_path.stat().st_size
@@ -442,12 +561,22 @@ class BlueprintStudioApiView(HomeAssistantView):
         if not safe_path.exists() or not safe_path.is_file():
             return self.json_message("File not found", status_code=404)
 
-        if safe_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+        if not self._is_file_allowed(safe_path):
             return self.json_message("File type not allowed", status_code=403)
 
+        file_extension = safe_path.suffix.lower()
+
         try:
-            content = await hass.async_add_executor_job(safe_path.read_text, "utf-8")
-            return self.json({"content": content})
+            if file_extension in self.BINARY_EXTENSIONS:
+                content = await hass.async_add_executor_job(safe_path.read_bytes)
+                encoded_content = base64.b64encode(content).decode("utf-8")
+                mime_type = mimetypes.guess_type(safe_path.name)[0] or "application/octet-stream"
+                return self.json({"content": encoded_content, "is_base64": True, "mime_type": mime_type})
+            else:
+                content = await hass.async_add_executor_job(safe_path.read_text, "utf-8")
+                # For text files, explicitly set a text MIME type
+                mime_type = mimetypes.guess_type(safe_path.name)[0] or "text/plain;charset=utf-8"
+                return self.json({"content": content, "is_base64": False, "mime_type": mime_type})
         except UnicodeDecodeError:
             return self.json_message("File is not a text file", status_code=400)
         except OSError as err:
@@ -462,7 +591,7 @@ class BlueprintStudioApiView(HomeAssistantView):
         if safe_path is None:
             return self.json_message("Invalid path", status_code=403)
 
-        if safe_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+        if not self._is_file_allowed(safe_path):
             return self.json_message("File type not allowed", status_code=403)
 
         if not safe_path.parent.exists():
@@ -476,14 +605,14 @@ class BlueprintStudioApiView(HomeAssistantView):
             return self.json_message("Error writing file", status_code=500)
 
     async def _create_file(
-        self, hass: HomeAssistant, path: str, content: str
+        self, hass: HomeAssistant, path: str, content: str, is_base64: bool = False
     ) -> web.Response:
         """Create a new file."""
         safe_path = self._get_safe_path(path)
         if safe_path is None:
             return self.json_message("Invalid path", status_code=403)
 
-        if safe_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+        if not self._is_file_allowed(safe_path):
             return self.json_message("File type not allowed", status_code=403)
 
         if safe_path.exists():
@@ -493,7 +622,11 @@ class BlueprintStudioApiView(HomeAssistantView):
             return self.json_message("Parent directory does not exist", status_code=400)
 
         try:
-            await hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
+            if is_base64:
+                decoded_content = base64.b64decode(content)
+                await hass.async_add_executor_job(safe_path.write_bytes, decoded_content)
+            else:
+                await hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
             return self.json({"success": True, "path": path})
         except OSError as err:
             _LOGGER.error("Error creating file %s: %s", safe_path, err)
@@ -637,14 +770,14 @@ class BlueprintStudioApiView(HomeAssistantView):
             return self.json({"valid": False, "error": f"Validation error: {str(err)}"})
 
     async def _upload_file(
-        self, hass: HomeAssistant, path: str, content: str, overwrite: bool
+        self, hass: HomeAssistant, path: str, content: str, overwrite: bool, is_base64: bool = False
     ) -> web.Response:
         """Upload/create a file with content."""
         safe_path = self._get_safe_path(path)
         if safe_path is None:
             return self.json_message("Invalid path", status_code=403)
 
-        if safe_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+        if not self._is_file_allowed(safe_path):
             return self.json_message("File type not allowed", status_code=403)
 
         if safe_path.exists() and not overwrite:
@@ -654,9 +787,13 @@ class BlueprintStudioApiView(HomeAssistantView):
             return self.json_message("Parent directory does not exist", status_code=400)
 
         try:
-            await hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
+            if is_base64:
+                decoded_content = base64.b64decode(content)
+                await hass.async_add_executor_job(safe_path.write_bytes, decoded_content)
+            else:
+                await hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
             return self.json({"success": True, "path": path})
-        except OSError as err:
+        except Exception as err:
             _LOGGER.error("Error uploading file %s: %s", safe_path, err)
             return self.json_message("Error uploading file", status_code=500)
 
@@ -703,7 +840,7 @@ class BlueprintStudioApiView(HomeAssistantView):
                     file_path = Path(root) / file
 
                     # Only include allowed extensions
-                    if file_path.suffix.lower() not in self.ALLOWED_EXTENSIONS:
+                    if not self._is_file_allowed(file_path):
                         continue
 
                     # Calculate archive name relative to the folder being zipped
@@ -757,8 +894,8 @@ class BlueprintStudioApiView(HomeAssistantView):
 
                 # Only extract allowed file types
                 if not member.endswith("/"):
-                    ext = Path(member).suffix.lower()
-                    if ext not in self.ALLOWED_EXTENSIONS:
+                    # Use helper for validation
+                    if not self._is_file_allowed(target_path / member):
                         continue
 
                 zf.extract(member, target_path)
@@ -769,6 +906,29 @@ class BlueprintStudioApiView(HomeAssistantView):
     async def _git_status(self, hass: HomeAssistant) -> web.Response:
         """Get git status with structured data."""
         try:
+            # Check if initialized
+            git_dir = self.config_dir / ".git"
+            is_initialized = git_dir.exists() and git_dir.is_dir()
+            
+            has_remote = False
+            if is_initialized:
+                remote_result = await hass.async_add_executor_job(
+                    self._run_git_command, ["remote"]
+                )
+                has_remote = remote_result["success"] and bool(remote_result["output"].strip())
+
+            if not is_initialized:
+                 return self.json({
+                    "success": True,
+                    "is_initialized": False,
+                    "has_remote": False,
+                    "has_changes": False,
+                    "files": {
+                        "modified": [], "added": [], "deleted": [], 
+                        "untracked": [], "staged": [], "unstaged": []
+                    }
+                })
+
             # Get porcelain status
             result = await hass.async_add_executor_job(
                 self._run_git_command, ["status", "--porcelain"]
@@ -799,6 +959,10 @@ class BlueprintStudioApiView(HomeAssistantView):
                 x_status = line[0]  # Staged status
                 y_status = line[1]  # Unstaged status
                 filename = line[3:].strip()
+                
+                # Handle quoted filenames (files with spaces/special chars)
+                if filename.startswith('"') and filename.endswith('"'):
+                    filename = filename[1:-1]
 
                 # Parse staged changes
                 if x_status == 'M':
@@ -832,8 +996,28 @@ class BlueprintStudioApiView(HomeAssistantView):
                 status_data["untracked"]
             ])
 
+            # Check ahead/behind status
+            ahead = 0
+            behind = 0
+            if has_remote:
+                compare_result = await hass.async_add_executor_job(
+                    self._run_git_command, ["rev-list", "--left-right", "--count", "HEAD...@{u}"]
+                )
+                if compare_result["success"]:
+                    try:
+                        counts = compare_result["output"].strip().split()
+                        if len(counts) == 2:
+                            ahead = int(counts[0])
+                            behind = int(counts[1])
+                    except ValueError:
+                        pass
+
             return self.json({
                 "success": True,
+                "is_initialized": True,
+                "has_remote": has_remote,
+                "ahead": ahead,
+                "behind": behind,
                 "status": result["output"],
                 "has_changes": has_changes,
                 "files": status_data
@@ -845,8 +1029,18 @@ class BlueprintStudioApiView(HomeAssistantView):
     async def _git_pull(self, hass: HomeAssistant) -> web.Response:
         """Pull changes from git remote."""
         try:
+            # Determine current branch or default to main
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            
+            target_branch = "main"
+            if branch_result["success"]:
+                target_branch = branch_result["output"].strip()
+
+            # Explicitly pull origin <branch> to avoid "no tracking info" errors
             result = await hass.async_add_executor_job(
-                self._run_git_command, ["pull", "--rebase"]
+                self._run_git_command, ["pull", "--rebase", "origin", target_branch]
             )
 
             if result["success"]:
@@ -945,9 +1139,22 @@ class BlueprintStudioApiView(HomeAssistantView):
                         pass
 
             # At this point, we have commits to push
-            # Push changes (with -u to set upstream automatically on first push)
+            
+            # Determine current branch or default to main
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            
+            target_branch = "main"
+            if branch_result["success"]:
+                target_branch = branch_result["output"].strip()
+            
+            # Push HEAD to the target branch on origin
+            # We use HEAD:refs/heads/<branch> to force pushing local HEAD to the remote branch
+            push_cmd = ["push", "-u", "origin", f"HEAD:refs/heads/{target_branch}"]
+            
             push_result = await hass.async_add_executor_job(
-                self._run_git_command, ["push", "-u", "origin", "HEAD"]
+                self._run_git_command, push_cmd
             )
 
             if push_result["success"]:
@@ -985,9 +1192,20 @@ class BlueprintStudioApiView(HomeAssistantView):
             if status_result["success"] and status_result["output"].strip():
                 return self.json_message("You have uncommitted changes. Please commit them first or use the regular Push button.", status_code=400)
 
+            # Determine current branch or default to main
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            
+            target_branch = "main"
+            if branch_result["success"]:
+                target_branch = branch_result["output"].strip()
+
             # Push changes (with -u to set upstream automatically on first push)
+            push_cmd = ["push", "-u", "origin", f"HEAD:refs/heads/{target_branch}"]
+            
             push_result = await hass.async_add_executor_job(
-                self._run_git_command, ["push", "-u", "origin", "HEAD"]
+                self._run_git_command, push_cmd
             )
 
             if push_result["success"]:
@@ -1236,6 +1454,62 @@ desktop.ini
                 return self.json_message(result["error"], status_code=500)
         except Exception as err:
             _LOGGER.error("Error adding/updating remote: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_remove_remote(
+        self, hass: HomeAssistant, name: str
+    ) -> web.Response:
+        """Remove a git remote."""
+        try:
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["remote", "remove", name]
+            )
+
+            if result["success"]:
+                return self.json({
+                    "success": True,
+                    "message": f"Remote '{name}' removed",
+                    "output": result["output"]
+                })
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error removing remote: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_delete_repo(self, hass: HomeAssistant) -> web.Response:
+        """Delete the .git directory (destroy repo)."""
+        try:
+            git_dir = self.config_dir / ".git"
+            if git_dir.exists() and git_dir.is_dir():
+                await hass.async_add_executor_job(shutil.rmtree, git_dir)
+                return self.json({
+                    "success": True,
+                    "message": "Git repository deleted"
+                })
+            else:
+                return self.json({
+                    "success": True,
+                    "message": "No Git repository found"
+                })
+        except Exception as err:
+            _LOGGER.error("Error deleting repo: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_repair_index(self, hass: HomeAssistant) -> web.Response:
+        """Repair a corrupted git index."""
+        try:
+            index_file = self.config_dir / ".git" / "index"
+            if index_file.exists():
+                await hass.async_add_executor_job(index_file.unlink)
+            
+            # Rebuild index
+            await hass.async_add_executor_job(
+                self._run_git_command, ["reset"]
+            )
+            return self.json({"success": True, "message": "Git index repaired"})
+        except Exception as err:
+            _LOGGER.error("Error repairing git index: %s", err)
             return self.json_message(str(err), status_code=500)
 
     async def _github_create_repo(
@@ -1664,6 +1938,26 @@ desktop.ini
                 return self.json_message(result["error"], status_code=500)
         except Exception as err:
             _LOGGER.error("Error resetting files: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_stop_tracking(self, hass: HomeAssistant, files: list[str]) -> web.Response:
+        """Stop tracking specific files (remove from index but keep on disk)."""
+        try:
+            # Validate files are within config directory
+            for file in files:
+                if not self._is_path_safe(file):
+                    return self.json_message(f"Invalid path: {file}", status_code=403)
+
+            # We process files one by one to ensure partial success doesn't fail the whole batch
+            # and to handle cases where a file might not be tracked anyway.
+            for file in files:
+                await hass.async_add_executor_job(
+                    self._run_git_command, ["rm", "-r", "--cached", file]
+                )
+            
+            return self.json({"success": True})
+        except Exception as err:
+            _LOGGER.error("Error stopping tracking for files: %s", err)
             return self.json_message(str(err), status_code=500)
 
     async def _git_clean_locks(self, hass: HomeAssistant) -> web.Response:
