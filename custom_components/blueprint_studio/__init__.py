@@ -283,7 +283,8 @@ class BlueprintStudioApiView(HomeAssistantView):
             return await self._upload_folder(hass, path, zip_data)
 
         if action == "git_status":
-            return await self._git_status(hass)
+            should_fetch = data.get("fetch", False)
+            return await self._git_status(hass, should_fetch)
 
         if action == "git_pull":
             return await self._git_pull(hass)
@@ -320,6 +321,9 @@ class BlueprintStudioApiView(HomeAssistantView):
 
         if action == "git_repair_index":
             return await self._git_repair_index(hass)
+
+        if action == "git_abort":
+            return await self._git_abort(hass)
 
         if action == "restart_home_assistant":
             await hass.services.async_call("homeassistant", "restart")
@@ -903,7 +907,7 @@ class BlueprintStudioApiView(HomeAssistantView):
 
         return files_extracted
 
-    async def _git_status(self, hass: HomeAssistant) -> web.Response:
+    async def _git_status(self, hass: HomeAssistant, should_fetch: bool = False) -> web.Response:
         """Get git status with structured data."""
         try:
             # Check if initialized
@@ -916,6 +920,15 @@ class BlueprintStudioApiView(HomeAssistantView):
                     self._run_git_command, ["remote"]
                 )
                 has_remote = remote_result["success"] and bool(remote_result["output"].strip())
+
+            if is_initialized and has_remote and should_fetch:
+                # Perform git fetch to update remote refs
+                # We use --prune to clean up deleted branches
+                fetch_result = await hass.async_add_executor_job(
+                    self._run_git_command, ["fetch", "--prune"]
+                )
+                if not fetch_result["success"]:
+                    _LOGGER.warning("Git fetch failed: %s", fetch_result["error"])
 
             if not is_initialized:
                  return self.json({
@@ -1000,9 +1013,25 @@ class BlueprintStudioApiView(HomeAssistantView):
             ahead = 0
             behind = 0
             if has_remote:
+                # Try standard upstream comparison first
                 compare_result = await hass.async_add_executor_job(
                     self._run_git_command, ["rev-list", "--left-right", "--count", "HEAD...@{u}"]
                 )
+                
+                # If that fails (no upstream set), try explicit origin/<branch> comparison
+                if not compare_result["success"]:
+                    # Determine current branch
+                    branch_result = await hass.async_add_executor_job(
+                        self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+                    )
+                    current_branch = "main"
+                    if branch_result["success"]:
+                        current_branch = branch_result["output"].strip()
+                    
+                    compare_result = await hass.async_add_executor_job(
+                        self._run_git_command, ["rev-list", "--left-right", "--count", f"HEAD...origin/{current_branch}"]
+                    )
+
                 if compare_result["success"]:
                     try:
                         counts = compare_result["output"].strip().split()
@@ -1235,7 +1264,7 @@ class BlueprintStudioApiView(HomeAssistantView):
             # Determine timeout based on operation
             # Operations that process many files need more time
             timeout = 30  # default
-            if any(cmd in args for cmd in ["add", "commit", "push", "pull", "clone"]):
+            if any(cmd in args for cmd in ["add", "commit", "push", "pull", "clone", "fetch"]):
                 timeout = 300  # 5 minutes for operations that process many files
 
             # If we have stored credentials and this is a push/pull/fetch command,

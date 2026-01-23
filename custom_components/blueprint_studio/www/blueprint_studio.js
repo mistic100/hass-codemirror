@@ -1882,14 +1882,17 @@
     totalChanges: 0
   };
 
-  async function gitStatus() {
+  async function gitStatus(shouldFetch = false) {
     try {
       setButtonLoading(elements.btnGitStatus, true);
 
       const data = await fetchWithAuth(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "git_status" }),
+        body: JSON.stringify({ 
+            action: "git_status",
+            fetch: shouldFetch 
+        }),
       });
 
       setButtonLoading(elements.btnGitStatus, false);
@@ -2612,6 +2615,11 @@
         // Reload files to show changes
         await loadFiles();
         await gitStatus();
+        
+        // Reload active tab content to reflect changes
+        if (state.activeTab) {
+            await openFile(state.activeTab.path, true);
+        }
       }
     } catch (error) {
       setButtonLoading(elements.btnGitPull, false);
@@ -2777,7 +2785,7 @@
                 elements.sidebar.style.width = "360px";
             }
         }
-    } else if (gitState.totalChanges > 0) {
+    } else if (gitState.totalChanges > 0 || gitState.ahead > 0 || gitState.behind > 0) {
         panel.classList.add("visible");
         if (!isMobile() && elements.sidebar) {
             const currentWidth = parseInt(window.getComputedStyle(elements.sidebar).width);
@@ -2831,14 +2839,14 @@
         <div class="git-empty-state">
           <span class="material-icons">check_circle</span>
           <p>No changes detected</p>
-          <div class="git-empty-state-actions" style="display: flex; gap: 8px; margin-top: 16px;">
-            <button class="btn-secondary" id="btn-git-pull-empty-state">
-              <span class="material-icons">cloud_download</span>
-              Pull from Remote
+          <div class="git-empty-state-actions" style="display: flex; gap: 8px; margin-top: 12px; justify-content: center;">
+            <button class="btn-secondary" id="btn-git-pull-empty-state" style="padding: 6px 12px; font-size: 12px; background: transparent; border: 1px solid var(--border-color);">
+              <span class="material-icons" style="font-size: 16px;">cloud_download</span>
+              Pull
             </button>
-            <button class="btn-secondary" id="btn-git-refresh-empty-state">
-              <span class="material-icons">refresh</span>
-              Refresh Status
+            <button class="btn-secondary" id="btn-git-refresh-empty-state" style="padding: 6px 12px; font-size: 12px; background: transparent; border: 1px solid var(--border-color);">
+              <span class="material-icons" style="font-size: 16px;">refresh</span>
+              Refresh
             </button>
           </div>
         </div>
@@ -4423,7 +4431,7 @@
   // Tab Management
   // ============================================
 
-  async function openFile(path) {
+  async function openFile(path, forceReload = false) {
     // Check if it's a binary file (not meant for CodeMirror)
     if (!isTextFile(path)) {
       const filename = path.split("/").pop();
@@ -4491,7 +4499,18 @@
 
     let tab = state.openTabs.find((t) => t.path === path);
 
-    if (!tab) {
+    if (tab && forceReload) {
+        try {
+            const data = await loadFile(path);
+            tab.content = data.content;
+            tab.originalContent = data.content;
+            tab.modified = false;
+            // Clear history if reloading externally changed file to avoid confusing undo state
+            tab.history = null; 
+        } catch (e) {
+            console.error("Failed to reload file content", e);
+        }
+    } else if (!tab) {
       try {
         const data = await loadFile(path); // data is now {content: ..., is_base64: ...}
         const content = data.content; // This backend call will only work for text files
@@ -4524,7 +4543,7 @@
     activateTab(tab);
     renderTabs();
     renderFileTree();
-    saveSettings();  // Save open tabs state (now also includes recent files)
+    saveSettings(); // To save recent files
   }
 
   function activateTab(tab) {
@@ -5241,7 +5260,7 @@
 
     // Git buttons
     if (elements.btnGitStatus) {
-      elements.btnGitStatus.addEventListener("click", gitStatus);
+      elements.btnGitStatus.addEventListener("click", () => gitStatus(true));
     }
     if (elements.btnGitPull) {
       elements.btnGitPull.addEventListener("click", gitPull);
@@ -5257,7 +5276,7 @@
 
     // Git panel buttons
     if (elements.btnGitRefresh) {
-      elements.btnGitRefresh.addEventListener("click", gitStatus);
+      elements.btnGitRefresh.addEventListener("click", () => gitStatus(true));
     }
     if (elements.btnGitHelp) {
       elements.btnGitHelp.addEventListener("click", () => {
@@ -5346,7 +5365,7 @@
           if (target.id === "btn-git-pull-empty-state") {
             gitPull();
           } else if (target.id === "btn-git-refresh-empty-state") {
-            gitStatus();
+            gitStatus(true);
           } else if (target.id === "btn-git-init-panel") {
             gitInit();
           } else if (target.id === "btn-git-connect-panel") {
