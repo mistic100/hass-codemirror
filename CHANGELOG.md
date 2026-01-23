@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.3.0] - 2026-01-22
+## [1.3.0] - 2026-01-23
 
 ### ✨ New Features
 *   **Onboarding Wizard**: A guided tour for new users to initialize their repo, configure ignores, and connect to GitHub.
