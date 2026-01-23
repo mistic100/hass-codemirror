@@ -1,6 +1,6 @@
 # Blueprint Studio 🚀
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/soulripper13/blueprint-studio.svg)](https://github.com/soulripper13/blueprint-studio/releases)
 [![License](https://img.shields.io/github/license/soulripper13/blueprint-studio.svg)](LICENSE)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%2B-blue.svg)
@@ -84,15 +84,14 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 ### GitHub Integration 🔗 **NEW!**
 *Complete Git workflow - stage, commit, and push directly from Blueprint Studio*
 
-![Git Changes Panel](images/screenshot-git-changes-1.png)
-![Git Changes Panel](images/screenshot-git-changes-2.png)
+![Git Changes Panel](images/screenshot-git-changes.png)
 
 ---
 
 ### Git Settings & Authentication
 *One-click OAuth login or Personal Access Token authentication*
 
-![Git Settings Modal](images/screenshot-git-settings-1.png)
+![Git Settings Modal](images/screenshot-git-settings.png)
 
 ---
 
@@ -129,13 +128,14 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 
 ### UI Features 🎨
 - **Dark Theme** - VS Code-inspired dark theme for eye-friendly editing 🌙
+- **Onboarding Wizard** - Step-by-step tour for new users to initialize and connect 🎓
 - **File Tree Explorer** - Navigate your config directory with an expandable folder tree 🌳
 - **File Type Icons** - Different colored icons for various file types 🎨
 - **Multiple Tabs** - Open and edit multiple files simultaneously 🗂️
 - **Resizable Sidebar** - Drag to resize the file explorer 📏
 - **File Search** - Filter files in the explorer 🔍
 - **Status Bar** - Shows cursor position, file type, and connection status 📊
-- **Toast Notifications** - Elegant success/error messages 🔔
+- **Toast Notifications** - Elegant success/error messages with persistent error display 🔔
 
 ### File Management 📁
 - **Create Files & Folders** - Right-click context menu for creating new items ➕
@@ -145,6 +145,8 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 - **Rename & Move** - Rename files or move them to different locations 🔄
 - **Delete** - Remove files and folders (with protection for critical files) 🗑️
 - **Folder Operations** - Upload/download entire folder structures as ZIP files 📦
+- **Folder Sizes** - View directory sizes directly in the file explorer 📊
+- **Image Preview** - View images (PNG, JPG, SVG, etc.) directly in the editor 🖼️
 - **Pin Favorites** - Pin frequently used files for quick access at the top of the sidebar 📌
 
 ### Git Integration 🔗 **NEW!**
@@ -153,19 +155,29 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 - **Stay Logged In** - Credentials persist across restarts ✨
 - **Push & Pull** - Sync your configs with GitHub 🔄
 - **Stage & Commit** - Manage changes with visual Git panel 📝
+- **Smart Commit Messages** - Auto-generates messages based on staged files (e.g., "Update config") 🧠
+- **Visual Sync Status** - Real-time arrows (↑/↓) showing commits ahead/behind remote 🔄
+- **Advanced .gitignore** - Manage exclusions with a full interactive tree, file sizes, and cascading selection 🛡️
+- **Safety Checks** - Proactively prompts to commit unstated changes before pushing 🛡️
+- **Auto-Repair** - Detects and fixes "index.lock" and corrupt index errors with one click 🔧
+- **Manage Remotes** - Add or remove remote repositories from Settings 🗑️
 - **Automatic Status Updates** - Git panel updates automatically after file operations ⚡
 - **Periodic Polling** - Detects changes made outside Blueprint Studio (every 30s) 🔄
 - **Real-time Status** - See modified, added, deleted files instantly 👁️
-- **Smart .gitignore** - Automatically excludes large files (piper/, *.onnx) 🛡️
 - **GitHub Octicons** - Professional Git icons matching GitHub's UI 🎨
-- **Smart Sidebar Resize** - Auto-adjusts for Git panel buttons 📏
 
 ### Toolbar 🛠️
+<div align="center">
+  <img src="images/screenshot-toolbar-restart.png" alt="Restart Home Assistant Button" width="600">
+  <p><em>New Restart Button - Quickly restart HA from the toolbar</em></p>
+</div>
+
 - Save / Save All 💾
 - Undo / Redo ↶↷
 - Cut / Copy / Paste ✂️📋
 - Search / Replace 🔍🔄
 - YAML Validation ✅
+- Restart Home Assistant 🔄
 - Refresh file list 🔄
 - Collapse/Expand all folders 📂📁
 - Upload/Download files and folders ⬆️⬇️
@@ -233,6 +245,15 @@ Blueprint Studio requires **no configuration**! After installation:
 ---
 
 ## 🚀 Usage
+
+### Getting Started 🎓
+**New in v1.3.0!** First-time users are greeted with a guided tour to set up Git and connect to GitHub in seconds.
+
+<div align="center">
+  <img src="images/screenshot-onboarding.png" alt="Onboarding Wizard" width="600">
+  <p><em>Onboarding Wizard - Guided setup for your first run</em></p>
+</div>
+
 ### Opening Files 📂
 - Click on any file in the file tree to open it in the editor 🖱️
 - Files open in new tabs, allowing you to work with multiple files simultaneously 🗂️
@@ -274,7 +295,7 @@ Blueprint Studio requires **no configuration**! After installation:
 **Sync your Home Assistant configuration with GitHub!**
 
 <div align="center">
-  <img src="images/screenshot-git-settings-1.png" alt="Git Settings Modal" width="800">
+  <img src="images/screenshot-git-settings.png" alt="Git Settings Modal" width="800">
   <p><em>Git Settings - One-click OAuth login or Personal Access Token</em></p>
 </div>
 
@@ -297,9 +318,6 @@ Blueprint Studio requires **no configuration**! After installation:
 2. Enter username and token in Git Settings
 3. Click "Save Credentials"
 
-# ⚠️ **If Github Device flow not working use PAT token"
-
-
 #### Creating a New Repository 🚀
 **NEW! Create GitHub repositories without leaving Blueprint Studio:**
 
@@ -319,6 +337,19 @@ Blueprint Studio requires **no configuration**! After installation:
 <div align="center">
   <img src="images/screenshot-create-repo.png" alt="Create GitHub Repository" width="600">
   <p><em>Create GitHub Repository - One-click repo creation</em></p>
+</div>
+
+#### Advanced Management 🛠️
+**Visual Sync Status & Exclusions**
+
+<div align="center">
+  <img src="images/screenshot-git-sync.png" alt="Visual Sync Status" width="800">
+  <p><em>Visual Sync Status - See exactly how many commits to Push (↑) or Pull (↓)</em></p>
+</div>
+
+<div align="center">
+  <img src="images/screenshot-gitignore-tree.png" alt="Advanced .gitignore Editor" width="600">
+  <p><em>Advanced .gitignore - Manage exclusions with a full interactive file tree</em></p>
 </div>
 
 #### Using Git Features
