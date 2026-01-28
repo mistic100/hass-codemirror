@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-01-28
+
+### ✨ New Features
+*   **Command Palette**: Access all Blueprint Studio features instantly with `Ctrl+K`. Search for commands like "Save All", "New File", "Switch Theme", and more.
+*   **Commit History**: New panel to browse recent commits, view full color-coded diffs, and track your configuration changes over time.
+*   **YAML Snippets**: Intelligent templates for common Home Assistant patterns. Type `snip:` to see suggestions for Automations, Scripts, and Template Sensors.
+*   **Advanced Global Search**: Upgraded search with support for Regular Expressions and Case Sensitivity.
+*   **Expanded File Support**:
+    *   **Certificates**: Added support for `.pem`, `.crt`, `.key` (text) and `.der` (binary).
+    *   **C++**: Added syntax highlighting for `.cpp` and `.h` files (ESPHome).
+    *   **Databases**: Added safe handling for `.db` and `.sqlite` files.
+    *   **Firmware/Binary**: Added support for `.bin`, `.ota`, `.tar`, `.gz`.
+    *   **Templates**: Added dedicated support for `.jinja2` files.
+    *   **Protected Files**: `.ha_run.lock`, `.lock`, and `.gitignore` are now viewable in the editor but read-only to prevent accidental corruption.
+*   **Custom Editor Colors**:
+    *   **Syntax Highlighting**: New settings section to customize font colors for comments, keywords, strings, variables, and more.
+    *   **Theme Independent**: Custom colors apply to both Light and Dark themes.
+*   **Self-Healing Git Integration**:
+    *   **Sync Recovery**: Automatic detection of stuck syncs (rebasing/merging/unmerged) with a one-click "Abort & Reset" tool.
+    *   **Branch Repair**: Intelligent detection of local `master` vs GitHub `main` mismatches with an automated migration tool.
+    *   **Intelligent Default Branch Swap**: If a branch cannot be deleted because it is the "Default", Blueprint Studio can now automatically swap the default branch via the GitHub API.
+    *   **Remote Cleanup**: New tools to delete legacy branches from GitHub directly from the UI.
+    *   **Diverged History Resolution**: New "Force Push" and "Hard Reset" tools for resolving complex history conflicts.
+*   **Visual Polishing**:
+    *   **Loading Skeletons**: Replaced generic spinners with modern skeleton screens for the file explorer.
+    *   **Enhanced Loading States**: Better visual feedback on buttons and overlays during long-running operations.
+
+### 🐞 Bug Fixes
+*   **Auth Refresh Logic**: Hardened the authentication token refresh process to prevent session-related errors during long Git operations.
+*   **UI Resilience**: Fixed issues where file lists would overwrite warning messages in the Git panel.
+
 ## [1.4.0] - 2026-01-25
 
 ### ✨ New Features
@@ -216,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.5.0** - Command Palette, Commit History & Regex Search
 - **1.4.0** - Smart Autocomplete, Global Search & Bug Fixes
 - **1.3.2** - Visual Diff, Bulk Download & UX Polish
 - **1.2.1** - Enhanced UX, YAML Validation & Bug Fixes
@@ -223,8 +255,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **1.0.0** - First stable release
 - **0.1.0** - Beta version
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.5.0
 [1.4.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.4.0
 [1.2.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.2.0
 [1.0.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.0.0
-[0.1.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v0.1.0
+[0.1.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/0.1.0

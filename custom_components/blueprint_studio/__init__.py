@@ -98,7 +98,10 @@ class BlueprintStudioApiView(HomeAssistantView):
     # File extensions allowed for editing
     ALLOWED_EXTENSIONS = {
         ".yaml", ".yml", ".json", ".py", ".js", ".css", ".html", ".txt",
-        ".md", ".conf", ".cfg", ".ini", ".sh", ".log", ".gitignore", ".jinja2", ".jinja", ".j2", 
+        ".md", ".conf", ".cfg", ".ini", ".sh", ".log", ".gitignore", ".jinja2", ".jinja", ".j2",
+        ".db", ".sqlite",
+        ".pem", ".crt", ".key", ".der", ".bin", ".ota", ".cpp", ".h", ".tar", ".gz",
+        ".lock",
         # New image extensions
         ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".ico",
         # New document/archive extensions
@@ -107,7 +110,9 @@ class BlueprintStudioApiView(HomeAssistantView):
 
     # Binary file extensions that should be base64 encoded
     BINARY_EXTENSIONS = {
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip"
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip",
+        ".db", ".sqlite",
+        ".der", ".bin", ".ota", ".tar", ".gz"
     }
 
     # Specific filenames allowed even if they don't have an extension
@@ -131,6 +136,7 @@ class BlueprintStudioApiView(HomeAssistantView):
         "secrets.yaml",
         "home-assistant.log",
         "custom_components",
+        ".storage",
     }
 
     def __init__(self, config_dir: Path, store: Store, data: dict | None) -> None:
@@ -172,6 +178,13 @@ class BlueprintStudioApiView(HomeAssistantView):
 
     def _is_file_allowed(self, path: Path) -> bool:
         """Check if file type/name is allowed."""
+        # Allow everything in .storage
+        try:
+            if ".storage" in path.relative_to(self.config_dir).parts:
+                return True
+        except ValueError:
+            pass
+
         return (
             path.suffix.lower() in self.ALLOWED_EXTENSIONS
             or path.name in self.ALLOWED_FILENAMES
@@ -319,12 +332,23 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "global_search":
             query = data.get("query")
             case_sensitive = data.get("case_sensitive", False)
-            results = await hass.async_add_executor_job(self._global_search, query, case_sensitive)
+            use_regex = data.get("use_regex", False)
+            results = await hass.async_add_executor_job(self._global_search, query, case_sensitive, use_regex)
             return self.json(results)
 
         if action == "git_status":
             should_fetch = data.get("fetch", False)
             return await self._git_status(hass, should_fetch)
+
+        if action == "git_log":
+            count = data.get("count", 20)
+            return await self._git_log(hass, count)
+
+        if action == "git_diff_commit":
+            commit_hash = data.get("hash")
+            if not commit_hash:
+                return self.json_message("Missing commit hash", status_code=400)
+            return await self._git_diff_commit(hass, commit_hash)
 
         if action == "git_pull":
             return await self._git_pull(hass)
@@ -368,6 +392,32 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "git_repair_index":
             return await self._git_repair_index(hass)
 
+        if action == "git_rename_branch":
+            old_name = data.get("old_name")
+            new_name = data.get("new_name")
+            if not old_name or not new_name:
+                return self.json_message("Missing branch names", status_code=400)
+            return await self._git_rename_branch(hass, old_name, new_name)
+
+        if action == "git_merge_unrelated":
+            remote = data.get("remote", "origin")
+            branch = data.get("branch", "main")
+            return await self._git_merge_unrelated(hass, remote, branch)
+
+        if action == "git_force_push":
+            return await self._git_force_push(hass)
+
+        if action == "git_hard_reset":
+            remote = data.get("remote", "origin")
+            branch = data.get("branch", "main")
+            return await self._git_hard_reset(hass, remote, branch)
+
+        if action == "git_delete_remote_branch":
+            branch = data.get("branch")
+            if not branch:
+                return self.json_message("Missing branch name", status_code=400)
+            return await self._git_delete_remote_branch(hass, branch)
+
         if action == "git_abort":
             return await self._git_abort(hass)
 
@@ -380,6 +430,12 @@ class BlueprintStudioApiView(HomeAssistantView):
             description = data.get("description", "")
             is_private = data.get("is_private", True)
             return await self._github_create_repo(hass, repo_name, description, is_private)
+
+        if action == "github_set_default_branch":
+            branch = data.get("branch")
+            if not branch:
+                return self.json_message("Missing branch name", status_code=400)
+            return await self._github_set_default_branch(hass, branch)
 
         if action == "git_get_remotes":
             return await self._git_get_remotes(hass)
@@ -464,16 +520,27 @@ class BlueprintStudioApiView(HomeAssistantView):
             pass
         return total
 
-    def _global_search(self, query: str, case_sensitive: bool = False) -> list[dict[str, Any]]:
+    def _global_search(self, query: str, case_sensitive: bool = False, use_regex: bool = False) -> list[dict[str, Any]]:
         """Search for text in all allowed files."""
         results = []
         if not query:
             return results
 
+        import re
+
         limit = 100 # Max results
         count = 0
 
-        if not case_sensitive:
+        # Compile regex if needed
+        regex = None
+        if use_regex:
+            try:
+                flags = 0 if case_sensitive else re.IGNORECASE
+                regex = re.compile(query, flags)
+            except re.error as err:
+                _LOGGER.error("Invalid regex in global search: %s", err)
+                return results
+        elif not case_sensitive:
             query = query.lower()
 
         for root, dirs, files in os.walk(self.config_dir):
@@ -500,16 +567,26 @@ class BlueprintStudioApiView(HomeAssistantView):
                     
                     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         for i, line in enumerate(f, 1):
-                            line_search = line if case_sensitive else line.lower()
-                            if query in line_search:
-                                results.append({
-                                    "path": rel_path,
-                                    "line": i,
-                                    "content": line.strip()
-                                })
-                                count += 1
-                                if count >= limit:
-                                    return results
+                            if use_regex:
+                                if regex.search(line):
+                                    results.append({
+                                        "path": rel_path,
+                                        "line": i,
+                                        "content": line.strip()
+                                    })
+                                    count += 1
+                            else:
+                                line_search = line if case_sensitive else line.lower()
+                                if query in line_search:
+                                    results.append({
+                                        "path": rel_path,
+                                        "line": i,
+                                        "content": line.strip()
+                                    })
+                                    count += 1
+                                    
+                            if count >= limit:
+                                return results
                 except Exception:
                     pass
                 
@@ -1101,13 +1178,19 @@ class BlueprintStudioApiView(HomeAssistantView):
                     }
                 })
 
-            # Get porcelain status
+            # Get porcelain status for file lists
             result = await hass.async_add_executor_job(
                 self._run_git_command, ["status", "--porcelain"]
             )
 
             if not result["success"]:
                 return self.json_message(result["error"], status_code=500)
+
+            # Get full status for state detection (rebasing, merging, etc)
+            full_status_result = await hass.async_add_executor_job(
+                self._run_git_command, ["status"]
+            )
+            full_status = full_status_result["output"] if full_status_result["success"] else ""
 
             # Parse the status output
             status_data = {
@@ -1200,13 +1283,46 @@ class BlueprintStudioApiView(HomeAssistantView):
                     except ValueError:
                         pass
 
+            # Determine current branch
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            current_branch = "unknown"
+            if branch_result["success"]:
+                current_branch = branch_result["output"].strip()
+            elif "fatal: ref HEAD is not a symbolic ref" in str(branch_result.get("error")):
+                # Likely detached HEAD or fresh repo
+                current_branch = "HEAD"
+                
+            # Get list of all local branches
+            all_branches_result = await hass.async_add_executor_job(
+                self._run_git_command, ["branch", "--format=%(refname:short)"]
+            )
+            local_branches = []
+            if all_branches_result["success"]:
+                local_branches = [b.strip() for b in all_branches_result["output"].split("\n") if b.strip()]
+
+            # Get list of all remote branches
+            remote_branches = []
+            if has_remote:
+                remote_branches_result = await hass.async_add_executor_job(
+                    self._run_git_command, ["ls-remote", "--heads", "origin"]
+                )
+                if remote_branches_result["success"]:
+                    for line in remote_branches_result["output"].split("\n"):
+                        if "\trefs/heads/" in line:
+                            remote_branches.append(line.split("\trefs/heads/")[1].strip())
+
             return self.json({
                 "success": True,
                 "is_initialized": True,
                 "has_remote": has_remote,
+                "current_branch": current_branch,
+                "local_branches": local_branches,
+                "remote_branches": remote_branches,
                 "ahead": ahead,
                 "behind": behind,
-                "status": result["output"],
+                "status": full_status,
                 "has_changes": has_changes,
                 "files": status_data
             })
@@ -1864,6 +1980,59 @@ desktop.ini
             _LOGGER.error("Error creating GitHub repo: %s", err)
             return self.json_message(str(err), status_code=500)
 
+    async def _github_set_default_branch(self, hass: HomeAssistant, branch: str) -> web.Response:
+        """Set the default branch for the GitHub repository."""
+        try:
+            # 1. Get origin remote URL to find owner/repo
+            remotes_result = await hass.async_add_executor_job(
+                self._run_git_command, ["remote", "get-url", "origin"]
+            )
+            if not remotes_result["success"]:
+                return self.json_message("Origin remote not found", status_code=400)
+            
+            url = remotes_result["output"].strip()
+            # Handle formats: https://github.com/owner/repo.git or git@github.com:owner/repo.git
+            import re
+            match = re.search(r"github\.com[:/](.+?)/(.+?)(\.git)?$", url)
+            if not match:
+                return self.json_message(f"Could not parse GitHub owner/repo from URL: {url}", status_code=400)
+            
+            owner = match.group(1)
+            repo = match.group(2)
+            
+            # 2. Check credentials
+            creds = self.data.get("credentials", {})
+            if not creds or "token" not in creds:
+                return self.json_message("Not authenticated with GitHub", status_code=401)
+            
+            token = base64.b64decode(creds["token"]).decode()
+            
+            # 3. Call GitHub API to update repo
+            api_url = f"https://api.github.com/repos/{owner}/{repo}"
+            async with aiohttp.ClientSession() as session:
+                async with session.patch(
+                    api_url,
+                    json={"default_branch": branch},
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    }
+                ) as response:
+                    if response.status == 200:
+                        return self.json({
+                            "success": True, 
+                            "message": f"Default branch set to '{branch}' on GitHub"
+                        })
+                    else:
+                        error_text = await response.text()
+                        _LOGGER.error("GitHub PATCH default branch failed: %s (status %s)", error_text, response.status)
+                        return self.json_message(f"GitHub error: {error_text}", status_code=response.status)
+
+        except Exception as err:
+            _LOGGER.error("Error setting default branch: %s", err)
+            return self.json_message(str(err), status_code=500)
+
     async def _git_get_remotes(self, hass: HomeAssistant) -> web.Response:
         """Get list of configured git remotes."""
         try:
@@ -2240,7 +2409,18 @@ desktop.ini
                     "message": "Git operation aborted successfully"
                 })
             
-            # If both failed, check if it's because there was nothing to abort
+            # Fallback: Force reset unmerged files if abort didn't work
+            reset_result = await hass.async_add_executor_job(
+                self._run_git_command, ["reset", "--merge"]
+            )
+            
+            if reset_result["success"]:
+                return self.json({
+                    "success": True,
+                    "message": "Sync reset successfully"
+                })
+
+            # If all failed, check if it's because there was nothing to abort
             if "no rebase in progress" in str(rebase_result.get("error")) and \
                "There is no merge to abort" in str(merge_result.get("error")):
                 return self.json({
@@ -2328,5 +2508,161 @@ desktop.ini
                 })
         except Exception as err:
             _LOGGER.error("Error cleaning Git locks: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_rename_branch(self, hass: HomeAssistant, old_name: str, new_name: str) -> web.Response:
+        """Rename a git branch."""
+        try:
+            # Check if we are on the branch being renamed
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            current = branch_result["output"].strip() if branch_result["success"] else None
+
+            if current == old_name:
+                # Rename current branch
+                result = await hass.async_add_executor_job(
+                    self._run_git_command, ["branch", "-m", new_name]
+                )
+            else:
+                # Rename other branch
+                result = await hass.async_add_executor_job(
+                    self._run_git_command, ["branch", "-m", old_name, new_name]
+                )
+
+            if result["success"]:
+                return self.json({"success": True, "message": f"Branch renamed from {old_name} to {new_name}"})
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error renaming branch: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_merge_unrelated(self, hass: HomeAssistant, remote: str, branch: str) -> web.Response:
+        """Merge a remote branch with unrelated histories."""
+        try:
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["merge", f"{remote}/{branch}", "--allow-unrelated-histories", "-m", "Merge unrelated histories"]
+            )
+            if result["success"]:
+                return self.json({"success": True, "message": "Merged unrelated histories successfully"})
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error merging unrelated histories: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_force_push(self, hass: HomeAssistant) -> web.Response:
+        """Force push local branch to remote (overwrites remote)."""
+        try:
+            branch_result = await hass.async_add_executor_job(
+                self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+            )
+            current = branch_result["output"].strip() if branch_result["success"] else "main"
+            
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["push", "-f", "origin", current]
+            )
+            if result["success"]:
+                return self.json({"success": True, "message": f"Force pushed to {current} successfully"})
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error force pushing: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_hard_reset(self, hass: HomeAssistant, remote: str, branch: str) -> web.Response:
+        """Hard reset local branch to match remote exactly."""
+        try:
+            # 1. Fetch latest
+            await hass.async_add_executor_job(self._run_git_command, ["fetch", remote])
+            # 2. Hard reset
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["reset", "--hard", f"{remote}/{branch}"]
+            )
+            if result["success"]:
+                return self.json({"success": True, "message": f"Hard reset to {remote}/{branch} successful"})
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error hard resetting: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_delete_remote_branch(self, hass: HomeAssistant, branch: str) -> web.Response:
+        """Delete a branch on the remote repository."""
+        try:
+            # Safety: don't allow deleting the current local branch on remote if it's main/master
+            if branch in ["main", "master"]:
+                # We only allow this if the user is definitely on the OTHER one
+                branch_result = await hass.async_add_executor_job(
+                    self._run_git_command, ["symbolic-ref", "--short", "HEAD"]
+                )
+                current = branch_result["output"].strip() if branch_result["success"] else ""
+                if current == branch:
+                    return self.json_message(f"Cannot delete your current active branch '{branch}' from GitHub.", status_code=400)
+
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["push", "origin", "--delete", branch]
+            )
+            if result["success"]:
+                return self.json({"success": True, "message": f"Branch '{branch}' deleted from GitHub"})
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error deleting remote branch: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_log(self, hass: HomeAssistant, count: int = 20) -> web.Response:
+        """Get recent git commits."""
+        try:
+            # Format: hash|timestamp|author|subject
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["log", f"--pretty=format:%H|%at|%an|%s", f"-n", str(count)]
+            )
+
+            if not result["success"]:
+                # If there are no commits yet, log will fail
+                if "does not have any commits" in str(result.get("error")) or "fatal: your current branch" in str(result.get("error")):
+                    return self.json({"success": True, "commits": []})
+                return self.json_message(result["error"], status_code=500)
+
+            commits = []
+            for line in result["output"].split("\n"):
+                if not line.strip():
+                    continue
+                parts = line.split("|", 3)
+                if len(parts) == 4:
+                    commits.append({
+                        "hash": parts[0],
+                        "timestamp": int(parts[1]),
+                        "author": parts[2],
+                        "message": parts[3]
+                    })
+
+            return self.json({
+                "success": True,
+                "commits": commits
+            })
+        except Exception as err:
+            _LOGGER.error("Error getting git log: %s", err)
+            return self.json_message(str(err), status_code=500)
+
+    async def _git_diff_commit(self, hass: HomeAssistant, commit_hash: str) -> web.Response:
+        """Get the diff for a specific commit."""
+        try:
+            # Get the diff of the commit compared to its parent
+            result = await hass.async_add_executor_job(
+                self._run_git_command, ["show", "--pretty=format:", commit_hash]
+            )
+
+            if result["success"]:
+                return self.json({
+                    "success": True,
+                    "diff": result["output"]
+                })
+            else:
+                return self.json_message(result["error"], status_code=500)
+        except Exception as err:
+            _LOGGER.error("Error getting git diff for commit: %s", err)
             return self.json_message(str(err), status_code=500)
 

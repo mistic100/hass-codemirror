@@ -125,9 +125,11 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 - **Bracket Matching** - Automatic bracket highlighting 🧩
 - **Auto-close Brackets** - Automatic bracket completion ⌨️
 - **Smart Autocomplete** - Intelligent suggestions for Home Assistant entities (type `light.` to see lights), keys, and values 🧠
+- **YAML Snippets** - Templates for common HA patterns like Automations and Sensors (type `snip:`) 🧩
 - **YAML Linting** - Real-time YAML syntax validation with error highlighting ❌
+- **Command Palette** - Instant access to all features with `Ctrl+K` ⌨️
 - **Professional Search** - Floating Find/Replace widget with navigation controls (`Ctrl+F`, `Ctrl+H`) 🔎
-- **Global Search** - Search across all files in your configuration with `Ctrl+Shift+F` 🌐
+- **Global Search** - Search across all files with Regex and Case Sensitivity support (`Ctrl+Shift+F`) 🌐
 
 ### UI Features 🎨
 - **Dark Theme** - VS Code-inspired dark theme for eye-friendly editing 🌙
@@ -139,6 +141,7 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 - **File Search** - Filter files in the explorer 🔍
 - **Status Bar** - Shows cursor position, file type, and connection status 📊
 - **Toast Notifications** - Elegant success/error messages with persistent error display 🔔
+- **Custom Editor Colors** - Customize font colors for syntax highlighting (Comments, Keywords, Strings, etc.) in Settings 🎨
 
 ### File Management 📁
 - **Create Files & Folders** - Right-click context menu for creating new items ➕
@@ -159,10 +162,13 @@ Tired of juggling external editors, SSH, or add-ons just to tweak your Home Assi
 - **Create GitHub Repos** - One-click repository creation directly from Blueprint Studio 🚀
 - **Stay Logged In** - Credentials persist across restarts ✨
 - **Push & Pull** - Sync your configs with GitHub 🔄
+- **Commit History** - Dedicated panel to browse past commits and view full diffs 📜
 - **Stage & Commit** - Manage changes with visual Git panel 📝
 - **Explorer-Integrated Diff** - Click the "Difference" icon in the file tree for instant side-by-side reviews 🔍
 - **Visual Diff Viewer** - Compare changes side-by-side before committing with color-coded highlighting 🌈
 - **Smart Commit Messages** - Auto-generates messages based on staged files (e.g., "Update config") 🧠
+- **Advanced Sync Recovery** - One-click tools to "Abort" stuck syncs or resolve "Diverged" history 🛡️
+- **Branch Management** - Intelligent tools to repair local `master` -> `main` mismatches 🔄
 - **Visual Sync Status** - Real-time arrows (↑/↓) showing commits ahead/behind remote 🔄
 - **Advanced .gitignore** - Manage exclusions with a full interactive tree and automated redundancy filtering 🛡️
 - **Safety Checks** - Proactively prompts to commit unstated changes before pushing 🛡️
@@ -408,6 +414,12 @@ Blueprint Studio requires **no configuration**! After installation:
 | `.sh` | Shell | 🐚 |
 | `.txt`, `.log` | Plain Text | 📄 |
 | `.conf`, `.cfg`, `.ini` | Config | ⚙️ |
+| `.jinja2` | Jinja2 Template | 📄 |
+| `.pem`, `.crt`, `.key` | Certificate/Key | 🔒 |
+| `.cpp`, `.h` | C++ (ESPHome) | 🇨 |
+| `.db`, `.sqlite` | Database (Binary) | 🗄️ |
+| `.bin`, `.ota`, `.der` | Binary/Firmware | 💾 |
+| `.tar`, `.gz`, `.zip` | Archive | 📦 |
 
 ---
 

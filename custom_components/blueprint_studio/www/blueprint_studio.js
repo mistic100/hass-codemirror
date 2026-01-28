@@ -242,6 +242,30 @@
       { text: "platform: min_max", type: "platform", description: "Min/Max sensor" },
       { text: "platform: filter", type: "platform", description: "Filter sensor" },
     ],
+
+    snippets: [
+      { 
+        text: "snip:automation", 
+        label: "Automation Snippet",
+        type: "snippet", 
+        description: "Standard automation template",
+        content: `- alias: "New Automation"\n  description: "Description of the automation"\n  trigger:\n    - platform: state\n      entity_id: light.example\n      to: "on"\n  condition: []\n  action:\n    - service: light.turn_on\n      target:\n        entity_id: light.example\n  mode: single`
+      },
+      { 
+        text: "snip:script", 
+        label: "Script Snippet",
+        type: "snippet", 
+        description: "Standard script template",
+        content: `new_script:\n  alias: "New Script"\n  sequence:\n    - service: light.turn_on\n      target:\n        entity_id: light.example\n  mode: single`
+      },
+      { 
+        text: "snip:sensor", 
+        label: "Template Sensor Snippet",
+        type: "snippet", 
+        description: "Modern template sensor",
+        content: `template:\n  - sensor:\n      - name: "My Sensor"\n        state: >\n          {{ states('sensor.source') }}\n        unit_of_measurement: "°C"\n        device_class: temperature`
+      }
+    ]
   };
 
   // ============================================
@@ -327,8 +351,46 @@
         ...item
       }));
     }
+    // Check for snippets (prefix with snip:)
+    const snipMatch = lineText.match(/(snip:[a-z0-9_]*|sni?p?:?)$/i);
+    if (snipMatch) {
+      const snipQuery = snipMatch[0].toLowerCase();
+      const snipStart = cursor.ch - snipQuery.length;
+      
+      const snipMatches = HA_SCHEMA.snippets.filter(s => s.text.startsWith(snipQuery) || snipQuery.startsWith(s.text.split(':')[0]));
+      
+      if (snipMatches.length > 0) {
+          suggestions = snipMatches.map(item => ({
+            text: item.text,
+            displayText: item.label,
+            className: 'ha-hint-snippet',
+            render: (elem, self, data) => {
+              elem.innerHTML = `
+                <div style="display: flex; align-items: center; width: 100%;">
+                    <span class="material-icons" style="font-size: 16px; margin-right: 6px; color: var(--warning-color);">auto_fix_high</span>
+                    <span>${data.displayText}</span>
+                    <span class="ha-hint-type" style="margin-left: auto;">${item.type}</span>
+                </div>
+              `;
+            },
+            hint: (cm, self, data) => {
+              // Indent the snippet based on current line indentation
+              const indent = currentLine.match(/^\s*/)[0];
+              const indentedContent = item.content.split('\n').map((line, i) => i === 0 ? line : indent + line).join('\n');
+              cm.replaceRange(indentedContent, { line: cursor.line, ch: snipStart }, { line: cursor.line, ch: end });
+            }
+          }));
+          
+          return {
+              list: suggestions,
+              from: CodeMirror.Pos(cursor.line, snipStart),
+              to: CodeMirror.Pos(cursor.line, end)
+          };
+      }
+    }
+
     // Top-level configuration keys
-    else if (context.indent === 0 && isLineStart) {
+    if (suggestions.length === 0 && context.indent === 0 && isLineStart) {
       suggestions = HA_SCHEMA.configuration.map(item => ({
         text: item.text,
         displayText: item.text,
@@ -573,6 +635,7 @@
     gitConfig: null,  // Git configuration
     selectionMode: false,
     selectedItems: new Set(),
+    customColors: {},
   };
 
   // ============================================
@@ -645,6 +708,7 @@
     elements.btnGitHelp = document.getElementById("btn-git-help");
     elements.btnGitRefresh = document.getElementById("btn-git-refresh");
     elements.btnGitCollapse = document.getElementById("btn-git-collapse");
+    elements.btnGitHistory = document.getElementById("btn-git-history");
     elements.btnStageSelected = document.getElementById("btn-stage-selected");
     elements.btnStageAll = document.getElementById("btn-stage-all");
     elements.btnUnstageAll = document.getElementById("btn-unstage-all");
@@ -656,6 +720,11 @@
     elements.btnWelcomeNewFile = document.getElementById("btn-welcome-new-file");
     elements.btnWelcomeUploadFile = document.getElementById("btn-welcome-upload-file");
     
+    // Command Palette
+    elements.commandPaletteOverlay = document.getElementById("command-palette-overlay");
+    elements.commandPaletteInput = document.getElementById("command-palette-input");
+    elements.commandPaletteResults = document.getElementById("command-palette-results");
+
     // Quick Switcher
     elements.quickSwitcherOverlay = document.getElementById("quick-switcher-overlay");
     elements.quickSwitcherInput = document.getElementById("quick-switcher-input");
@@ -682,10 +751,12 @@
   // List of extensions considered text files that CodeMirror can handle
   const TEXT_FILE_EXTENSIONS = new Set([
     "yaml", "yml", "json", "py", "js", "css", "html", "txt",
-    "md", "conf", "cfg", "ini", "sh", "log", "svg", "jinja", "jinja2", "j2", 
+    "md", "conf", "cfg", "ini", "sh", "log", "svg", "jinja2", "jinja", "j2"
+    "pem", "crt", "key", "cpp", "h", "gitignore", "lock"
   ]);
 
   function isTextFile(filename) {
+    if (filename.includes(".storage/") || filename.startsWith(".storage/")) return true;
     const ext = filename.split(".").pop().toLowerCase();
     return TEXT_FILE_EXTENSIONS.has(ext);
   }
@@ -695,6 +766,9 @@
   }
 
   function getFileIcon(filename) {
+    if (filename && (filename.includes(".storage/") || filename.startsWith(".storage/"))) {
+        return { icon: "data_object", class: "json" };
+    }
     const ext = filename.split(".").pop().toLowerCase();
     const iconMap = {
       yaml: { icon: "description", class: "yaml" },
@@ -712,13 +786,30 @@
       cfg: { icon: "settings", class: "default" },
       ini: { icon: "settings", class: "default" },
       jinja2: { icon: "integration_instructions", class: "default" },
-      jinja: { icon: "integration_instructions", class: "default" },  
-      j2: { icon: "integration_instructions", class: "default" },  
+      jinja: { icon: "integration_instructions", class: "default" },
+      j2: { icon: "integration_instructions", class: "default" },
+      db: { icon: "storage", class: "default" },
+      sqlite: { icon: "storage", class: "default" },
+      pem: { icon: "verified_user", class: "default" },
+      crt: { icon: "verified_user", class: "default" },
+      key: { icon: "vpn_key", class: "default" },
+      der: { icon: "verified_user", class: "default" },
+      bin: { icon: "memory", class: "default" },
+      ota: { icon: "system_update", class: "default" },
+      cpp: { icon: "code", class: "default" },
+      h: { icon: "code", class: "default" },
+      tar: { icon: "folder_zip", class: "default" },
+      gz: { icon: "folder_zip", class: "default" },
+      gitignore: { icon: "rule", class: "default" },
+      lock: { icon: "lock", class: "default" },
     };
     return iconMap[ext] || { icon: "insert_drive_file", class: "default" };
   }
 
   function getEditorMode(filename) {
+    if (filename.includes(".storage/") || filename.startsWith(".storage/")) {
+        return { name: "javascript", json: true };
+    }
     const ext = filename.split(".").pop().toLowerCase();
 
     // Toggle for custom HA YAML mode - set to false if experiencing issues
@@ -743,6 +834,20 @@
       jinja2: yamlMode,
       jinja: yamlMode,
       j2: yamlMode,
+      db: null,
+      sqlite: null,
+      pem: null,
+      crt: null,
+      key: null,
+      der: null,
+      bin: null,
+      ota: null,
+      cpp: "text/x-c++src",
+      h: "text/x-c++src",
+      tar: null,
+      gz: null,
+      gitignore: yamlMode,
+      lock: null,
     };
     return modeMap[ext] || null;
   }
@@ -766,7 +871,21 @@
       ini: "INI",
       jinja2: "Jinja2",
       jinja: "Jinja",
-      j2: "J2",   
+      j2: "J2",
+      db: "Database",
+      sqlite: "Database",
+      pem: "Certificate",
+      crt: "Certificate",
+      key: "Key",
+      der: "Binary Certificate",
+      bin: "Binary",
+      ota: "OTA Firmware",
+      cpp: "C++",
+      h: "C/C++ Header",
+      tar: "Tar Archive",
+      gz: "Gzip Archive",
+      gitignore: "Git Ignore",
+      lock: "Lock File",
     };
     return nameMap[ext] || "Plain Text";
   }
@@ -907,6 +1026,35 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
 
+  function applyCustomSyntaxColors() {
+    const styleId = "custom-syntax-colors";
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    const colors = state.customColors || {};
+    let css = "";
+
+    const addRule = (selector, color) => {
+      if (color) {
+        css += `.cm-s-material-darker ${selector}, .cm-s-default ${selector} { color: ${color} !important; }\n`;
+      }
+    };
+
+    addRule(".cm-comment", colors.comment);
+    addRule(".cm-keyword, .cm-ha-domain", colors.keyword);
+    addRule(".cm-string", colors.string);
+    addRule(".cm-number", colors.number);
+    addRule(".cm-atom", colors.boolean);
+    addRule(".cm-ha-key, .cm-property, .cm-attribute", colors.key);
+    addRule(".cm-tag, .cm-ha-include-tag, .cm-ha-secret-tag, .cm-ha-env-tag, .cm-ha-input-tag", colors.tag);
+
+    styleEl.textContent = css;
+  }
+
   // ============================================
   // Theme Management
   // ============================================
@@ -949,6 +1097,7 @@
       state.favoriteFiles = settings.favoriteFiles || [];
       state.recentFiles = settings.recentFiles || [];
       state.gitConfig = settings.gitConfig || null;
+      state.customColors = settings.customColors || {};
       
       // New state properties for sync
       state.onboardingCompleted = settings.onboardingCompleted ?? (localStorage.getItem("onboardingCompleted") === "true");
@@ -956,6 +1105,8 @@
 
       state._savedOpenTabs = settings.openTabs || localSettings.openTabs || [];
       state._savedActiveTabPath = settings.activeTabPath || localSettings.activeTabPath || null;
+
+      applyCustomSyntaxColors();
 
     } catch (e) {
       console.log("Could not load settings:", e);
@@ -977,6 +1128,7 @@
         showRecentFiles: state.showRecentFiles,
         favoriteFiles: state.favoriteFiles,
         recentFiles: state.recentFiles,
+        customColors: state.customColors,
         openTabs: openTabsState,
         activeTabPath: activeTabPath,
         gitConfig: state.gitConfig,
@@ -1097,10 +1249,9 @@
 
       const fileName = filePath.split("/").pop();
       const item = document.createElement("div");
-      item.className = "tree-item favorite-item";
       item.style.setProperty("--depth", 0);
 
-      const fileIcon = getFileIcon(fileName);
+      const fileIcon = getFileIcon(filePath);
       const isActive = state.activeTab && state.activeTab.path === filePath;
 
       item.innerHTML = `
@@ -1170,7 +1321,7 @@
       item.className = "tree-item recent-item";
       item.style.setProperty("--depth", 0);
 
-      const fileIcon = getFileIcon(fileName);
+      const fileIcon = getFileIcon(filePath);
       const isActive = state.activeTab && state.activeTab.path === filePath;
 
       item.innerHTML = `
@@ -1390,6 +1541,14 @@
     if (elements.fileTree) {
       if (isLoading) {
         elements.fileTree.classList.add("loading");
+        // Show skeletons
+        elements.fileTree.innerHTML = `
+            <div class="skeleton file-skeleton"></div>
+            <div class="skeleton file-skeleton" style="width: 70%;"></div>
+            <div class="skeleton file-skeleton" style="width: 85%;"></div>
+            <div class="skeleton file-skeleton" style="width: 60%;"></div>
+            <div class="skeleton file-skeleton" style="width: 90%;"></div>
+        `;
       } else {
         elements.fileTree.classList.remove("loading");
       }
@@ -1721,7 +1880,7 @@
 
     let html = "";
     matches.forEach((file, index) => {
-        const fileIcon = getFileIcon(file.name);
+        const fileIcon = getFileIcon(file.path);
         const isSelected = index === 0 ? "selected" : "";
         
         html += `
@@ -2436,6 +2595,9 @@
   const gitState = {
     isInitialized: false,
     hasRemote: false,
+    currentBranch: "unknown",
+    localBranches: [],
+    remoteBranches: [],
     ahead: 0,
     behind: 0,
     files: {
@@ -2582,8 +2744,12 @@
         // Update git state
         gitState.isInitialized = data.is_initialized;
         gitState.hasRemote = data.has_remote;
+        gitState.currentBranch = data.current_branch || "unknown";
+        gitState.localBranches = data.local_branches || [];
+        gitState.remoteBranches = data.remote_branches || [];
         gitState.ahead = data.ahead || 0;
         gitState.behind = data.behind || 0;
+        gitState.status = data.status || "";
         
         gitState.files = data.files || {
           modified: [],
@@ -2617,6 +2783,132 @@
     }
   }
 
+  async function showGitHistory() {
+    if (!isGitEnabled() || !gitState.isInitialized) {
+        showToast("Git integration is not initialized", "error");
+        return;
+    }
+
+    try {
+        showGlobalLoading("Fetching history...");
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_log", count: 30 }),
+        });
+        hideGlobalLoading();
+
+        if (data.success) {
+            if (data.commits.length === 0) {
+                showToast("No commits found in this repository", "success");
+                return;
+            }
+
+            const commitListHtml = data.commits.map(commit => {
+                const date = new Date(commit.timestamp * 1000).toLocaleString();
+                return `
+                    <div class="git-history-item" data-hash="${commit.hash}" style="padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.15s;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-weight: 600; color: var(--accent-color); font-family: monospace;">${commit.hash.substring(0, 7)}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${date}</span>
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">${commit.message}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); opacity: 0.8;">by ${commit.author}</div>
+                    </div>
+                `;
+            }).join("");
+
+            showModal({
+                title: "Commit History",
+                message: `
+                    <div style="max-height: 60vh; overflow-y: auto; margin: -16px; background: var(--bg-primary);">
+                        ${commitListHtml}
+                    </div>
+                `,
+                confirmText: "Close",
+                onConfirm: () => {}
+            });
+
+            // Add click listeners to history items
+            setTimeout(() => {
+                const items = document.querySelectorAll(".git-history-item");
+                items.forEach(item => {
+                    item.addEventListener("click", () => {
+                        const hash = item.getAttribute("data-hash");
+                        const commit = data.commits.find(c => c.hash === hash);
+                        showGitCommitDiff(commit);
+                    });
+                    item.addEventListener("mouseenter", () => item.style.background = "var(--bg-tertiary)");
+                    item.addEventListener("mouseleave", () => item.style.background = "transparent");
+                });
+            }, 100);
+
+        } else {
+            showToast("Failed to fetch history: " + data.message, "error");
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Error fetching history: " + e.message, "error");
+    }
+  }
+
+  async function showGitCommitDiff(commit) {
+    try {
+        showGlobalLoading(`Loading diff for ${commit.hash.substring(0, 7)}...`);
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_diff_commit", hash: commit.hash }),
+        });
+        hideGlobalLoading();
+
+        if (data.success) {
+            // We'll reuse the modal but with a large diff view
+            const date = new Date(commit.timestamp * 1000).toLocaleString();
+            
+            // Format diff with some basic coloring
+            const lines = data.diff.split("\n");
+            const coloredDiff = lines.map(line => {
+                let color = "inherit";
+                if (line.startsWith("+") && !line.startsWith("+++")) color = "var(--success-color)";
+                else if (line.startsWith("-") && !line.startsWith("---")) color = "var(--error-color)";
+                else if (line.startsWith("@@")) color = "var(--accent-color)";
+                
+                return `<div style="color: ${color}; white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.4;">${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+            }).join("");
+
+            showModal({
+                title: `Commit: ${commit.hash.substring(0, 7)}`,
+                message: `
+                    <div style="display: flex; flex-direction: column; height: 70vh;">
+                        <div style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                            <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">${commit.message}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                <strong>Author:</strong> ${commit.author} | <strong>Date:</strong> ${date}
+                            </div>
+                        </div>
+                        <div style="flex: 1; overflow: auto; background: var(--bg-primary); padding: 12px; border-radius: 4px; border: 1px solid var(--border-color);">
+                            ${coloredDiff || '<div style="color: var(--text-muted); text-align: center; padding: 20px;">No changes to display in this commit</div>'}
+                        </div>
+                    </div>
+                `,
+                confirmText: "Back to History",
+                onConfirm: () => showGitHistory()
+            });
+            
+            // Make modal wider for diff
+            const modal = document.getElementById("modal");
+            if (modal) modal.style.maxWidth = "900px";
+
+        } else {
+            showToast("Failed to fetch diff: " + data.message, "error");
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Error fetching diff: " + e.message, "error");
+    }
+  }
+
   async function gitInit(skipConfirm = false) {
     if (!skipConfirm) {
         const confirmed = await showConfirmDialog({
@@ -2639,14 +2931,37 @@
         body: JSON.stringify({ action: "git_init" }),
       });
 
-      if (data.success) {
-        showToast("Git repository initialized successfully", "success");
-        // Update state
-        gitState.isInitialized = true;
-        // Refresh status to be sure
-        await gitStatus(); 
-        return true;
-      } else {
+            if (data.success) {
+
+              showToast("Git repository initialized successfully", "success");
+
+              // Ensure branch is named 'main'
+
+              await fetchWithAuth(API_BASE, {
+
+                  method: "POST",
+
+                  headers: { "Content-Type": "application/json" },
+
+                  body: JSON.stringify({ action: "git_rename_branch", old_name: "master", new_name: "main" }),
+
+              });
+
+              
+
+              // Update state
+
+              gitState.isInitialized = true;
+
+              // Refresh status to be sure
+
+              await gitStatus(); 
+
+              return true;
+
+            }
+
+       else {
         showToast("Failed to init: " + (data.message || "Unknown error"), "error");
       }
     } catch (error) {
@@ -2710,6 +3025,226 @@
     } catch (error) {
       showToast("Failed to create repo: " + error.message, "error");
       return null;
+    }
+  }
+
+  async function repairBranchMismatch() {
+    const confirmed = await showConfirmDialog({
+      title: "Repair Branch Mismatch",
+      message: `
+        <p>This will perform the following actions:</p>
+        <ul style="margin: 10px 0 10px 20px; font-size: 13px;">
+          <li>Rename your local <b>master</b> branch to <b>main</b></li>
+          <li>Synchronize histories with GitHub</li>
+          <li>Set up <b>main</b> as your primary tracking branch</li>
+        </ul>
+        <p>This is recommended for better compatibility with GitHub.</p>
+      `,
+      confirmText: "Repair Now",
+      cancelText: "Not Now"
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showGlobalLoading("Repairing branch structure...");
+        
+        // 1. Abort any stuck rebase first
+        await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_abort" }),
+        });
+
+        // 2. Rename branch
+        await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_rename_branch", old_name: "master", new_name: "main" }),
+        });
+
+        // 3. Merge unrelated histories from origin/main
+        await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_merge_unrelated", remote: "origin", branch: "main" }),
+        });
+
+        hideGlobalLoading();
+        showToast("Branch structure repaired successfully!", "success");
+        await gitStatus(true);
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Repair failed: " + e.message, "error");
+    }
+  }
+
+  async function abortGitOperation() {
+    const confirmed = await showConfirmDialog({
+        title: "Abort Git Operation",
+        message: "This will abort the current rebase or merge process. Your files will return to their state before the sync began. No data will be lost, but you may need to resolve conflicts manually.",
+        confirmText: "Abort Sync",
+        cancelText: "Cancel"
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showGlobalLoading("Aborting operation...");
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_abort" }),
+        });
+        hideGlobalLoading();
+        
+        if (data.success) {
+            showToast(data.message, "success");
+            await gitStatus();
+        } else {
+            showToast("Failed to abort: " + data.message, "error");
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Error: " + e.message, "error");
+    }
+  }
+
+  async function forcePush() {
+    const confirmed = await showConfirmDialog({
+        title: "Force Push to GitHub",
+        message: "<p style='color: var(--error-color); font-weight: bold;'>⚠️ WARNING: DANGEROUS OPERATION</p><p>This will overwrite the version on GitHub with your local files. Any changes on GitHub that you don't have locally will be PERMANENTLY LOST.</p>",
+        confirmText: "I Understand, Force Push",
+        cancelText: "Cancel"
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showGlobalLoading("Force pushing to GitHub...");
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_force_push" }),
+        });
+        hideGlobalLoading();
+        
+        if (data.success) {
+            showToast(data.message, "success");
+            await gitStatus(true);
+        } else {
+            showToast("Force push failed: " + data.message, "error");
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Error: " + e.message, "error");
+    }
+  }
+
+  async function hardReset() {
+    const confirmed = await showConfirmDialog({
+        title: "Hard Reset to GitHub",
+        message: "<p style='color: var(--error-color); font-weight: bold;'>⚠️ WARNING: DANGEROUS OPERATION</p><p>This will delete your local commits and changes to make your files exactly match GitHub. Your local work will be PERMANENTLY LOST.</p>",
+        confirmText: "I Understand, Reset My Files",
+        cancelText: "Cancel"
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showGlobalLoading("Resetting local files to match GitHub...");
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_hard_reset", branch: gitState.currentBranch }),
+        });
+        hideGlobalLoading();
+        
+        if (data.success) {
+            showToast(data.message, "success");
+            await loadFiles(); // Refresh file tree
+            await gitStatus(true);
+        } else {
+            showToast("Reset failed: " + data.message, "error");
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        showToast("Error: " + e.message, "error");
+    }
+  }
+
+  async function deleteRemoteBranch(branchName) {
+    const confirmed = await showConfirmDialog({
+        title: "Delete GitHub Branch",
+        message: `<p>Are you sure you want to delete the branch <b>${branchName}</b> from GitHub?</p><p>This cannot be undone.</p>`,
+        confirmText: "Delete Branch",
+        cancelText: "Cancel"
+    });
+
+    if (!confirmed) return;
+
+    try {
+        showGlobalLoading(`Deleting branch ${branchName}...`);
+        const data = await fetchWithAuth(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "git_delete_remote_branch", branch: branchName }),
+        });
+        hideGlobalLoading();
+        
+        if (data.success) {
+            showToast(data.message, "success");
+            await gitStatus(true);
+        }
+    } catch (e) {
+        hideGlobalLoading();
+        let errorMsg = e.message || "Unknown error";
+        
+        if (errorMsg.includes("refusing to delete the current branch")) {
+            const autoFix = await showConfirmDialog({
+                title: "Switch Default Branch?",
+                message: `
+                    <p>GitHub won't let us delete <b>${branchName}</b> because it is currently the <b>Default Branch</b>.</p>
+                    <br>
+                    <p>Would you like Blueprint Studio to automatically make <b>main</b> the default branch and then delete <b>${branchName}</b> for you?</p>
+                `,
+                confirmText: "Yes, Fix Automatically",
+                cancelText: "No, I'll do it manually"
+            });
+
+            if (autoFix) {
+                try {
+                    showGlobalLoading("Setting 'main' as default branch...");
+                    const patchData = await fetchWithAuth(API_BASE, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "github_set_default_branch", branch: "main" }),
+                    });
+
+                    if (patchData.success) {
+                        showGlobalLoading(`Deleting branch ${branchName}...`);
+                        const deleteData = await fetchWithAuth(API_BASE, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "git_delete_remote_branch", branch: branchName }),
+                        });
+                        
+                        hideGlobalLoading();
+                        if (deleteData.success) {
+                            showToast(`Success! 'main' is now default and '${branchName}' was deleted.`, "success");
+                            await gitStatus(true);
+                        } else {
+                            showToast("Branch was set as default, but deletion failed: " + deleteData.message, "error");
+                        }
+                    }
+                } catch (patchErr) {
+                    hideGlobalLoading();
+                    showToast("Auto-fix failed: " + patchErr.message, "error");
+                }
+            }
+        } else {
+            showToast("Delete failed: " + errorMsg, "error");
+        }
     }
   }
 
@@ -3485,6 +4020,87 @@
         return;
     }
 
+    // Branch Mismatch Detection (master vs main)
+    let branchWarningHtml = "";
+    const onOldBranch = gitState.currentBranch === "master" || gitState.currentBranch === "HEAD" || gitState.currentBranch === "unknown";
+    const masterExists = gitState.localBranches.includes("master");
+    
+    if (onOldBranch && masterExists && gitState.hasRemote) {
+        branchWarningHtml = `
+            <div style="margin: 8px; padding: 12px; background: rgba(255, 152, 0, 0.1); border: 1px solid var(--warning-color); border-radius: 6px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--warning-color); font-weight: 600;">
+                    <span class="material-icons" style="font-size: 18px;">warning</span>
+                    <span>Branch Mismatch</span>
+                </div>
+                <p style="margin-bottom: 10px; color: var(--text-secondary);">Your local branch is <b>master</b>, but modern GitHub repos use <b>main</b>. This can cause sync errors.</p>
+                <button id="btn-repair-branch" style="width: 100%; padding: 6px; background: var(--warning-color); color: black; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                    Repair: Move to main
+                </button>
+            </div>
+        `;
+    }
+
+    // Remote Cleanup Detection (Delete remote master if local is main)
+    let remoteCleanupHtml = "";
+    if (gitState.currentBranch === "main" && gitState.remoteBranches.includes("master")) {
+        remoteCleanupHtml = `
+            <div style="margin: 8px; padding: 12px; background: rgba(33, 150, 243, 0.1); border: 1px solid var(--accent-color); border-radius: 6px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--accent-color); font-weight: 600;">
+                    <span class="material-icons" style="font-size: 18px;">cleaning_services</span>
+                    <span>Clean up GitHub</span>
+                </div>
+                <p style="margin-bottom: 10px; color: var(--text-secondary);">Your local branch is <b>main</b>, but an old <b>master</b> branch still exists on GitHub.</p>
+                <button id="btn-delete-remote-master" style="width: 100%; padding: 6px; background: var(--accent-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                    Delete GitHub "master"
+                </button>
+            </div>
+        `;
+    }
+
+    // Diverged Sync Detection
+    let divergedWarningHtml = "";
+    if (gitState.ahead > 0 && gitState.behind > 0) {
+        divergedWarningHtml = `
+            <div style="margin: 8px; padding: 12px; background: rgba(156, 39, 176, 0.1); border: 1px solid #9c27b0; border-radius: 6px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: #9c27b0; font-weight: 600;">
+                    <span class="material-icons" style="font-size: 18px;">sync_problem</span>
+                    <span>Sync Conflict</span>
+                </div>
+                <p style="margin-bottom: 10px; color: var(--text-secondary);">Your local and GitHub versions have diverged. A normal sync is not possible.</p>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-force-push" style="flex: 1; padding: 6px; background: #9c27b0; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                        Force Push
+                    </button>
+                    <button id="btn-hard-reset" style="flex: 1; padding: 6px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        Hard Reset
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Rebase/Merge Stuck Detection
+    let stuckWarningHtml = "";
+    if (gitState.status && (
+        gitState.status.toLowerCase().includes("rebasing") || 
+        gitState.status.toLowerCase().includes("merging") || 
+        gitState.status.toLowerCase().includes("unmerged") ||
+        gitState.status.toLowerCase().includes("conflict")
+    )) {
+        stuckWarningHtml = `
+            <div style="margin: 8px; padding: 12px; background: rgba(244, 67, 54, 0.1); border: 1px solid var(--error-color); border-radius: 6px; font-size: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--error-color); font-weight: 600;">
+                    <span class="material-icons" style="font-size: 18px;">error_outline</span>
+                    <span>Sync Blocked</span>
+                </div>
+                <p style="margin-bottom: 10px; color: var(--text-secondary);">A previous Pull operation failed or is in progress. You must resolve or abort it.</p>
+                <button id="btn-abort-git" style="width: 100%; padding: 6px; background: var(--error-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                    Abort & Reset Sync
+                </button>
+            </div>
+        `;
+    }
+
     if (!gitState.hasRemote) {
         // If there are changes, we show them, but maybe add a warning? 
         // Or for simplicity, if no remote, we guide them to connect first/alongside.
@@ -3507,8 +4123,27 @@
         }
     }
 
-    if (gitState.totalChanges > 0) {
-      renderGitFiles(container);
+    if (gitState.totalChanges > 0 || branchWarningHtml || stuckWarningHtml || remoteCleanupHtml || divergedWarningHtml) {
+      container.innerHTML = stuckWarningHtml + branchWarningHtml + divergedWarningHtml + remoteCleanupHtml;
+      if (gitState.totalChanges > 0) {
+        renderGitFiles(container);
+      }
+      
+      // Add event listeners for new buttons
+      const btnRepair = document.getElementById("btn-repair-branch");
+      if (btnRepair) btnRepair.addEventListener("click", repairBranchMismatch);
+      
+      const btnAbort = document.getElementById("btn-abort-git");
+      if (btnAbort) btnAbort.addEventListener("click", abortGitOperation);
+
+      const btnDeleteRemote = document.getElementById("btn-delete-remote-master");
+      if (btnDeleteRemote) btnDeleteRemote.addEventListener("click", () => deleteRemoteBranch("master"));
+
+      const btnForcePush = document.getElementById("btn-force-push");
+      if (btnForcePush) btnForcePush.addEventListener("click", forcePush);
+
+      const btnHardReset = document.getElementById("btn-hard-reset");
+      if (btnHardReset) btnHardReset.addEventListener("click", hardReset);
     } else {
       container.innerHTML = `
         <div class="git-empty-state">
@@ -3534,6 +4169,10 @@
 
   // Render git files in the panel
   function renderGitFiles(container) {
+    // Note: We don't clear the container here anymore, 
+    // because it might contain branch/stuck warnings.
+    // Instead, we build the file list HTML and append it.
+    
     const groups = [
       {
         key: "staged",
@@ -3621,7 +4260,7 @@
       `;
     }
 
-    container.innerHTML = html;
+    container.insertAdjacentHTML('beforeend', html);
   }
 
   // Toggle git file group collapse
@@ -3719,8 +4358,25 @@
     // Get current setting from localStorage
     const gitEnabled = localStorage.getItem("gitIntegrationEnabled") !== "false"; // Default to true;
     const showRecentFiles = state.showRecentFiles;
+    const customColors = state.customColors || {};
 
     modalTitle.textContent = "Blueprint Studio Settings";
+
+    const renderColorInput = (label, key) => {
+        const hasValue = customColors.hasOwnProperty(key);
+        const colorValue = hasValue ? customColors[key] : '#000000';
+        const disabled = !hasValue;
+        
+        return `
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center;">
+                <input type="checkbox" class="syntax-color-toggle" data-key="${key}" ${hasValue ? 'checked' : ''} style="margin-right: 8px;">
+                <span style="font-size: 12px; opacity: ${disabled ? '0.5' : '1'}; transition: opacity 0.2s;">${label}</span>
+            </div>
+            <input type="color" class="syntax-color-input" data-key="${key}" value="${colorValue}" ${disabled ? 'disabled' : ''} style="cursor: ${disabled ? 'default' : 'pointer'}; height: 24px; width: 40px; border: none; padding: 0; background: transparent; opacity: ${disabled ? '0.2' : '1'}; transition: opacity 0.2s;">
+        </div>
+    `;
+    };
 
     modalBody.innerHTML = `
       <div class="git-settings-content">
@@ -3762,6 +4418,25 @@
           <div style="margin-top: 16px; padding: 12px; background: var(--bg-tertiary); border-radius: 8px; font-size: 13px;">
             <span class="material-icons" style="font-size: 16px; vertical-align: middle; color: var(--info-color, #2196f3);">info</span>
             <span style="margin-left: 8px;">Changes will take effect immediately</span>
+          </div>
+
+          <div class="git-settings-section" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <div class="git-settings-label">Editor Syntax Highlighting</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Customize the font colors for the code editor.</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                ${renderColorInput("Comment", "comment")}
+                ${renderColorInput("Keyword", "keyword")}
+                ${renderColorInput("String", "string")}
+                ${renderColorInput("Number", "number")}
+                ${renderColorInput("Boolean", "boolean")}
+                ${renderColorInput("Key / Property", "key")}
+                ${renderColorInput("Tag", "tag")}
+            </div>
+            
+            <button class="btn-secondary" id="btn-reset-colors" style="margin-top: 12px; width: 100%; font-size: 12px;">
+                Reset to Default Colors
+            </button>
           </div>
 
           <div class="git-settings-section" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 20px;">
@@ -3835,6 +4510,72 @@
         closeSettings();
         showGitExclusions();
       });
+    }
+
+    // Handle Syntax Color Toggles (Checkbox)
+    const colorToggles = modalBody.querySelectorAll(".syntax-color-toggle");
+    colorToggles.forEach(toggle => {
+        toggle.addEventListener("change", (e) => {
+            const key = e.target.dataset.key;
+            const checked = e.target.checked;
+            const input = modalBody.querySelector(`.syntax-color-input[data-key="${key}"]`);
+            const labelSpan = e.target.nextElementSibling;
+            
+            if (!state.customColors) state.customColors = {};
+            
+            if (checked) {
+                // Enabled: Set value
+                const val = input.value || '#000000';
+                state.customColors[key] = val;
+                
+                input.disabled = false;
+                input.style.opacity = '1';
+                input.style.cursor = 'pointer';
+                labelSpan.style.opacity = '1';
+            } else {
+                // Disabled: Remove key
+                delete state.customColors[key];
+                
+                input.disabled = true;
+                input.style.opacity = '0.2';
+                input.style.cursor = 'default';
+                labelSpan.style.opacity = '0.5';
+            }
+            
+            applyCustomSyntaxColors();
+            saveSettings();
+        });
+    });
+
+    // Handle Syntax Color Inputs
+    const colorInputs = modalBody.querySelectorAll(".syntax-color-input");
+    colorInputs.forEach(input => {
+        input.addEventListener("input", (e) => {
+            const key = e.target.dataset.key;
+            const value = e.target.value;
+            
+            if (!state.customColors) state.customColors = {};
+            
+            const toggle = modalBody.querySelector(`.syntax-color-toggle[data-key="${key}"]`);
+            if (toggle && !toggle.checked) return;
+
+            state.customColors[key] = value;
+            applyCustomSyntaxColors();
+            saveSettings();
+        });
+    });
+
+    // Handle Reset Colors
+    const btnResetColors = document.getElementById("btn-reset-colors");
+    if (btnResetColors) {
+        btnResetColors.addEventListener("click", () => {
+            state.customColors = {};
+            applyCustomSyntaxColors();
+            saveSettings();
+            showToast("Syntax colors reset to default", "success");
+            closeSettings();
+            showAppSettings();
+        });
     }
 
     // Handle Reset Application button
@@ -4856,22 +5597,32 @@
     modalTitle.textContent = "Search in All Files";
     
     modalBody.innerHTML = `
-        <div style="display: flex; flex-direction: column; height: 60vh;">
-            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <div style="display: flex; flex-direction: column; height: 65vh;">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <input type="text" id="global-search-input" class="modal-input" placeholder="Text to find..." style="flex: 1;">
                 <button id="btn-global-search" class="btn-primary" style="padding: 0 16px;">Search</button>
+            </div>
+            <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary);">
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input type="checkbox" id="global-search-case" style="width: 14px; height: 14px;"> Case Sensitive
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                    <input type="checkbox" id="global-search-regex" style="width: 14px; height: 14px;"> Regex
+                </label>
             </div>
             <div id="global-search-status" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; min-height: 18px;"></div>
             <div id="global-search-results" style="flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary);"></div>
         </div>
     `;
     
-    modal.style.maxWidth = "700px";
+    modal.style.maxWidth = "750px";
     if (modalFooter) modalFooter.style.display = "none";
     modalOverlay.classList.add("visible");
 
     const input = document.getElementById("global-search-input");
     const btnSearch = document.getElementById("btn-global-search");
+    const checkCase = document.getElementById("global-search-case");
+    const checkRegex = document.getElementById("global-search-regex");
     const resultsContainer = document.getElementById("global-search-results");
     const statusDiv = document.getElementById("global-search-status");
 
@@ -4887,7 +5638,12 @@
             const results = await fetchWithAuth(API_BASE, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "global_search", query: query }),
+                body: JSON.stringify({ 
+                    action: "global_search", 
+                    query: query,
+                    case_sensitive: checkCase.checked,
+                    use_regex: checkRegex.checked
+                }),
             });
 
             if (results && Array.isArray(results)) {
@@ -4952,6 +5708,126 @@
         if (e.target === modalOverlay) closeDialog();
     };
     modalOverlay.addEventListener("click", overlayClickHandler);
+  }
+
+  function showCommandPalette() {
+    if (elements.commandPaletteOverlay.classList.contains("visible")) return;
+
+    const commands = [
+        { id: "save", label: "Save Current File", icon: "save", shortcut: "Ctrl+S", action: () => { if (state.activeTab) saveFile(state.activeTab.path, state.activeTab.content); } },
+        { id: "save_all", label: "Save All Files", icon: "save_alt", shortcut: "Ctrl+Shift+S", action: saveAllFiles },
+        { id: "global_search", label: "Global Search", icon: "search", shortcut: "Ctrl+Shift+F", action: showGlobalSearchDialog },
+        { id: "quick_switcher", label: "Go to File...", icon: "find_in_page", shortcut: "Ctrl+E", action: showQuickSwitcher },
+        { id: "new_file", label: "New File", icon: "note_add", action: promptNewFile },
+        { id: "new_folder", label: "New Folder", icon: "create_new_folder", action: promptNewFolder },
+        { id: "git_status", label: "Git Status", icon: "sync", action: () => gitStatus(true) },
+        { id: "git_push", label: "Git Push", icon: "cloud_upload", action: gitPush },
+        { id: "git_pull", label: "Git Pull", icon: "cloud_download", action: gitPull },
+        { id: "git_history", label: "Git History", icon: "history", action: showGitHistory },
+        { id: "validate_yaml", label: "Validate YAML", icon: "check_circle", action: () => { if (state.activeTab) validateYaml(state.activeTab.content); } },
+        { id: "restart_ha", label: "Restart Home Assistant", icon: "restart_alt", action: restartHomeAssistant },
+        { id: "toggle_sidebar", label: "Toggle Sidebar", icon: "menu", shortcut: "Ctrl+B", action: toggleSidebar },
+        { id: "shortcuts", label: "Show Keyboard Shortcuts", icon: "keyboard", shortcut: "?", action: showShortcuts },
+        { id: "settings", label: "Settings", icon: "settings", action: showAppSettings },
+        { id: "theme_light", label: "Switch to Light Theme", icon: "light_mode", action: () => setTheme("light") },
+        { id: "theme_dark", label: "Switch to Dark Theme", icon: "dark_mode", action: () => setTheme("dark") },
+        { id: "theme_auto", label: "Switch to Auto Theme", icon: "brightness_auto", action: () => setTheme("auto") },
+    ];
+
+    let selectedIndex = 0;
+    let filteredCommands = [...commands];
+
+    const overlay = elements.commandPaletteOverlay;
+    const input = elements.commandPaletteInput;
+    const results = elements.commandPaletteResults;
+
+    const renderResults = () => {
+        results.innerHTML = filteredCommands.map((cmd, index) => `
+            <div class="command-item ${index === selectedIndex ? 'selected' : ''}" data-index="${index}">
+                <div class="command-item-label">
+                    <span class="material-icons command-item-icon">${cmd.icon}</span>
+                    <span>${cmd.label}</span>
+                </div>
+                ${cmd.shortcut ? `<span class="command-item-shortcut">${cmd.shortcut}</span>` : ''}
+            </div>
+        `).join("");
+
+        const selectedItem = results.querySelector(".command-item.selected");
+        if (selectedItem) selectedItem.scrollIntoView({ block: "nearest" });
+    };
+
+    const cleanup = () => {
+        overlay.classList.remove("visible");
+        window.removeEventListener("keydown", handleKeyDown, true);
+        overlay.onclick = null;
+        input.oninput = null;
+        results.onclick = null;
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            cleanup();
+        } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (filteredCommands.length > 0) {
+                selectedIndex = (selectedIndex + 1) % filteredCommands.length;
+                renderResults();
+            }
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (filteredCommands.length > 0) {
+                selectedIndex = (selectedIndex - 1 + filteredCommands.length) % filteredCommands.length;
+                renderResults();
+            }
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            const cmd = filteredCommands[selectedIndex];
+            if (cmd) {
+                cleanup();
+                setTimeout(() => cmd.action(), 50);
+            }
+        }
+    };
+
+    input.value = "";
+    filteredCommands = [...commands];
+    selectedIndex = 0;
+    renderResults();
+
+    overlay.classList.add("visible");
+    setTimeout(() => input.focus(), 10);
+
+    input.oninput = () => {
+        const query = input.value.toLowerCase().trim();
+        filteredCommands = commands.filter(cmd => 
+            cmd.label.toLowerCase().includes(query)
+        );
+        selectedIndex = 0;
+        renderResults();
+    };
+
+    overlay.onclick = (e) => {
+        if (e.target === overlay) cleanup();
+    };
+
+    results.onclick = (e) => {
+        const item = e.target.closest(".command-item");
+        if (item) {
+            const index = parseInt(item.getAttribute("data-index"));
+            const cmd = filteredCommands[index];
+            if (cmd) {
+                cleanup();
+                setTimeout(() => cmd.action(), 50);
+            }
+        }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
   }
 
   // Save git remote
@@ -5289,7 +6165,7 @@
         item.appendChild(spacer);
     }
 
-    const fileIcon = getFileIcon(name);
+    const fileIcon = getFileIcon(itemPath || name);
     const icon = document.createElement("div");
     icon.className = `tree-icon ${isFolder ? "folder" : fileIcon.class}`;
     icon.innerHTML = `<span class="material-icons">${
@@ -5598,6 +6474,10 @@
         state.editor.setOption("mode", "yaml");
       }
     }
+
+    // Set read-only for specific files
+    const isReadOnly = tab.path.endsWith(".gitignore") || tab.path.endsWith(".lock");
+    state.editor.setOption("readOnly", isReadOnly);
 
     state.editor.setOption("lint", (mode === "ha-yaml" || mode === "yaml") ? { getAnnotations: yamlLinter, async: true } : false);
 
@@ -5915,6 +6795,13 @@
     if (!state.activeTab) return;
 
     const tab = state.activeTab;
+    
+    // Prevent saving read-only files
+    if (tab.path.endsWith(".gitignore") || tab.path.endsWith(".lock")) {
+        showToast("This file is read-only and cannot be saved manually.", "warning");
+        return;
+    }
+
     const content = tab.content;
     const isYaml = tab.path.endsWith(".yaml") || tab.path.endsWith(".yml");
 
@@ -6164,30 +7051,7 @@
 
     // Restart HA
     if (elements.btnRestartHa) {
-      elements.btnRestartHa.addEventListener("click", async () => {
-        const confirmed = await showConfirmDialog({
-            title: "Restart Home Assistant?",
-            message: "Are you sure you want to restart Home Assistant? Blueprint Studio will be unavailable until the restart completes.",
-            confirmText: "Restart",
-            cancelText: "Cancel",
-            isDanger: true
-        });
-
-        if (confirmed) {
-            try {
-                const data = await fetchWithAuth(API_BASE, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ action: "restart_home_assistant" }),
-                });
-                if (data.success) {
-                    showToast("Restarting Home Assistant...", "success");
-                }
-            } catch (error) {
-                showToast("Failed to trigger restart: " + error.message, "error");
-            }
-        }
-      });
+      elements.btnRestartHa.addEventListener("click", restartHomeAssistant);
     }
 
     // App Settings
@@ -6306,6 +7170,9 @@
     // Git buttons
     if (elements.btnGitStatus) {
       elements.btnGitStatus.addEventListener("click", () => gitStatus(true));
+    }
+    if (elements.btnGitHistory) {
+      elements.btnGitHistory.addEventListener("click", () => showGitHistory());
     }
     if (elements.btnGitPull) {
       elements.btnGitPull.addEventListener("click", gitPull);
@@ -6678,6 +7545,13 @@
         showGlobalSearchDialog();
       }
 
+      // Ctrl/Cmd + K - Command Palette
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
+        e.preventDefault();
+        e.stopPropagation();
+        showCommandPalette();
+      }
+
       // Ctrl/Cmd + F - Find
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
@@ -6896,6 +7770,31 @@
         setTimeout(() => state.editor.refresh(), 150);
       }
     });
+  }
+
+  async function restartHomeAssistant() {
+    const confirmed = await showConfirmDialog({
+        title: "Restart Home Assistant?",
+        message: "Are you sure you want to restart Home Assistant? Blueprint Studio will be unavailable until the restart completes.",
+        confirmText: "Restart",
+        cancelText: "Cancel",
+        isDanger: true
+    });
+
+    if (confirmed) {
+        try {
+            const data = await fetchWithAuth(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "restart_home_assistant" }),
+            });
+            if (data.success) {
+                showToast("Restarting Home Assistant...", "success");
+            }
+        } catch (error) {
+            showToast("Failed to trigger restart: " + error.message, "error");
+        }
+    }
   }
 
   // ============================================
