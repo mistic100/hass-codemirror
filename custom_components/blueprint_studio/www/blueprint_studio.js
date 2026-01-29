@@ -4487,7 +4487,8 @@
     if (gitToggle) {
       gitToggle.addEventListener("change", (e) => {
         const enabled = e.target.checked;
-        localStorage.setItem("gitIntegrationEnabled", enabled);
+        state.gitIntegrationEnabled = enabled;
+        saveSettings(); 
         applyGitVisibility();
         showToast(enabled ? "GitHub integration enabled" : "GitHub integration disabled", "success");
       });
