@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-01-31
+
+### ✨ Improvements
+*   **Refined Block Indicator**: The vertical indentation guide has been significantly improved. It is now **thinner (1px)** and matches your editor's line number color for a subtle, professional look. Additionally, the line now starts **below the block header**, ensuring it doesn't overlap with the first character or dash.
+*   **Modal Keyboard Shortcuts**: Added support for **Enter** to confirm and **Escape** to cancel in all standard input modals for a smoother, keyboard-driven experience.
+*   **Smart File Extensions**: New files created without an extension are now automatically saved as `.yaml` files, streamlining the creation of Home Assistant configuration files.
+
+### 🐛 Bug Fixes
+*   **Selective Commits**: Resolved a critical issue where unselected files were being included in commits. The "Commit" action now strictly respects your staged files.
+*   **Push Behavior**: "Push" continues to function as a convenient "Commit All & Push" for quick syncing, while "Push Only" is now more flexible, allowing you to push existing commits even with a dirty working directory.
+*   **Favorites Alignment**: Fixed visual misalignment of labels in the Favorites panel and ensured the empty state is correctly hidden.
+*   **Compact Tree Indentation**: Corrected CSS priority issue that caused nested folders to lose their indentation hierarchy when using Compact Mode.
+
 ## [2.0.1] - 2026-01-31
 
 ### ✨ New Features
@@ -130,6 +143,7 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 
 ## Version History
 
+- **2.0.2** - Git & UI Improvements
 - **2.0.1** - Bug Fixes & Stability
 - **2.0.0** - AI Copilot, Intelligent Scenes, Advanced Scripts & UI Customization
 - **1.5.0** - Command Palette, Commit History & Regex Search
@@ -137,7 +151,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.2
 [2.0.1]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.1
 [2.0.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.0
 [1.5.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v1.5.0

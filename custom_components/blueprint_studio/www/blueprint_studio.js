@@ -1788,7 +1788,12 @@
     const favoritesContainer = document.getElementById("favorites-panel");
     if (!favoritesContainer) return;
 
-    if (state.favoriteFiles.length === 0) {
+    // Filter valid favorites first
+    const validFavorites = state.favoriteFiles.filter(filePath => 
+      state.files.some(f => f.path === filePath)
+    );
+
+    if (validFavorites.length === 0) {
       favoritesContainer.style.display = "none";
       return;
     }
@@ -1796,19 +1801,17 @@
     favoritesContainer.style.display = "block";
     favoritesContainer.innerHTML = '<div class="favorites-header">Favorites</div>';
 
-    state.favoriteFiles.forEach((filePath) => {
-      // Check if file still exists
-      const fileExists = state.files.some(f => f.path === filePath);
-      if (!fileExists) return;
-
+    validFavorites.forEach((filePath) => {
       const fileName = filePath.split("/").pop();
       const item = document.createElement("div");
+      item.className = "tree-item favorite-item";
       item.style.setProperty("--depth", 0);
 
       const fileIcon = getFileIcon(filePath);
       const isActive = state.activeTab && state.activeTab.path === filePath;
 
       item.innerHTML = `
+        <div class="tree-chevron hidden"></div>
         <div class="tree-icon ${fileIcon.class}">
           <span class="material-icons">${fileIcon.icon}</span>
         </div>
@@ -1880,6 +1883,7 @@
       const isActive = state.activeTab && state.activeTab.path === filePath;
 
       item.innerHTML = `
+        <div class="tree-chevron hidden"></div>
         <div class="tree-icon ${fileIcon.class}">
           <span class="material-icons">${fileIcon.icon}</span>
         </div>
@@ -1937,6 +1941,17 @@
       // Re-bind element references after HTML reset
       elements.modalInput = document.getElementById("modal-input");
       elements.modalHint = document.getElementById("modal-hint");
+
+      // Re-attach event listener for Enter key
+      if (elements.modalInput) {
+        elements.modalInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            confirmModal();
+          } else if (e.key === "Escape") {
+            hideModal();
+          }
+        });
+      }
     }
 
     // Reset modal title
@@ -7217,8 +7232,16 @@
 
     if (result) {
       let fullPath = result;
-      if (basePath && !result.includes("/")) {
-        fullPath = `${basePath}/${result}`;
+      
+      // Auto-append .yaml if no extension is present
+      const parts = fullPath.split('/');
+      const fileName = parts[parts.length - 1];
+      if (fileName.indexOf('.') === -1) {
+        fullPath += ".yaml";
+      }
+
+      if (basePath && !fullPath.includes("/")) {
+        fullPath = `${basePath}/${fullPath}`;
       }
       await createFile(fullPath);
     }
@@ -7488,7 +7511,7 @@
 
     const confirmed = await showConfirmDialog({
         title: "Move Item?",
-        message: `Move <b>${fileName}</b> to <b>${targetFolderNormalized || "root"}</b>?`,
+        message: `Move <b>${fileName}</b> to <b>${targetFolderNormalized || "config folder"}</b>?`,
         confirmText: "Move",
         cancelText: "Cancel"
     });
@@ -8111,6 +8134,9 @@
             state.editor.removeLineClass(lh, "wrap", "cm-block-highlight-end");
         });
         highlightedLines = [];
+        if (state.editor) {
+            state.editor.getWrapperElement().style.removeProperty("--block-indent");
+        }
     };
 
     state.editor.on("mousedown", (cm, e) => {
@@ -8176,6 +8202,12 @@
             // Apply highlight
             if (endLine >= lineNum) {
                 clearBlockHighlight(); // Ensure clear
+                
+                // Set indentation variable
+                // Use charCoords to get the exact pixel position of the first character
+                const coords = cm.charCoords({line: lineNum, ch: baseIndent}, "local");
+                state.editor.getWrapperElement().style.setProperty("--block-indent", `${coords.left}px`);
+                
                 for (let i = lineNum; i <= endLine; i++) {
                     const lineHandle = cm.addLineClass(i, "wrap", "cm-block-highlight-line");
                     if (i === lineNum) cm.addLineClass(i, "wrap", "cm-block-highlight-start");

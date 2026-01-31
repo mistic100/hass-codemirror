@@ -199,9 +199,6 @@ class GitManager:
     async def commit(self, commit_message: str) -> web.Response:
         """Commit changes to git."""
         try:
-            stage_result = await self.hass.async_add_executor_job(self._run_git_command, ["add", "-A"])
-            if not stage_result["success"]:
-                return json_message(stage_result["error"], status_code=500)
             commit_result = await self.hass.async_add_executor_job(self._run_git_command, ["commit", "-m", commit_message])
             if commit_result["success"]:
                 return json_response({"success": True, "output": commit_result["output"]})
@@ -225,6 +222,7 @@ class GitManager:
             else:
                 status_result = await self.hass.async_add_executor_job(self._run_git_command, ["status", "--porcelain"])
                 if status_result["success"] and status_result["output"].strip():
+                    await self.hass.async_add_executor_job(self._run_git_command, ["add", "-A"])
                     await self.commit(commit_message)
 
             branch_result = await self.hass.async_add_executor_job(self._run_git_command, ["symbolic-ref", "--short", "HEAD"])
@@ -244,9 +242,7 @@ class GitManager:
             if not git_dir.exists(): return json_message("Git repo not initialized.", status_code=400)
             check_commits = await self.hass.async_add_executor_job(self._run_git_command, ["rev-parse", "HEAD"])
             if not check_commits["success"]: return json_message("No commits to push.", status_code=400)
-            status_result = await self.hass.async_add_executor_job(self._run_git_command, ["status", "--porcelain"])
-            if status_result["success"] and status_result["output"].strip():
-                return json_message("You have uncommitted changes.", status_code=400)
+            
             branch_result = await self.hass.async_add_executor_job(self._run_git_command, ["symbolic-ref", "--short", "HEAD"])
             target_branch = branch_result["output"].strip() if branch_result["success"] else "main"
             push_result = await self.hass.async_add_executor_job(self._run_git_command, ["push", "-u", "origin", f"HEAD:refs/heads/{target_branch}"])

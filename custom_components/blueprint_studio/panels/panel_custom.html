@@ -95,7 +95,9 @@
 
     /* File Tree Compact Mode */
     body.file-tree-compact .tree-item {
-      padding: 4px 8px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      padding-right: 8px;
       min-height: 28px;
     }
 
@@ -1219,21 +1221,18 @@
     .cm-block-highlight-line::after {
       content: "";
       position: absolute;
-      left: 1px;
+      left: var(--block-indent, 1px);
       top: 0;
       bottom: 0;
-      width: 3px;
-      background-color: var(--accent-color);
+      width: 2px;
+      background-color: var(--cm-line-number-color, var(--text-muted));
       z-index: 10;
-      box-shadow: 0 0 4px var(--accent-color);
       pointer-events: none;
-      opacity: 0.9;
+      opacity: 0.5;
     }
     
     .cm-block-highlight-start::after {
-      top: 2px;
-      border-top-left-radius: 3px;
-      border-top-right-radius: 3px;
+      top: 100%;
     }
     
     .cm-block-highlight-end::after {
@@ -3768,6 +3767,6 @@
     </div>
   </div>
 
-      <script src="/local/blueprint_studio/www/blueprint_studio.js?v=2.0.1"></script>
+      <script src="/local/blueprint_studio/www/blueprint_studio.js?v=2.0.0"></script>
   </body>
   </html>
