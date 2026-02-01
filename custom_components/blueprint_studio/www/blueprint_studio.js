@@ -988,6 +988,7 @@
     fileTreeShowIcons: true,     // Show file icons in tree
     recentFilesLimit: 10,        // Number of recent files to show
     breadcrumbStyle: "path",     // Breadcrumb style: path, filename
+    gitPanelCollapsed: false,    // Git panel collapsed state
   };
 
   // ============================================
@@ -1469,6 +1470,7 @@
       state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
       state.recentFilesLimit = settings.recentFilesLimit || 10;
       state.breadcrumbStyle = settings.breadcrumbStyle || "path";
+      state.gitPanelCollapsed = settings.gitPanelCollapsed || false;
       
       // New state properties for sync
       state.onboardingCompleted = settings.onboardingCompleted ?? (localStorage.getItem("onboardingCompleted") === "true");
@@ -1533,7 +1535,8 @@
         fileTreeCompact: state.fileTreeCompact,
         fileTreeShowIcons: state.fileTreeShowIcons,
         recentFilesLimit: state.recentFilesLimit,
-        breadcrumbStyle: state.breadcrumbStyle
+        breadcrumbStyle: state.breadcrumbStyle,
+        gitPanelCollapsed: state.gitPanelCollapsed
       };
 
       // Save to server
@@ -3183,7 +3186,7 @@
   };
 
   function isGitEnabled() {
-    return localStorage.getItem("gitIntegrationEnabled") !== "false";
+    return state.gitIntegrationEnabled;
   }
 
   async function checkGitStatusIfEnabled(shouldFetch = false) {
@@ -4553,6 +4556,17 @@
     const badge = document.getElementById("git-changes-count");
     const commitBtn = document.getElementById("btn-commit-staged");
     const actions = panel.querySelector(".git-panel-actions");
+
+    // Apply stored collapsed state
+    if (state.gitPanelCollapsed) {
+        panel.classList.add("collapsed");
+        const collapseIcon = elements.btnGitCollapse ? elements.btnGitCollapse.querySelector(".material-icons") : null;
+        if (collapseIcon) collapseIcon.textContent = "expand_more";
+    } else {
+        panel.classList.remove("collapsed");
+        const collapseIcon = elements.btnGitCollapse ? elements.btnGitCollapse.querySelector(".material-icons") : null;
+        if (collapseIcon) collapseIcon.textContent = "expand_less";
+    }
 
     // Update badge
     badge.textContent = gitState.totalChanges;
@@ -8097,15 +8111,16 @@
       return;
     }
 
-    // Get the text to match
-    const query = cm.getRange(lastSelection.anchor, lastSelection.head);
-    if (!query) return;
+    // Get the selection range ordered (important for getRange)
+    const anchor = lastSelection.anchor;
+    const head = lastSelection.head;
+    const isHeadAfterAnchor = (head.line > anchor.line || (head.line === anchor.line && head.ch > anchor.ch));
+    const from = isHeadAfterAnchor ? anchor : head;
+    const to = isHeadAfterAnchor ? head : anchor;
 
-    // Find next occurrence
-    // Start searching from the end of the last selection (max of anchor/head)
-    const searchStart = (lastSelection.head.line > lastSelection.anchor.line || (lastSelection.head.line === lastSelection.anchor.line && lastSelection.head.ch > lastSelection.anchor.ch)) 
-                        ? lastSelection.head 
-                        : lastSelection.anchor;
+    // Get the text to match
+    const query = cm.getRange(from, to);
+    if (!query) return;
 
     // Check if searchcursor addon is loaded
     if (!cm.getSearchCursor) {
@@ -8113,7 +8128,8 @@
         return;
     }
 
-    const cursor = cm.getSearchCursor(query, searchStart, { caseFold: false }); // Case sensitive for code precision
+    // Find next occurrence starting from the end of the last selection
+    const cursor = cm.getSearchCursor(query, to, { caseFold: false });
     
     if (cursor.findNext()) {
       cm.addSelection(cursor.from(), cursor.to());
@@ -8886,10 +8902,15 @@
       elements.btnGitCollapse.addEventListener("click", () => {
         const panel = document.getElementById("git-panel");
         if (panel) {
-          panel.classList.toggle("visible");
+          panel.classList.toggle("collapsed");
+          state.gitPanelCollapsed = panel.classList.contains("collapsed");
+          saveSettings();
+          
           const icon = elements.btnGitCollapse.querySelector(".material-icons");
           if (icon) {
-            icon.textContent = panel.classList.contains("visible") ? "expand_less" : "expand_more";
+            const isCollapsed = state.gitPanelCollapsed;
+            icon.textContent = isCollapsed ? "expand_more" : "expand_less";
+            elements.btnGitCollapse.title = isCollapsed ? "Expand Git Panel" : "Collapse Git Panel";
           }
         }
       });
