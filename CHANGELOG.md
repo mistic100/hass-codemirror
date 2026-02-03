@@ -165,6 +165,7 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 
 ## Version History
 
+- **2.0.5** - Persistant Workspace and Keyboard Shortcut Conflict Fix
 - **2.0.4** - Git Panel Bug Fix
 - **2.0.3** - Robust GitHub Authentication
 - **2.0.2** - Git & UI Improvements
@@ -175,7 +176,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.5
 [2.0.4]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.4
 [2.0.3]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.3
 [2.0.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.2
