@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-02-05
+
+### 🐛 Bug Fixes
+*   **Folders in custom_components couldn't be deleted.
+
 ## [2.0.5] - 2026-02-02
 
 ### ✨ New Features
@@ -165,6 +170,7 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 
 ## Version History
 
+- **2.0.5** - Allow Feletion of Folders and Files In custom_components Folder
 - **2.0.5** - Persistant Workspace and Keyboard Shortcut Conflict Fix
 - **2.0.4** - Git Panel Bug Fix
 - **2.0.3** - Robust GitHub Authentication
@@ -176,7 +182,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.5...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.6...HEAD
+[2.0.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.6
 [2.0.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.5
 [2.0.4]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.4
 [2.0.3]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.3
