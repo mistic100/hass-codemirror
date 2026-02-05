@@ -1,7 +1,7 @@
 /**
  * Blueprint Studio
  * A modern, feature-rich file editor for Home Assistant
- * https://github.com/katoaroosultan/blueprint-studio
+ * https://github.com/soulripper13/blueprint-studio
  */
 
 
