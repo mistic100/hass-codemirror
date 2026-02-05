@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-02-05
+
+### ✨ New Features
+*   **WebSocket Engine**: Real-time reactive updates for files and Git status. Blueprint Studio now pushes updates from the server, eliminating aggressive HTTP polling and drastically reducing network/CPU overhead.
+*   **Instant Explorer (Backend Caching)**: Implemented server-side file tree caching. The file explorer now loads and filters instantly even in massive configurations, with intelligent cache invalidation and a manual "Hard Refresh" option.
+*   **Modular Architecture**: Transitioned the massive monolithic JavaScript core into a modern ES Module system for better maintainability and performance.
+*   **Gitea Integration**: Added full support for self-hosted Gitea instances with a dedicated workflow and dual-remote support.
+*   **Real-time External Sync**: Automatically detects and reloads files modified outside of the editor while preserving cursor position.
+*   **Claude AI Support**: Full integration for Anthropic Claude 4.5 suite (Sonnet, Haiku, and Opus).
+*   **Help & Support Hub**: A professional, centralized modal for shortcuts, bug reports, and feature requests.
+*   **One-Click Socials**: Star the repo and follow the author directly from the Support modal.
+*   **1ocal Hosting**: Material Icons and fonts are now hosted locally, enabling true offline support and faster loading.
+*   **Configurable Notifications**: Added a toggle to enable or disable toast notifications.
+*   **Resource-Smart Polling**: Background checks now pause when the browser tab is not focused.
+
+### 🐛 Bug Fixes
+*   **Command Palette Restoration**: Fixed scope and shortcut issues ensuring palette works reliably across the entire UI.
+*   **Setup Timeout Fix**: Resolved an issue where background tasks could block Home Assistant bootstrap.
+*   **UI Ghosting**: Optimized loading sequence to prevent visual flickering.
+
+### 🎨 Visual Refinements
+*   **Editor Gutter Contrast**: Enhanced visual separation between the gutter and code area.
+*   **Toast Repositioning**: Moved notifications to the bottom right to avoid obstructing the view.
+
 ## [2.0.6] - 2026-02-05
 
 ### 🐛 Bug Fixes
@@ -170,6 +194,7 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 
 ## Version History
 
+- **2.1.0** - The Performance & Architecture Update
 - **2.0.5** - Allow Feletion of Folders and Files In custom_components Folder
 - **2.0.5** - Persistant Workspace and Keyboard Shortcut Conflict Fix
 - **2.0.4** - Git Panel Bug Fix
@@ -182,8 +207,9 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.0.6...HEAD
-[2.0.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.6
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.0
+[2.0.6]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.6
 [2.0.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.5
 [2.0.4]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.4
 [2.0.3]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.3
