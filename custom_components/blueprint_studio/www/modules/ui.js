@@ -151,19 +151,51 @@ export function showModal({ title, message, inputPlaceholder, inputValue, confir
         elements.modalTitle.textContent = title;
         elements.modalHint.textContent = "";
         
+        let bodyContent = "";
         if (image) {
-            elements.modalBody.innerHTML = `<img src="${image}" style="max-width: 100%; height: auto; border-radius: 4px;">`;
-        } else {
-            elements.modalBody.innerHTML = message || "";
+            bodyContent = `<img src="${image}" style="max-width: 100%; height: auto; border-radius: 4px;">`;
+        } else if (message) {
+            bodyContent = `<div class="modal-message">${message}</div>`;
         }
 
         if (inputPlaceholder !== undefined) {
+             const safeValue = (inputValue || "").replace(/"/g, '&quot;');
+             bodyContent += `
+                <input type="text" class="modal-input" id="modal-input" placeholder="${inputPlaceholder}" value="${safeValue}">
+                <div class="modal-hint" id="modal-hint"></div>
+             `;
+        }
+
+        elements.modalBody.innerHTML = bodyContent;
+
+        if (inputPlaceholder !== undefined) {
+            // Re-acquire reference to the newly created input
+            elements.modalInput = document.getElementById("modal-input");
+            elements.modalHint = document.getElementById("modal-hint"); // Also update hint reference
+            
             elements.modalInput.style.display = "block";
-            elements.modalInput.placeholder = inputPlaceholder;
-            elements.modalInput.value = inputValue || "";
-            setTimeout(() => elements.modalInput.focus(), 100);
+            // elements.modalInput.value = inputValue || ""; // Already set via attribute
+            
+            // Restore Enter key functionality
+            elements.modalInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    handleConfirm();
+                } else if (e.key === "Escape") {
+                    handleCancel();
+                }
+            });
+            
+            setTimeout(() => {
+                elements.modalInput.focus();
+                // Move cursor to end if there is value
+                if (elements.modalInput.value) {
+                    const len = elements.modalInput.value.length;
+                    elements.modalInput.setSelectionRange(len, len);
+                }
+            }, 100);
         } else {
-            elements.modalInput.style.display = "none";
+            // No input needed, clear reference to avoid using stale element later
+            // elements.modalInput = null; // Optional, but keeping it simple
         }
 
         elements.modalConfirm.textContent = confirmText || "Confirm";
@@ -173,7 +205,7 @@ export function showModal({ title, message, inputPlaceholder, inputValue, confir
         elements.modalOverlay.classList.add("visible");
 
         const handleConfirm = () => {
-            const value = elements.modalInput.value;
+            const value = elements.modalInput ? elements.modalInput.value : true;
             close();
             resolve(inputPlaceholder !== undefined ? value : true);
         };

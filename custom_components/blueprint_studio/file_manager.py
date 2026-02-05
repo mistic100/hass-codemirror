@@ -166,6 +166,10 @@ class FileManager:
         if not safe_path or not self._is_file_allowed(safe_path): return json_message("Not allowed", status_code=403)
         if safe_path.exists(): return json_message("Exists", status_code=409)
         try:
+            # Create parent directories if they don't exist
+            if not safe_path.parent.exists():
+                await self.hass.async_add_executor_job(safe_path.parent.mkdir, 0o755, True, True)
+
             if is_base64: await self.hass.async_add_executor_job(safe_path.write_bytes, base64.b64decode(content))
             else: await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
             self._fire_update("create", path)
@@ -177,7 +181,7 @@ class FileManager:
         safe_path = get_safe_path(self.config_dir, path)
         if not safe_path or safe_path.exists(): return json_message("Not allowed or exists", status_code=403)
         try:
-            await self.hass.async_add_executor_job(safe_path.mkdir, 0o755)
+            await self.hass.async_add_executor_job(safe_path.mkdir, 0o755, True, True)
             self._fire_update("create_folder", path)
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)

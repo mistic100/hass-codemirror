@@ -1,7 +1,7 @@
 /**
  * Blueprint Studio
  * A modern, feature-rich file editor for Home Assistant
- * https://github.com/soulripper13/blueprint-studio
+ * https://github.com/katoaroosultan/blueprint-studio
  */
 
 
@@ -8484,15 +8484,107 @@ export async function testGitConnection() {
   // File Operations UI
   // ============================================
 
-export async function promptNewFile() {
-    const basePath = state.currentFolderPath || "";
-    const result = await showModal({
+export function showInputModal({ title, placeholder, value, hint, confirmText }) {
+    return new Promise((resolve) => {
+        resetModalToDefault(); // Ensure DOM structure is correct
+        
+        elements.modalTitle.textContent = title;
+        if (elements.modalHint) elements.modalHint.textContent = hint || "";
+        
+        // Setup Input
+        if (elements.modalInput) {
+            elements.modalInput.value = value || "";
+            elements.modalInput.placeholder = placeholder || "";
+            elements.modalInput.style.display = "block";
+        }
+        
+        // Setup Buttons
+        elements.modalConfirm.textContent = confirmText || "Confirm";
+        elements.modalConfirm.className = "modal-btn primary";
+        elements.modalCancel.textContent = "Cancel";
+
+        // Show Modal
+        elements.modalOverlay.classList.add("visible");
+        
+        // Focus Input
+        setTimeout(() => {
+            if (elements.modalInput) {
+                elements.modalInput.focus();
+                if (elements.modalInput.value) {
+                    const len = elements.modalInput.value.length;
+                    elements.modalInput.setSelectionRange(len, len);
+                }
+            }
+        }, 100);
+
+        // Handlers
+        const cleanup = () => {
+            elements.modalOverlay.classList.remove("visible");
+            elements.modalConfirm.removeEventListener("click", handleConfirm);
+            elements.modalCancel.removeEventListener("click", handleCancel);
+            elements.modalClose.removeEventListener("click", handleCancel);
+            
+            // Remove Enter key listener added by resetModalToDefault to avoid dupes/conflicts
+            // Actually resetModalToDefault adds one that calls confirmModal(). 
+            // We should override/replace it or let confirmModal work?
+            // confirmModal() reads elements.modalInput.value.
+            // Let's rely on our own handlers for this scoped promise.
+            
+            // To be safe, we clone the input to strip old listeners or just manage ours carefully.
+            // But resetModalToDefault already added one.
+            // Let's just use the buttons. The global Enter listener might trigger confirmModal
+            // which likely does something global? 
+            // Let's check confirmModal implementation later. For now, assume button click is primary.
+        };
+
+        const handleConfirm = () => {
+            const result = elements.modalInput ? elements.modalInput.value : "";
+            cleanup();
+            resolve(result);
+        };
+
+        const handleCancel = () => {
+            cleanup();
+            resolve(null);
+        };
+
+        elements.modalConfirm.addEventListener("click", handleConfirm);
+        elements.modalCancel.addEventListener("click", handleCancel);
+        elements.modalClose.addEventListener("click", handleCancel);
+        
+        // Override the global Enter key behavior for this specific modal instance
+        if (elements.modalInput) {
+             elements.modalInput.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    e.stopPropagation(); // Prevent global handler
+                    handleConfirm();
+                } else if (e.key === "Escape") {
+                    e.stopPropagation();
+                    handleCancel();
+                }
+             };
+        }
+    });
+}
+
+export async function promptNewFile(initialPath = null) {
+    // Use provided path or fall back to state
+    const basePath = initialPath !== null ? initialPath : (state.currentFolderPath || "");
+    const defaultValue = basePath ? `${basePath}/` : "";
+
+    const result = await showInputModal({
       title: "New File",
       placeholder: "filename.yaml",
-      hint: basePath ? `Will be created in: ${basePath}/` : "Enter the full path or just filename",
+      value: defaultValue,
+      hint: "Enter the full path (e.g., automations/my_light.yaml)",
     });
 
     if (result) {
+      if (result === basePath || result.endsWith("/")) {
+          showToast("Please enter a file name", "warning");
+          return;
+      }
+
       let fullPath = result;
       
       // Auto-append .yaml if no extension is present
@@ -8502,27 +8594,29 @@ export async function promptNewFile() {
         fullPath += ".yaml";
       }
 
-      if (basePath && !fullPath.includes("/")) {
-        fullPath = `${basePath}/${fullPath}`;
-      }
       await createFile(fullPath);
     }
   }
 
-export async function promptNewFolder() {
-    const basePath = state.currentFolderPath || "";
-    const result = await showModal({
+export async function promptNewFolder(initialPath = null) {
+    // Use provided path or fall back to state
+    const basePath = initialPath !== null ? initialPath : (state.currentFolderPath || "");
+    const defaultValue = basePath ? `${basePath}/` : "";
+    
+    const result = await showInputModal({
       title: "New Folder",
       placeholder: "folder_name",
-      hint: basePath ? `Will be created in: ${basePath}/` : "Enter the full path or just folder name",
+      value: defaultValue,
+      hint: "Enter the full path (e.g., config/my_folder)",
     });
 
     if (result) {
-      let fullPath = result;
-      if (basePath && !result.includes("/")) {
-        fullPath = `${basePath}/${result}`;
+      if (result === basePath || result.endsWith("/")) {
+          showToast("Please enter a folder name", "warning");
+          return;
       }
-      await createFolder(fullPath);
+      // Result is the full path since we pre-filled it
+      await createFolder(result);
     }
   }
 
@@ -8688,6 +8782,10 @@ export function renderTreeLevel(tree, container, depth) {
 
       const isExpanded = state.expandedFolders.has(folderPath);
       const item = createTreeItem(folderName, depth, true, isExpanded, folderPath);
+
+      if (state.currentFolderPath === folderPath) {
+        item.classList.add("active");
+      }
 
       item.addEventListener("click", (e) => {
         if (e.target.closest(".tree-action-btn")) return;
@@ -9375,6 +9473,64 @@ export function selectNextOccurrence(cm) {
     }
   }
 
+function moveLines(cm, direction) {
+    cm.operation(() => {
+        const range = cm.listSelections()[0];
+        const startLine = Math.min(range.head.line, range.anchor.line);
+        const endLine = Math.max(range.head.line, range.anchor.line);
+        
+        if (direction === -1) { // Up
+            if (startLine === 0) return;
+            const textToMove = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+            const textAbove = cm.getLine(startLine - 1);
+            
+            cm.replaceRange(textToMove + "\n" + textAbove, 
+                {line: startLine - 1, ch: 0}, 
+                {line: endLine, ch: cm.getLine(endLine).length}
+            );
+            
+            cm.setSelection(
+                {line: range.anchor.line - 1, ch: range.anchor.ch},
+                {line: range.head.line - 1, ch: range.head.ch}
+            );
+        } else { // Down
+            if (endLine === cm.lastLine()) return;
+            const textToMove = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+            const textBelow = cm.getLine(endLine + 1);
+            
+            cm.replaceRange(textBelow + "\n" + textToMove, 
+                {line: startLine, ch: 0}, 
+                {line: endLine + 1, ch: cm.getLine(endLine + 1).length}
+            );
+            
+            cm.setSelection(
+                {line: range.anchor.line + 1, ch: range.anchor.ch},
+                {line: range.head.line + 1, ch: range.head.ch}
+            );
+        }
+    });
+}
+
+function duplicateLines(cm, direction) {
+    cm.operation(() => {
+        const range = cm.listSelections()[0];
+        const startLine = Math.min(range.head.line, range.anchor.line);
+        const endLine = Math.max(range.head.line, range.anchor.line);
+        const text = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+        
+        if (direction === "up") {
+            cm.replaceRange(text + "\n", {line: startLine, ch: 0});
+            const lineCount = endLine - startLine + 1;
+            cm.setSelection(
+                {line: range.anchor.line + lineCount, ch: range.anchor.ch},
+                {line: range.head.line + lineCount, ch: range.head.ch}
+            );
+        } else { // Down
+            cm.replaceRange("\n" + text, {line: endLine, ch: cm.getLine(endLine).length});
+        }
+    });
+}
+
 export function createEditor() {
     const wrapper = document.createElement("div");
     wrapper.style.height = "100%";
@@ -9422,6 +9578,20 @@ export function createEditor() {
         "Cmd-G": () => state.editor.execCommand("jumpToLine"),
         "Ctrl-/": () => state.editor.execCommand("toggleComment"),
         "Cmd-/": () => state.editor.execCommand("toggleComment"),
+        // Line Operations
+        "Alt-Up": (cm) => moveLines(cm, -1),
+        "Alt-Down": (cm) => moveLines(cm, 1),
+        "Shift-Ctrl-Up": (cm) => moveLines(cm, -1),
+        "Shift-Cmd-Up": (cm) => moveLines(cm, -1),
+        "Shift-Ctrl-Down": (cm) => moveLines(cm, 1),
+        "Shift-Cmd-Down": (cm) => moveLines(cm, 1),
+        "Shift-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Shift-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        "Ctrl-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Cmd-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Ctrl-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        "Cmd-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        
         "Ctrl-Space": (cm) => {
           cm.showHint({ hint: homeAssistantHint });
         },
@@ -9438,6 +9608,49 @@ export function createEditor() {
     
     // Apply font settings
     applyEditorSettings();
+
+    // Aggressive Global Capture Listener for Shortcuts (Move/Duplicate Lines)
+    const handleGlobalShortcuts = (e) => {
+        if (!state.editor || !state.editor.hasFocus()) return;
+
+        const isUp = e.key === "ArrowUp" || e.keyCode === 38;
+        const isDown = e.key === "ArrowDown" || e.keyCode === 40;
+        
+        if (!isUp && !isDown) return;
+
+        let handled = false;
+
+        // Move Line: Alt/Option + Arrow
+        if (e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+             moveLines(state.editor, isUp ? -1 : 1);
+             handled = true;
+        }
+        
+        // Duplicate Line: Shift + Alt/Option + Arrow
+        else if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+             duplicateLines(state.editor, isUp ? "up" : "down");
+             handled = true;
+        }
+
+        // Backup: Cmd + Shift + Arrow (Mac override)
+        else if (e.metaKey && e.shiftKey) {
+             moveLines(state.editor, isUp ? -1 : 1);
+             handled = true;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
+    };
+
+    // Remove previous listener if exists
+    if (state._globalShortcutHandler) {
+        window.removeEventListener("keydown", state._globalShortcutHandler, true);
+    }
+    state._globalShortcutHandler = handleGlobalShortcuts;
+    window.addEventListener("keydown", handleGlobalShortcuts, true);
 
     // Track changes
     state.editor.on("change", handleEditorChange);
@@ -10156,16 +10369,16 @@ export function initEventListeners() {
 
     // New File/Folder buttons
     if (elements.btnNewFile) {
-      elements.btnNewFile.addEventListener("click", promptNewFile);
+      elements.btnNewFile.addEventListener("click", () => promptNewFile());
     }
     if (elements.btnNewFolder) {
-      elements.btnNewFolder.addEventListener("click", promptNewFolder);
+      elements.btnNewFolder.addEventListener("click", () => promptNewFolder());
     }
     if (elements.btnNewFileSidebar) {
-      elements.btnNewFileSidebar.addEventListener("click", promptNewFile);
+      elements.btnNewFileSidebar.addEventListener("click", () => promptNewFile());
     }
     if (elements.btnNewFolderSidebar) {
-      elements.btnNewFolderSidebar.addEventListener("click", promptNewFolder);
+      elements.btnNewFolderSidebar.addEventListener("click", () => promptNewFolder());
     }
 
     // Upload/Download buttons
@@ -10595,7 +10808,7 @@ export function initEventListeners() {
 
     // Welcome screen actions
     if (elements.btnWelcomeNewFile) {
-      elements.btnWelcomeNewFile.addEventListener("click", promptNewFile);
+      elements.btnWelcomeNewFile.addEventListener("click", () => promptNewFile());
     }
     if (elements.btnWelcomeUploadFile) {
       elements.btnWelcomeUploadFile.addEventListener("click", triggerUpload);
@@ -10668,6 +10881,22 @@ export function initEventListeners() {
         if (!target) return;
 
         switch (action) {
+          case "new_file":
+            {
+              const targetPath = target.isFolder ? target.path : target.path.split("/").slice(0, -1).join("/");
+              state.currentFolderPath = targetPath;
+              document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
+              await promptNewFile(targetPath);
+            }
+            break;
+          case "new_folder":
+            {
+              const targetPath = target.isFolder ? target.path : target.path.split("/").slice(0, -1).join("/");
+              state.currentFolderPath = targetPath;
+              document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
+              await promptNewFolder(targetPath);
+            }
+            break;
           case "rename":
             await promptRename(target.path, target.isFolder);
             break;
@@ -10891,6 +11120,15 @@ export function initEventListeners() {
 
     // File Tree Drag & Drop (Root)
     if (elements.fileTree) {
+      // Background click handler to deselect items/folders
+      elements.fileTree.addEventListener("click", (e) => {
+          // Only if clicking the background (not a tree item)
+          if (e.target === elements.fileTree) {
+              state.currentFolderPath = null;
+              document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
+          }
+      });
+
       elements.fileTree.addEventListener("dragover", (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";

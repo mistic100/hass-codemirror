@@ -3722,6 +3722,15 @@
 
   <!-- Context Menu -->
   <div class="context-menu" id="context-menu">
+    <div class="context-menu-item" data-action="new_file">
+      <span class="material-icons">note_add</span>
+      New File
+    </div>
+    <div class="context-menu-item" data-action="new_folder">
+      <span class="material-icons">create_new_folder</span>
+      New Folder
+    </div>
+    <div class="context-menu-divider"></div>
     <div class="context-menu-item" data-action="rename">
       <span class="material-icons">edit</span>
       Rename
@@ -3835,6 +3844,10 @@
             <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>W</kbd></span>
             <span class="shortcut-desc">Close current tab</span>
           </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys">Right-Click</span>
+            <span class="shortcut-desc">Create New File/Folder</span>
+          </div>
         </div>
 
         <div class="shortcuts-section">
@@ -3870,6 +3883,14 @@
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
             <span class="shortcut-desc">Autocomplete</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Move line up/down</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Duplicate line up/down</span>
           </div>
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd></span>
@@ -3908,6 +3929,6 @@
     </div>
   </div>
 
-      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=2.1.0"></script>
+      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=2.1.18"></script>
   </body>
   </html>

@@ -63,7 +63,26 @@ export function createEditor() {
         "Cmd-S": () => callbacks.saveCurrentFile(),
         "Ctrl-K": () => callbacks.showCommandPalette(),
         "Cmd-K": () => callbacks.showCommandPalette(),
-        // ... more keys ...
+        "Alt-Up": (cm) => moveLines(cm, -1),
+        "Alt-Down": (cm) => moveLines(cm, 1),
+        "Shift-Ctrl-Up": (cm) => moveLines(cm, -1),
+        "Shift-Cmd-Up": (cm) => moveLines(cm, -1),
+        "Shift-Ctrl-Down": (cm) => moveLines(cm, 1),
+        "Shift-Cmd-Down": (cm) => moveLines(cm, 1),
+        "Shift-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Shift-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        "Ctrl-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Cmd-Alt-Up": (cm) => duplicateLines(cm, "up"),
+        "Ctrl-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        "Cmd-Alt-Down": (cm) => duplicateLines(cm, "down"),
+        "Ctrl-F": "findPersistent",
+        "Cmd-F": "findPersistent",
+        "Ctrl-H": "replace",
+        "Cmd-H": "replace",
+        "Ctrl-G": "jumpToLine",
+        "Cmd-G": "jumpToLine",
+        "Ctrl-/": "toggleComment",
+        "Cmd-/": "toggleComment",
       }
     });
 
@@ -71,6 +90,52 @@ export function createEditor() {
     state.editor.on("cursorActivity", () => {
         if (callbacks.updateStatusBar) callbacks.updateStatusBar();
     });
+
+    // Aggressive Global Capture Listener for Shortcuts
+    // We attach to window with capture: true to intercept before browser defaults
+    const handleGlobalShortcuts = (e) => {
+        console.log("[Debug] Global Keydown:", e.key, e.keyCode, "Meta:", e.metaKey, "Alt:", e.altKey, "Shift:", e.shiftKey, "Focus:", state.editor ? state.editor.hasFocus() : false);
+        
+        if (!state.editor || !state.editor.hasFocus()) return;
+
+        const isUp = e.key === "ArrowUp" || e.keyCode === 38;
+        const isDown = e.key === "ArrowDown" || e.keyCode === 40;
+        
+        if (!isUp && !isDown) return;
+
+        let handled = false;
+
+        // Move Line: Alt/Option + Arrow
+        if (e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+             moveLines(state.editor, isUp ? -1 : 1);
+             handled = true;
+        }
+        
+        // Duplicate Line: Shift + Alt/Option + Arrow
+        else if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+             duplicateLines(state.editor, isUp ? "up" : "down");
+             handled = true;
+        }
+
+        // Backup: Cmd + Shift + Arrow (Mac specific override)
+        else if (e.metaKey && e.shiftKey) {
+             moveLines(state.editor, isUp ? -1 : 1);
+             handled = true;
+        }
+
+        if (handled) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation(); // The nuclear option
+        }
+    };
+
+    // Remove previous listener if exists (to avoid duplicates on HMR/reload logic if any)
+    if (state._globalShortcutHandler) {
+        window.removeEventListener("keydown", state._globalShortcutHandler, true);
+    }
+    state._globalShortcutHandler = handleGlobalShortcuts;
+    window.addEventListener("keydown", handleGlobalShortcuts, true);
 }
 
 function handleEditorChange() {
@@ -92,4 +157,66 @@ export function applyEditorSettings() {
     }
     state.editor.setOption('lineNumbers', state.showLineNumbers);
     state.editor.setOption('lineWrapping', state.wordWrap);
+}
+
+function moveLines(cm, direction) {
+    cm.operation(() => {
+        const range = cm.listSelections()[0]; // Handle primary selection
+        const startLine = Math.min(range.head.line, range.anchor.line);
+        const endLine = Math.max(range.head.line, range.anchor.line);
+        
+        if (direction === -1) { // Up
+            if (startLine === 0) return;
+            const textToMove = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+            const textAbove = cm.getLine(startLine - 1);
+            
+            cm.replaceRange(textToMove + "\n" + textAbove, 
+                {line: startLine - 1, ch: 0}, 
+                {line: endLine, ch: cm.getLine(endLine).length}
+            );
+            
+            cm.setSelection(
+                {line: range.anchor.line - 1, ch: range.anchor.ch},
+                {line: range.head.line - 1, ch: range.head.ch}
+            );
+        } else { // Down
+            if (endLine === cm.lastLine()) return;
+            const textToMove = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+            const textBelow = cm.getLine(endLine + 1);
+            
+            cm.replaceRange(textBelow + "\n" + textToMove, 
+                {line: startLine, ch: 0}, 
+                {line: endLine + 1, ch: cm.getLine(endLine + 1).length}
+            );
+            
+            cm.setSelection(
+                {line: range.anchor.line + 1, ch: range.anchor.ch},
+                {line: range.head.line + 1, ch: range.head.ch}
+            );
+        }
+    });
+}
+
+function duplicateLines(cm, direction) {
+    cm.operation(() => {
+        const range = cm.listSelections()[0];
+        const startLine = Math.min(range.head.line, range.anchor.line);
+        const endLine = Math.max(range.head.line, range.anchor.line);
+        const text = cm.getRange({line: startLine, ch: 0}, {line: endLine, ch: cm.getLine(endLine).length});
+        
+        if (direction === "up") {
+            // Insert copy above
+            cm.replaceRange(text + "\n", {line: startLine, ch: 0});
+            // Fix selection to stay on original (which moved down)
+            const lineCount = endLine - startLine + 1;
+            cm.setSelection(
+                {line: range.anchor.line + lineCount, ch: range.anchor.ch},
+                {line: range.head.line + lineCount, ch: range.head.ch}
+            );
+        } else { // Down
+            // Insert copy below
+            cm.replaceRange("\n" + text, {line: endLine, ch: cm.getLine(endLine).length});
+            // Selection stays on original (top) - no action needed
+        }
+    });
 }
