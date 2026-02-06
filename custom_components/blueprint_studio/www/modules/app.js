@@ -971,7 +971,7 @@ export const state = {
     customColors: {},
     aiIntegrationEnabled: false, // AI integration state
     aiProvider: "local",         // AI Provider: local, gemini, openai
-    aiModel: "gemini-2.5-flash-lite", // Default model
+    aiModel: "gemini-3-flash-preview", // Default model
     geminiApiKey: "",
     openaiApiKey: "",
     // New UI customization settings
@@ -1573,7 +1573,7 @@ export async function loadSettings() {
       state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
       state.aiIntegrationEnabled = settings.aiIntegrationEnabled ?? false;
       state.aiProvider = settings.aiProvider || "local";
-      state.aiModel = settings.aiModel || (state.aiProvider === "openai" ? "gpt-5.1-auto" : "gemini-2.5-flash-lite");
+      state.aiModel = settings.aiModel || (state.aiProvider === "openai" ? "gpt-5.2" : "gemini-3-flash-preview");
       state.geminiApiKey = settings.geminiApiKey || "";
       state.openaiApiKey = settings.openaiApiKey || "";
 
@@ -6425,17 +6425,30 @@ export async function showAppSettings() {
                 <div style="font-size: 12px; margin-bottom: 4px;">AI Model</div>
                 <div id="gemini-model-container" style="display: ${state.aiProvider === 'gemini' ? 'block' : 'none'};">
                   <select id="gemini-model-select" class="git-settings-input" style="width: 100%;">
-                    <option value="gemini-2.0-flash-exp" ${state.aiModel === 'gemini-2.0-flash-exp' ? 'selected' : ''}>Gemini 2.0 Flash</option>
-                    <option value="gemini-1.5-pro" ${state.aiModel === 'gemini-1.5-pro' ? 'selected' : ''}>Gemini 1.5 Pro</option>
-                    <option value="gemini-1.5-flash" ${state.aiModel === 'gemini-1.5-flash' ? 'selected' : ''}>Gemini 1.5 Flash</option>
+                    <option value="gemini-3-pro-preview" ${state.aiModel === 'gemini-3-pro-preview' ? 'selected' : ''}>Gemini 3 Pro (Preview)</option>
+                    <option value="gemini-3-flash-preview" ${state.aiModel === 'gemini-3-flash-preview' ? 'selected' : ''}>Gemini 3 Flash (Preview)</option>
+                    <option value="gemini-2.5-pro" ${state.aiModel === 'gemini-2.5-pro' ? 'selected' : ''}>Gemini 2.5 Pro</option>
+                    <option value="gemini-2.5-flash" ${state.aiModel === 'gemini-2.5-flash' ? 'selected' : ''}>Gemini 2.5 Flash</option>
+                    <option value="gemini-2.5-flash-lite" ${state.aiModel === 'gemini-2.5-flash-lite' ? 'selected' : ''}>Gemini 2.5 Flash-Lite</option>
                   </select>
                 </div>
                 <div id="openai-model-container" style="display: ${state.aiProvider === 'openai' ? 'block' : 'none'};">
                   <select id="openai-model-select" class="git-settings-input" style="width: 100%;">
-                    <option value="gpt-4o" ${state.aiModel === 'gpt-4o' ? 'selected' : ''}>GPT-4o</option>
-                    <option value="gpt-4o-mini" ${state.aiModel === 'gpt-4o-mini' ? 'selected' : ''}>GPT-4o mini</option>
-                    <option value="o1-preview" ${state.aiModel === 'o1-preview' ? 'selected' : ''}>o1-preview</option>
-                    <option value="o1-mini" ${state.aiModel === 'o1-mini' ? 'selected' : ''}>o1-mini</option>
+                    <option value="gpt-5.2" ${state.aiModel === 'gpt-5.2' ? 'selected' : ''}>GPT-5.2 (Agentic)</option>
+                    <option value="gpt-5.2-pro" ${state.aiModel === 'gpt-5.2-pro' ? 'selected' : ''}>GPT-5.2 Pro (Reasoning)</option>
+                    <option value="gpt-5.2-chat-latest" ${state.aiModel === 'gpt-5.2-chat-latest' ? 'selected' : ''}>GPT-5.2 Chat Latest</option>
+                    <option value="gpt-5.1" ${state.aiModel === 'gpt-5.1' ? 'selected' : ''}>GPT-5.1</option>
+                    <option value="gpt-5" ${state.aiModel === 'gpt-5' ? 'selected' : ''}>GPT-5 (Flagship)</option>
+                    <option value="gpt-5-mini" ${state.aiModel === 'gpt-5-mini' ? 'selected' : ''}>GPT-5 Mini</option>
+                    <option value="gpt-5-nano" ${state.aiModel === 'gpt-5-nano' ? 'selected' : ''}>GPT-5 Nano</option>
+                    <option value="gpt-4.1" ${state.aiModel === 'gpt-4.1' ? 'selected' : ''}>GPT-4.1</option>
+                    <option value="gpt-4.1-mini" ${state.aiModel === 'gpt-4.1-mini' ? 'selected' : ''}>GPT-4.1 Mini</option>
+                    <option value="o3" ${state.aiModel === 'o3' ? 'selected' : ''}>o3</option>
+                    <option value="o3-pro" ${state.aiModel === 'o3-pro' ? 'selected' : ''}>o3-pro</option>
+                    <option value="o3-deep-research" ${state.aiModel === 'o3-deep-research' ? 'selected' : ''}>o3-deep-research</option>
+                    <option value="o4-mini" ${state.aiModel === 'o4-mini' ? 'selected' : ''}>o4-mini</option>
+                    <option value="o4-mini-deep-research" ${state.aiModel === 'o4-mini-deep-research' ? 'selected' : ''}>o4-mini-deep-research</option>
+                    <option value="o1-pro" ${state.aiModel === 'o1-pro' ? 'selected' : ''}>o1-pro</option>
                   </select>
                 </div>
                 <div id="claude-model-container" style="display: ${state.aiProvider === 'claude' ? 'block' : 'none'};">

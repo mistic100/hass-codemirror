@@ -884,7 +884,7 @@ Example modern automation:
 
                 if provider == "gemini":
                     key = settings.get("geminiApiKey")
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model or 'gemini-2.0-flash-exp'}:generateContent?key={key}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model or 'gemini-3-flash-preview'}:generateContent?key={key}"
                     async with aiohttp.ClientSession() as s:
                         async with s.post(url, json={"contents": [{"parts": [{"text": f"{system}\n\n{prompt}"}]}]}) as r:
                             if r.status == 200:
@@ -896,7 +896,7 @@ Example modern automation:
                     url = "https://api.openai.com/v1/chat/completions"
                     async with aiohttp.ClientSession() as s:
                         async with s.post(url, headers={"Authorization": f"Bearer {key}"}, json={
-                            "model": model or "gpt-4o",
+                            "model": model or "gpt-5.2",
                             "messages": [
                                 {"role": "system", "content": system},
                                 {"role": "user", "content": prompt}
