@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-02-06
+
+### ✨ New Features
+*   **Image Navigation**: Added Previous/Next buttons and keyboard shortcuts (Arrow Keys) to browse all images in a folder without closing the viewer.
+*   **Integrated PDF Viewer**: View PDF files directly within the integration using a new high-performance PDF.js rendering engine.
+*   **Markdown Preview**: Added a live preview toggle for `.md` files, rendering them as styled HTML.
+*   **Bulk Operations**: Added support for multi-selecting files to **Delete**, **Download (as ZIP)**, and **Move** them in batches. Also supports **Batch Upload** via multi-select dialog or drag-and-drop.
+*   **Quick Delete**: Streamlined the deletion process by replacing the filename typing requirement with a standard confirmation dialog.
+
+### ⚡ Improvements
+*   **Secure Binary Serving**: Added a dedicated `serve_file` API endpoint for efficient and secure binary file transfers.
+*   **Auth Reliability**: Improved token handling for direct file downloads to prevent authentication timeouts.
+
+### 🐛 Bug Fixes
+*   **Git Notification Spam**: Eliminated repetitive "changes detected" toast notifications during background polling.
+*   **Thread Safety**: Fixed `hass.async_create_task` being called from non-thread-safe contexts in `websocket.py`.
+*   **Blocking I/O**: Moved synchronous file reads in `api.py` to executor jobs to prevent event loop blocking.
+*   **Lifecycle Management**: Implemented proper background task cleanup during integration unloading.
+
 ## [2.1.1] - 2026-02-05
 
 ### ✨ New Features
@@ -205,9 +224,10 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 ---
 
 ## Version History
-
+- **2.1.2** - Visuals & Efficiency Update
+- **2.1.1** - Professional File Management and Productivity Boost 
 - **2.1.0** - The Performance & Architecture Update
-- **2.0.5** - Allow Feletion of Folders and Files In custom_components Folder
+- **2.0.5** - Allow Deletion of Folders and Files In custom_components Folder
 - **2.0.5** - Persistant Workspace and Keyboard Shortcut Conflict Fix
 - **2.0.4** - Git Panel Bug Fix
 - **2.0.3** - Robust GitHub Authentication
@@ -219,7 +239,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.2
 [2.1.1]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.1
 [2.1.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.0
 [2.0.6]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.0.6
