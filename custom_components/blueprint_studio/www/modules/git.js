@@ -64,10 +64,6 @@ export async function gitStatus(shouldFetch = false) {
         ].length;
 
         updateGitPanel();
-
-        if (data.has_changes) {
-          showToast(`Git: ${gitState.totalChanges} change(s) detected`, "success");
-        }
       }
     } catch (error) {
       if (elements.btnGitStatus) {

@@ -72,6 +72,23 @@ export async function fetchWithAuth(url, options = {}) {
   return response.json();
 }
 
+export async function getAuthToken() {
+  try {
+    if (window.parent && window.parent.hassConnection) {
+      const conn = await window.parent.hassConnection;
+      if (conn && conn.auth) {
+          if (conn.auth.expired) {
+              await conn.auth.refreshAccessToken();
+          }
+          return conn.auth.accessToken;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to get auth token", e);
+  }
+  return null;
+}
+
 export async function loadSettings() {
     try {
       const settings = await fetchWithAuth(`${API_BASE}?action=get_settings`);

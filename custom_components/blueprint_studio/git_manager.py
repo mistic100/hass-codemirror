@@ -40,6 +40,9 @@ class GitManager:
         try:
             env = os.environ.copy()
             safe_dir_config = f"safe.directory={self.config_dir}"
+            # Ignore file mode changes (permissions) which HA changes frequently
+            file_mode_config = "core.fileMode=false"
+            
             timeout = 30
             if any(cmd in args for cmd in ["add", "commit", "push", "pull", "clone", "fetch"]):
                 timeout = 300
@@ -63,7 +66,7 @@ class GitManager:
                 helper_script.chmod(0o700)
 
                 result = subprocess.run(
-                    ["git", "-c", safe_dir_config, "-c", f"credential.helper={helper_script}"] + args,
+                    ["git", "-c", safe_dir_config, "-c", file_mode_config, "-c", f"credential.helper={helper_script}"] + args,
                     cwd=self.config_dir,
                     capture_output=True,
                     text=True,
@@ -76,7 +79,7 @@ class GitManager:
                     pass
             else:
                 result = subprocess.run(
-                    ["git", "-c", safe_dir_config] + args,
+                    ["git", "-c", safe_dir_config, "-c", file_mode_config] + args,
                     cwd=self.config_dir,
                     capture_output=True,
                     text=True,
@@ -136,6 +139,10 @@ class GitManager:
                         status_data["deleted"].append(filename)
                     status_data["unstaged"].append(filename)
                 if x_status == '?' and y_status == '?': status_data["untracked"].append(filename)
+
+            # Sort lists for deterministic output
+            for key in status_data:
+                status_data[key].sort()
 
             has_changes = any(status_data.values())
             ahead = behind = 0

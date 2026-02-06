@@ -66,6 +66,10 @@ class BlueprintStudioApiView(HomeAssistantView):
             path = params.get("path")
             if not path: return json_message("Missing path", status_code=400)
             return await self.file.read_file(path)
+        if action == "serve_file":
+            path = params.get("path")
+            if not path: return web.Response(status=400, text="Missing path")
+            return await self.file.serve_file(path)
         if action == "get_file_stat":
             path = params.get("path")
             if not path: return json_message("Missing path", status_code=400)
@@ -80,12 +84,14 @@ class BlueprintStudioApiView(HomeAssistantView):
             from homeassistant.const import __version__ as ha_version_const
             integration_version = "Unknown"
             try:
-                # Try to get version from manifest.json
-                manifest_path = Path(__file__).parent / "manifest.json"
-                import json
-                with open(manifest_path, "r") as f:
-                    manifest = json.load(f)
-                    integration_version = manifest.get("version", "Unknown")
+                def get_manifest_version():
+                    manifest_path = Path(__file__).parent / "manifest.json"
+                    import json
+                    with open(manifest_path, "r") as f:
+                        manifest = json.load(f)
+                        return manifest.get("version", "Unknown")
+                
+                integration_version = await hass.async_add_executor_job(get_manifest_version)
             except: pass
             
             return json_response({
@@ -139,6 +145,8 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "upload_file": return await self.file.upload_file(data.get("path"), data.get("content"), data.get("overwrite", False), data.get("is_base64", False))
         if action == "upload_folder": return await self.file.upload_folder(data.get("path"), data.get("zip_data"))
         if action == "download_multi": return await self.file.download_multi(data.get("paths", []))
+        if action == "delete_multi": return await self.file.delete_multi(data.get("paths", []))
+        if action == "move_multi": return await self.file.move_multi(data.get("paths", []), data.get("destination"))
         if action == "check_yaml":
             result = await hass.async_add_executor_job(self.ai.check_yaml, data.get("content", ""))
             return result

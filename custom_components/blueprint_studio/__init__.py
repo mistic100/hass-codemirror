@@ -13,7 +13,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, NAME
 from .api import BlueprintStudioApiView
-from .websocket import async_register_websockets
+from .websocket import async_register_websockets, async_stop_watcher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,5 +78,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     frontend.async_remove_panel(hass, DOMAIN)
+    async_stop_watcher(hass)
     hass.data[DOMAIN].pop(entry.entry_id, None)
     return True

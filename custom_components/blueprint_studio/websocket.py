@@ -12,27 +12,40 @@ from homeassistant.core import HomeAssistant, callback
 
 _LOGGER = logging.getLogger(__name__)
 
+async def _async_start_watcher(hass: HomeAssistant):
+    """Start the filesystem watcher task."""
+    if "blueprint_studio_watcher" not in hass.data:
+        _LOGGER.debug("Starting Blueprint Studio filesystem watcher")
+        hass.data["blueprint_studio_watcher"] = hass.async_create_task(
+            async_watch_filesystem(hass)
+        )
+
 @callback
 def async_register_websockets(hass: HomeAssistant):
     """Register websocket commands."""
     _LOGGER.debug("Registering Blueprint Studio websocket commands")
     websocket_api.async_register_command(hass, websocket_subscribe_updates)
     
-    # Start filesystem watcher
-    async def start_watcher():
-        if "blueprint_studio_watcher" not in hass.data:
-            _LOGGER.debug("Starting Blueprint Studio filesystem watcher")
-            hass.data["blueprint_studio_watcher"] = hass.async_create_task(
-                async_watch_filesystem(hass)
-            )
+    @callback
+    def async_start_watcher_callback(_: Any = None):
+        """Start watcher callback."""
+        hass.async_create_task(_async_start_watcher(hass))
 
     # If HA is already running, start immediately
     from homeassistant.core import CoreState
     if hass.state == CoreState.running:
-        hass.async_create_task(start_watcher())
+        async_start_watcher_callback()
     else:
         from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, lambda _: hass.async_create_task(start_watcher()))
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, async_start_watcher_callback)
+
+@callback
+def async_stop_watcher(hass: HomeAssistant):
+    """Stop the filesystem watcher task."""
+    if watcher := hass.data.get("blueprint_studio_watcher"):
+        _LOGGER.debug("Stopping Blueprint Studio filesystem watcher")
+        watcher.cancel()
+        hass.data.pop("blueprint_studio_watcher", None)
 
 async def async_watch_filesystem(hass: HomeAssistant):
     """Background task to watch for filesystem changes."""

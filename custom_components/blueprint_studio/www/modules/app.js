@@ -2,6 +2,7 @@
  * Blueprint Studio
  * A modern, feature-rich file editor for Home Assistant
  * https://github.com/katoaroosultan/blueprint-studio
+ * v2.1.28-cache-bust
  */
 
 
@@ -996,6 +997,8 @@ export const state = {
     rememberWorkspace: true,     // Remember open tabs, active tab, cursor, and scroll
     showToasts: true,            // Show toast notifications
     _lastShowHidden: false,      // Track previous hidden state for cache invalidation
+    _lastGitChanges: null,       // Track previous Git change list
+    _lastGiteaChanges: null      // Track previous Gitea change list
   };
 
   // ============================================
@@ -1007,6 +1010,7 @@ export function initElements() {
     elements.fileTree = document.getElementById("file-tree");
     elements.tabsContainer = document.getElementById("tabs-container");
     elements.editorContainer = document.getElementById("editor-container");
+    elements.assetPreview = document.getElementById("asset-preview");
     elements.welcomeScreen = document.getElementById("welcome-screen");
     elements.filePath = document.getElementById("file-path");
     elements.breadcrumb = document.getElementById("breadcrumb");
@@ -1036,6 +1040,8 @@ export function initElements() {
     elements.btnGithubStar = document.getElementById("btn-github-star");
     elements.btnGithubFollow = document.getElementById("btn-github-follow");
     elements.appVersionDisplay = document.getElementById("app-version-display");
+    elements.groupMarkdown = document.getElementById("group-markdown");
+    elements.btnMarkdownPreview = document.getElementById("btn-markdown-preview");
 
     elements.btnAiStudio = document.getElementById("btn-ai-studio");
     elements.btnRestartHa = document.getElementById("btn-restart-ha");
@@ -1052,6 +1058,7 @@ export function initElements() {
     elements.selectionToolbar = document.getElementById("selection-toolbar"); // New toolbar
     elements.selectionCount = document.getElementById("selection-count");
     elements.btnDownloadSelected = document.getElementById("btn-download-selected");
+    elements.btnDeleteSelected = document.getElementById("btn-delete-selected");
     elements.btnCancelSelection = document.getElementById("btn-cancel-selection");
     elements.themeToggle = document.getElementById("theme-toggle");
     elements.themeMenu = document.getElementById("theme-menu");
@@ -2727,8 +2734,50 @@ export function updateSelectionCount() {
         if (elements.btnDownloadSelected) {
             elements.btnDownloadSelected.disabled = count === 0;
         }
+        if (elements.btnDeleteSelected) {
+            elements.btnDeleteSelected.disabled = count === 0;
+        }
     }
   }
+
+export async function deleteSelectedItems() {
+    if (state.selectedItems.size === 0) return;
+
+    const paths = Array.from(state.selectedItems);
+    
+    const confirmed = await showConfirmDialog({
+        title: "Delete Selected Items?",
+        message: `Are you sure you want to permanently delete <b>${paths.length} items</b>? This action cannot be undone.`,
+        confirmText: "Delete All",
+        cancelText: "Cancel",
+        isDanger: true
+    });
+
+    if (confirmed) {
+        try {
+            showGlobalLoading(`Deleting ${paths.length} items...`);
+
+            await fetchWithAuth(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "delete_multi", paths }),
+            });
+
+            hideGlobalLoading();
+            showToast(`Deleted ${paths.length} items`, "success");
+            
+            // Exit selection mode and refresh
+            toggleSelectionMode();
+            await loadFiles(true);
+            
+            // Refresh git status if enabled
+            await checkGitStatusIfEnabled();
+        } catch (error) {
+            hideGlobalLoading();
+            showToast("Failed to delete items: " + error.message, "error");
+        }
+    }
+}
 
 export async function downloadSelectedItems() {
     if (state.selectedItems.size === 0) return;
@@ -2868,6 +2917,30 @@ export async function fetchWithAuth(url, options = {}) {
 
     return response.json();
   }
+
+export async function getAuthToken() {
+    try {
+      if (window.parent) {
+        let auth = null;
+        if (window.parent.hassConnection) {
+            const result = await window.parent.hassConnection;
+            auth = result.auth || (result.accessToken ? result : null);
+        } else if (window.parent.hass && window.parent.hass.auth) {
+            auth = window.parent.hass.auth;
+        }
+        
+        if (auth) {
+            if (auth.expired) {
+                await auth.refreshAccessToken();
+            }
+            return auth.accessToken;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to get auth token", e);
+    }
+    return null;
+}
 
 export async function loadEntities() {
     try {
@@ -3418,12 +3491,12 @@ export function isGitEnabled() {
     return localStorage.getItem("gitIntegrationEnabled") !== "false";
   }
 
-export async function checkGitStatusIfEnabled(shouldFetch = false) {
+export async function checkGitStatusIfEnabled(shouldFetch = false, silent = false) {
     if (isGitEnabled()) {
-        await gitStatus(shouldFetch);
+        await gitStatus(shouldFetch, silent);
     }
     if (state.giteaIntegrationEnabled) {
-        await giteaStatus(shouldFetch);
+        await giteaStatus(shouldFetch, silent);
     }
   }
 
@@ -3528,12 +3601,12 @@ export async function showDiffModal(path) {
     }
   }
 
-export async function gitStatus(shouldFetch = false) {
+export async function gitStatus(shouldFetch = false, silent = false) {
     // Double check enabled state (redundant but safe)
     if (!isGitEnabled()) return;
 
     try {
-      setButtonLoading(elements.btnGitStatus, true);
+      if (!silent) setButtonLoading(elements.btnGitStatus, true);
 
       const data = await fetchWithAuth(API_BASE, {
         method: "POST",
@@ -3544,9 +3617,23 @@ export async function gitStatus(shouldFetch = false) {
         }),
       });
 
-      setButtonLoading(elements.btnGitStatus, false);
+      if (!silent) setButtonLoading(elements.btnGitStatus, false);
 
       if (data.success) {
+        // Store previous change list string to check for meaningful changes
+        const currentChangesList = JSON.stringify(data.files);
+        // Only consider it a new change if the list content is different AND it's not the first load
+        const hasMeaningfulChange = state._lastGitChanges && state._lastGitChanges !== currentChangesList;
+        
+        if (hasMeaningfulChange) {
+            console.log("Git Notification Triggered. Diff:", {
+                old: state._lastGitChanges,
+                new: currentChangesList
+            });
+        }
+
+        state._lastGitChanges = currentChangesList;
+
         // Update git state
         gitState.isInitialized = data.is_initialized;
         gitState.hasRemote = data.has_remote;
@@ -3577,15 +3664,22 @@ export async function gitStatus(shouldFetch = false) {
         // Update UI
         updateGitPanel();
 
-        if (data.has_changes) {
-          showToast(`Git: ${gitState.totalChanges} change(s) detected`, "success");
-        } else {
-          showToast("Working tree clean, no changes", "success");
+        // SMART NOTIFICATION:
+        // 1. If NOT silent (manual refresh), always show toast
+        // 2. If silent (polling), only show toast if the LIST of changes is different (and non-empty)
+        if (!silent || (hasMeaningfulChange && gitState.totalChanges > 0)) {
+            if (data.has_changes) {
+              showToast(`Git: ${gitState.totalChanges} change(s) detected`, "success");
+            } else if (!silent) {
+              showToast("Working tree clean, no changes", "success");
+            }
         }
       }
     } catch (error) {
-      setButtonLoading(elements.btnGitStatus, false);
-      showToast("Git error: " + error.message, "error");
+      if (!silent) {
+          setButtonLoading(elements.btnGitStatus, false);
+          showToast("Git error: " + error.message, "error");
+      }
     }
   }
 
@@ -5630,11 +5724,11 @@ export function renderGitFiles(container) {
   // Gitea Integration Functions
   // ============================================
 
-export async function giteaStatus(shouldFetch = false) {
+export async function giteaStatus(shouldFetch = false, silent = false) {
     if (!state.giteaIntegrationEnabled) return;
 
     try {
-      setButtonLoading(elements.btnGiteaStatus, true);
+      if (!silent) setButtonLoading(elements.btnGiteaStatus, true);
 
       const data = await fetchWithAuth(API_BASE, {
         method: "POST",
@@ -5645,9 +5739,14 @@ export async function giteaStatus(shouldFetch = false) {
         }),
       });
 
-      setButtonLoading(elements.btnGiteaStatus, false);
+      if (!silent) setButtonLoading(elements.btnGiteaStatus, false);
 
       if (data.success) {
+        // Store previous change list string to check for meaningful changes
+        const currentChangesList = JSON.stringify(data.files);
+        const hasMeaningfulChange = state._lastGiteaChanges && state._lastGiteaChanges !== currentChangesList;
+        state._lastGiteaChanges = currentChangesList;
+
         giteaState.isInitialized = data.is_initialized;
         giteaState.hasRemote = data.has_remote;
         giteaState.currentBranch = data.current_branch || "unknown";
@@ -5658,7 +5757,12 @@ export async function giteaStatus(shouldFetch = false) {
         giteaState.status = data.status || "";
         
         giteaState.files = data.files || {
-          modified: [], added: [], deleted: [], untracked: [], staged: [], unstaged: []
+          modified: [],
+          added: [],
+          deleted: [],
+          untracked: [],
+          staged: [],
+          unstaged: []
         };
 
         giteaState.totalChanges = [
@@ -5669,13 +5773,23 @@ export async function giteaStatus(shouldFetch = false) {
         ].length;
 
         updateGiteaPanel();
+
+        // SMART NOTIFICATION for Gitea
+        if (!silent || (hasMeaningfulChange && giteaState.totalChanges > 0)) {
+            if (data.has_changes) {
+              showToast(`Gitea: ${giteaState.totalChanges} change(s) detected`, "success");
+            } else if (!silent) {
+              showToast("Gitea tree clean, no changes", "success");
+            }
+        }
       }
     } catch (error) {
-      setButtonLoading(elements.btnGiteaStatus, false);
-      showToast("Gitea error: " + error.message, "error");
+      if (!silent) {
+          setButtonLoading(elements.btnGiteaStatus, false);
+          showToast("Gitea error: " + error.message, "error");
+      }
     }
   }
-
 export function updateGiteaPanel() {
     const panel = document.getElementById("gitea-panel");
     if (!panel) return;
@@ -8668,18 +8782,16 @@ export async function promptCopy(path, isFolder) {
 
 export async function promptDelete(path, isFolder) {
     const name = path.split("/").pop();
-    const result = await showModal({
-      title: isFolder ? "Delete Folder" : "Delete File",
-      placeholder: `Type "${name}" to confirm`,
-      hint: `This will permanently delete ${isFolder ? "the folder and all its contents" : "this file"}`,
+    const result = await showConfirmDialog({
+      title: isFolder ? "Delete Folder?" : "Delete File?",
+      message: `Are you sure you want to delete <b>${name}</b>?${isFolder ? "<br><br>This will permanently delete the folder and all its contents." : ""}`,
       confirmText: "Delete",
+      cancelText: "Cancel",
       isDanger: true,
     });
 
-    if (result === name) {
+    if (result) {
       await deleteItem(path);
-    } else if (result !== null) {
-      showToast("Name doesn't match. Deletion cancelled.", "warning");
     }
   }
 
@@ -8843,6 +8955,55 @@ export function renderTreeLevel(tree, container, depth) {
       container.appendChild(item);
     });
   }
+
+export async function handleFileDropMulti(sourcePaths, targetFolder) {
+    const targetFolderDisplay = targetFolder || "config folder";
+    
+    // Filter out redundant moves (already in target folder)
+    const pathsToMove = sourcePaths.filter(path => {
+        const lastSlash = path.lastIndexOf("/");
+        const currentFolder = lastSlash === -1 ? "" : path.substring(0, lastSlash);
+        return currentFolder !== (targetFolder || "");
+    });
+
+    if (pathsToMove.length === 0) return;
+
+    const confirmed = await showConfirmDialog({
+        title: "Move Multiple Items?",
+        message: `Move <b>${pathsToMove.length} items</b> to <b>${targetFolderDisplay}</b>?`,
+        confirmText: "Move All",
+        cancelText: "Cancel"
+    });
+
+    if (confirmed) {
+        try {
+            showGlobalLoading(`Moving ${pathsToMove.length} items...`);
+            
+            await fetchWithAuth(API_BASE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "move_multi", 
+                    paths: pathsToMove,
+                    destination: targetFolder
+                }),
+            });
+
+            hideGlobalLoading();
+            showToast(`Moved ${pathsToMove.length} items`, "success");
+            
+            // Exit selection mode and refresh
+            if (state.selectionMode) toggleSelectionMode();
+            await loadFiles(true);
+            
+            // Refresh git status if enabled
+            await checkGitStatusIfEnabled();
+        } catch (error) {
+            hideGlobalLoading();
+            showToast("Failed to move items: " + error.message, "error");
+        }
+    }
+}
 
 export async function handleFileDrop(sourcePath, targetFolder) {
     if (sourcePath === targetFolder) return;
@@ -9049,6 +9210,13 @@ export function handleDragStart(e) {
         e.preventDefault();
         return;
     }
+
+    // If dragged item is selected, we move all selected items
+    if (state.selectionMode && state.selectedItems.has(path)) {
+        const paths = Array.from(state.selectedItems);
+        e.dataTransfer.setData("application/x-blueprint-studio-multi", JSON.stringify(paths));
+    }
+
     e.dataTransfer.setData("text/plain", path);
     e.dataTransfer.effectAllowed = "move";
     e.currentTarget.classList.add("dragging");
@@ -9085,6 +9253,7 @@ export async function handleDrop(e) {
     }
     elements.fileTree.classList.remove("drag-over-root");
 
+    const multiData = e.dataTransfer.getData("application/x-blueprint-studio-multi");
     const sourcePath = e.dataTransfer.getData("text/plain");
     const itemPath = item ? item.dataset.path : null; // null means root
     
@@ -9107,7 +9276,14 @@ export async function handleDrop(e) {
         return;
     }
 
-    // Case 2: Internal Move
+    // Case 2: Internal Multi-Move
+    if (multiData) {
+        const paths = JSON.parse(multiData);
+        await handleFileDropMulti(paths, targetFolder);
+        return;
+    }
+
+    // Case 3: Internal Single Move
     if (sourcePath) {
         await handleFileDrop(sourcePath, targetFolder);
     }
@@ -9127,66 +9303,14 @@ export function toggleFolder(path) {
   // ============================================
 
 export async function openFile(path, forceReload = false, noActivate = false) {
-    // Check if it's a binary file (not meant for CodeMirror)
-    if (!isTextFile(path)) {
-      const filename = path.split("/").pop();
-      const ext = filename.split(".").pop().toLowerCase();
-      const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
-      const isPdf = ext === "pdf";
+    const filename = path.split("/").pop();
+    const ext = filename.split(".").pop().toLowerCase();
+    const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
+    const isPdf = ext === "pdf";
+    const isBinary = !isTextFile(path);
 
-      if (isImage || isPdf) {
-        showToast(`Opening ${filename}...`, "info");
-        try {
-          const data = await loadFile(path);
-          if (isImage) {
-            const dataUrl = `data:${data.mime_type};base64,${data.content}`;
-            await showModal({
-              title: filename,
-              image: dataUrl,
-              confirmText: "Close"
-            });
-          } else {
-            // PDF Viewer with fallback buttons
-            const binaryString = atob(data.content);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: "application/pdf" });
-            const blobUrl = URL.createObjectURL(blob);
-
-            await showModal({
-              title: filename,
-              message: `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;">
-                    <span class="material-icons" style="font-size: 64px; color: var(--text-secondary); margin-bottom: 20px;">picture_as_pdf</span>
-                    <div style="font-size: 16px; margin-bottom: 30px; text-align: center;">
-                        This PDF cannot be previewed directly. Please download it to view.
-                    </div>
-                    <div style="display: flex; gap: 15px;">
-                        <a href="${blobUrl}" download="${filename}" class="modal-btn primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;">
-                            <span class="material-icons">download</span> Download PDF
-                        </a>
-                    </div>
-                </div>
-              `,
-              confirmText: "Close"
-            });
-            
-            // Clean up the blob URL after the modal is likely closed
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 120000); // 2 minutes
-
-            // Ensure modal is sized appropriately
-            elements.modal.style.maxWidth = "500px";
-            elements.modal.style.width = "90vw";
-          }
-        } catch (error) {
-          console.error("Failed to open media:", error);
-        }
-        return;
-      }
-
-      // For other binary files (like .zip), just download them
+    // If it's a binary file that's not an image or PDF, just download it
+    if (isBinary && !isImage && !isPdf) {
       showToast(`Downloading ${filename}...`, "info");
       downloadFileByPath(path);
       return;
@@ -9196,7 +9320,7 @@ export async function openFile(path, forceReload = false, noActivate = false) {
 
     if (tab && forceReload) {
         // If this is the active tab, preserve cursor/scroll from editor before reload
-        if (state.activeTab === tab && state.editor) {
+        if (state.activeTab === tab && state.editor && !tab.isBinary) {
             tab.cursor = state.editor.getCursor();
             tab.scroll = state.editor.getScrollInfo();
         }
@@ -9207,15 +9331,14 @@ export async function openFile(path, forceReload = false, noActivate = false) {
             tab.originalContent = data.content;
             tab.mtime = data.mtime;
             tab.modified = false;
-            // Clear history if reloading externally changed file to avoid confusing undo state
             tab.history = null; 
         } catch (e) {
             console.error("Failed to reload file content", e);
         }
     } else if (!tab) {
       try {
-        const data = await loadFile(path); // data is now {content: ..., is_base64: ...}
-        const content = data.content; // This backend call will only work for text files
+        const data = await loadFile(path);
+        const content = data.content;
 
         tab = {
           path,
@@ -9223,25 +9346,27 @@ export async function openFile(path, forceReload = false, noActivate = false) {
           originalContent: content,
           mtime: data.mtime,
           modified: false,
-          history: null,  // Store CodeMirror history
-          cursor: null,   // Store cursor position
-          scroll: null,   // Store scroll position
+          history: null,
+          cursor: null,
+          scroll: null,
+          isBinary: isBinary,
+          isImage: isImage,
+          isPdf: isPdf,
+          mimeType: data.mime_type
         };
-
         state.openTabs.push(tab);
-
-        // Update recent files
-        state.recentFiles = state.recentFiles.filter(p => p !== path); // Remove if already exists
-        state.recentFiles.unshift(path); // Add to the beginning
-        const limit = state.recentFilesLimit || MAX_RECENT_FILES;
-        if (state.recentFiles.length > limit) {
-          state.recentFiles.pop(); // Trim to max size
-        }
-
       } catch (error) {
-        // loadFile will show a toast if it fails (e.g., trying to read binary as text)
+        showToast(`Failed to open ${filename}: ${error.message}`, "error");
         return;
       }
+    }
+
+    // Update recent files
+    state.recentFiles = state.recentFiles.filter(p => p !== path); // Remove if already exists
+    state.recentFiles.unshift(path); // Add to the beginning
+    const limit = state.recentFilesLimit || MAX_RECENT_FILES;
+    if (state.recentFiles.length > limit) {
+      state.recentFiles.pop(); // Trim to max size
     }
 
     if (noActivate) return tab;
@@ -9258,8 +9383,8 @@ export function activateTab(tab, skipSave = false) {
       elements.welcomeScreen.style.display = "none";
     }
 
-    // Save current tab state before switching
-    if (!skipSave && state.activeTab && state.editor) {
+    // Save current tab state before switching (only for text files)
+    if (!skipSave && state.activeTab && state.editor && !state.activeTab.isBinary) {
       state.activeTab.content = state.editor.getValue();
       state.activeTab.history = state.editor.getHistory();
       state.activeTab.cursor = state.editor.getCursor();
@@ -9268,59 +9393,80 @@ export function activateTab(tab, skipSave = false) {
 
     state.activeTab = tab;
 
-    // Create editor if it doesn't exist
-    if (!state.editor) {
-      createEditor();
-    }
-
-    // Update editor content and settings
-    const mode = getEditorMode(tab.path);
-
-    // Try to set the mode, fall back to yaml if ha-yaml fails
-    try {
-      state.editor.setOption("mode", mode);
-    } catch (error) {
-      console.error("Error setting editor mode:", error);
-      // Fallback to regular yaml if ha-yaml fails
-      if (mode === "ha-yaml") {
-        console.log("Falling back to regular yaml mode");
-        state.editor.setOption("mode", "yaml");
-      }
-    }
-
-    // Set read-only for specific files
-    const isReadOnly = tab.path.endsWith(".gitignore") || tab.path.endsWith(".lock");
-    state.editor.setOption("readOnly", isReadOnly);
-
-    state.editor.setOption("lint", (mode === "ha-yaml" || mode === "yaml") ? { getAnnotations: yamlLinter, async: true } : false);
-
-    // Set content without triggering change event
-    state.editor.off("change", handleEditorChange);
-    state.editor.setValue(tab.content);
-    state.editor.on("change", handleEditorChange);
-
-    // Restore history if available
-    if (tab.history) {
-      state.editor.setHistory(tab.history);
+    // Handle Binary Preview
+    if (tab.isBinary) {
+        if (state.editor) {
+            state.editor.getWrapperElement().style.display = "none";
+        }
+        if (elements.assetPreview) {
+            elements.assetPreview.classList.add("visible");
+            renderAssetPreview(tab);
+        }
     } else {
-      state.editor.clearHistory();
-    }
+        // Handle Text Editor
+        if (elements.assetPreview) {
+            elements.assetPreview.classList.remove("visible");
+            elements.assetPreview.innerHTML = "";
+        }
+        
+        // Create editor if it doesn't exist
+        if (!state.editor) {
+          createEditor();
+        }
+        
+        state.editor.getWrapperElement().style.display = "block";
 
-    // Restore cursor and scroll position
-    if (tab.cursor) {
-      state.editor.setCursor(tab.cursor);
-    }
-    if (tab.scroll) {
-      state.editor.scrollTo(tab.scroll.left, tab.scroll.top);
-    }
+        // Update editor content and settings
+        const mode = getEditorMode(tab.path);
 
-    // Refresh and focus
-    state.editor.refresh();
-    state.editor.focus();
+        // Try to set the mode, fall back to yaml if ha-yaml fails
+        try {
+          state.editor.setOption("mode", mode);
+        } catch (error) {
+          console.error("Error setting editor mode:", error);
+          if (mode === "ha-yaml") {
+            state.editor.setOption("mode", "yaml");
+          }
+        }
+
+        const isReadOnly = tab.path.endsWith(".gitignore") || tab.path.endsWith(".lock");
+        state.editor.setOption("readOnly", isReadOnly);
+        state.editor.setOption("lint", (mode === "ha-yaml" || mode === "yaml") ? { getAnnotations: yamlLinter, async: true } : false);
+
+        // Set content without triggering change event
+        state.editor.off("change", handleEditorChange);
+        state.editor.setValue(tab.content);
+        state.editor.on("change", handleEditorChange);
+
+        // Restore history if available
+        if (tab.history) {
+          state.editor.setHistory(tab.history);
+        } else {
+          state.editor.clearHistory();
+        }
+
+        // Restore cursor and scroll position
+        if (tab.cursor) {
+          state.editor.setCursor(tab.cursor);
+        }
+        if (tab.scroll) {
+          state.editor.scrollTo(tab.scroll.left, tab.scroll.top);
+        }
+
+        // Refresh and focus
+        state.editor.refresh();
+        state.editor.focus();
+    }
 
     debouncedRenderFileTree();
     updateToolbarState();
     updateStatusBar();
+
+    // Show/hide Markdown group
+    if (elements.groupMarkdown) {
+        elements.groupMarkdown.style.display = tab.path.endsWith(".md") ? "flex" : "none";
+        elements.btnMarkdownPreview?.classList.remove("active");
+    }
 
     if (elements.filePath) {
       elements.filePath.textContent = tab.path;
@@ -9335,6 +9481,278 @@ export function activateTab(tab, skipSave = false) {
     // Save state after switching
     saveSettings();
   }
+
+function renderAssetPreview(tab) {
+    if (!elements.assetPreview) return;
+    
+    const filename = tab.path.split("/").pop();
+    
+    if (tab.isImage) {
+        // Calculate neighbors
+        const currentDir = tab.path.substring(0, tab.path.lastIndexOf("/"));
+        const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"];
+        
+        // Filter files in the same directory that are images
+        const imageFiles = state.files
+            .filter(f => {
+                const fDir = f.path.substring(0, f.path.lastIndexOf("/"));
+                const ext = "." + f.name.split(".").pop().toLowerCase();
+                return fDir === currentDir && imageExtensions.includes(ext);
+            })
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+
+        const currentIndex = imageFiles.findIndex(f => f.path === tab.path);
+        const prevImage = currentIndex > 0 ? imageFiles[currentIndex - 1] : null;
+        const nextImage = currentIndex < imageFiles.length - 1 ? imageFiles[currentIndex + 1] : null;
+
+        elements.assetPreview.style.padding = "0";
+        const dataUrl = `data:${tab.mimeType};base64,${tab.content}`;
+        
+        elements.assetPreview.innerHTML = `
+            <div class="image-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
+                <div class="pdf-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons" style="color: var(--accent-color);">image</span>
+                        <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${filename}</span>
+                        <span style="color: var(--text-secondary); font-size: 12px; margin-left: 8px;">${tab.mimeType}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <button id="img-prev" class="toolbar-btn" title="Previous Image" ${!prevImage ? 'disabled style="opacity: 0.5; cursor: default;"' : ''}>
+                                <span class="material-icons">chevron_left</span>
+                            </button>
+                            <span style="font-size: 13px; color: var(--text-secondary); min-width: 60px; text-align: center;">${currentIndex + 1} / ${imageFiles.length}</span>
+                            <button id="img-next" class="toolbar-btn" title="Next Image" ${!nextImage ? 'disabled style="opacity: 0.5; cursor: default;"' : ''}>
+                                <span class="material-icons">chevron_right</span>
+                            </button>
+                        </div>
+                        <div style="width: 1px; height: 24px; background: var(--borderColor);"></div>
+                        <button id="img-download" class="toolbar-btn" title="Download Image">
+                            <span class="material-icons">download</span>
+                        </button>
+                    </div>
+                </div>
+                <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; background: var(--bg-primary);">
+                    <div style="position: relative; max-width: 100%; max-height: 100%;">
+                        <img src="${dataUrl}" alt="${filename}" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background-image: linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%), linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (prevImage) {
+            document.getElementById("img-prev").addEventListener("click", () => {
+                openFile(prevImage.path);
+            });
+        }
+        
+        if (nextImage) {
+            document.getElementById("img-next").addEventListener("click", () => {
+                openFile(nextImage.path);
+            });
+        }
+
+        document.getElementById("img-download").addEventListener("click", async () => {
+            const token = await getAuthToken();
+            const downloadUrl = `${API_BASE}?action=serve_file&path=${encodeURIComponent(tab.path)}&access_token=${token}`;
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            a.click();
+        });
+        
+        // Keyboard navigation
+        const handleKeyNav = (e) => {
+            if (!document.body.contains(elements.assetPreview)) {
+                document.removeEventListener("keydown", handleKeyNav);
+                return;
+            }
+            if (e.key === "ArrowLeft" && prevImage) openFile(prevImage.path);
+            if (e.key === "ArrowRight" && nextImage) openFile(nextImage.path);
+        };
+        // Remove any existing listener to prevent duplicates (though renderAssetPreview is called once per tab switch)
+        // A better way is to attach it to the tab or ensure cleanup, but for now simple attachment works as switching tabs re-renders
+        document.addEventListener("keydown", handleKeyNav, { once: true });
+
+    } else if (tab.isPdf) {
+        elements.assetPreview.style.padding = "0";
+        
+        const binaryString = atob(tab.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Setup PDF.js
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        elements.assetPreview.innerHTML = `
+            <div class="pdf-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
+                <div class="pdf-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons" style="color: var(--error-color);">picture_as_pdf</span>
+                        <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${filename}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 13px;">
+                            <button id="pdf-prev" class="toolbar-btn" style="min-width: 32px; height: 32px; padding: 0;"><span class="material-icons">chevron_left</span></button>
+                            <span>Page <span id="pdf-page-num">1</span> / <span id="pdf-page-count">-</span></span>
+                            <button id="pdf-next" class="toolbar-btn" style="min-width: 32px; height: 32px; padding: 0;"><span class="material-icons">chevron_right</span></button>
+                        </div>
+                        <div style="width: 1px; height: 24px; background: var(--borderColor);"></div>
+                        <button id="btn-download-pdf" class="toolbar-btn" title="Download"><span class="material-icons">download</span></button>
+                    </div>
+                </div>
+                <div id="pdf-viewer-viewport" style="flex-grow: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: var(--bg-primary);">
+                    <canvas id="pdf-canvas" style="box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 100%; height: auto; display: block;"></canvas>
+                </div>
+            </div>
+        `;
+
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        const scale = 1.5;
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+
+        async function renderPage(num) {
+            pageRendering = true;
+            const page = await pdfDoc.getPage(num);
+            const dpr = window.devicePixelRatio || 1;
+            const viewport = page.getViewport({ scale: scale * dpr });
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            // Set display size
+            const styleViewport = page.getViewport({ scale });
+            canvas.style.width = styleViewport.width + 'px';
+            canvas.style.height = styleViewport.height + 'px';
+
+            const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport
+            };
+            const renderTask = page.render(renderContext);
+
+            await renderTask.promise;
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+            document.getElementById('pdf-page-num').textContent = num;
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        // Load PDF
+        const loadingTask = pdfjsLib.getDocument({ data: bytes });
+        loadingTask.promise.then(pdf => {
+            pdfDoc = pdf;
+            document.getElementById('pdf-page-count').textContent = pdf.numPages;
+            renderPage(pageNum);
+        }).catch(err => {
+            console.error('PDF.js error:', err);
+            elements.assetPreview.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--error-color);">Failed to load PDF: ${err.message}</div>`;
+        });
+
+        document.getElementById('pdf-prev').addEventListener('click', () => {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        });
+
+        document.getElementById('pdf-next').addEventListener('click', () => {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        });
+
+        document.getElementById("btn-download-pdf")?.addEventListener("click", async () => {
+            const token = await getAuthToken();
+            const downloadUrl = `${API_BASE}?action=serve_file&path=${encodeURIComponent(tab.path)}&access_token=${token}`;
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            a.click();
+        });
+    }
+}
+
+export function toggleMarkdownPreview() {
+    if (!state.activeTab || !state.activeTab.path.endsWith(".md")) return;
+    
+    const isPreview = elements.btnMarkdownPreview.classList.toggle("active");
+    
+    if (isPreview) {
+        // Show Preview
+        if (state.editor) {
+            state.editor.getWrapperElement().style.display = "none";
+        }
+        if (elements.assetPreview) {
+            elements.assetPreview.classList.add("visible");
+            const content = state.editor ? state.editor.getValue() : state.activeTab.content;
+            elements.assetPreview.innerHTML = `<div class="markdown-body">${renderMarkdown(content)}</div>`;
+        }
+    } else {
+        // Show Editor
+        if (elements.assetPreview) {
+            elements.assetPreview.classList.remove("visible");
+            elements.assetPreview.innerHTML = "";
+        }
+        if (state.editor) {
+            state.editor.getWrapperElement().style.display = "block";
+            state.editor.refresh();
+            state.editor.focus();
+        }
+    }
+}
+
+function renderMarkdown(text) {
+    if (!text) return "";
+    
+    let html = text
+        // Headers
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+        // Bold
+        .replace(/\*\*(.*)\*\*/g, '<b>$1</b>')
+        // Italic
+        .replace(/\*(.*)\*/g, '<i>$1</i>')
+        // Blockquotes
+        .replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>')
+        // Unordered lists
+        .replace(/^\* (.*$)/gm, '<ul><li>$1</li></ul>')
+        .replace(/<\/ul>\n<ul>/g, '') // Fix adjacent lists
+        // Ordered lists
+        .replace(/^\d\. (.*$)/gm, '<ol><li>$1</li></ol>')
+        .replace(/<\/ol>\n<ol>/g, '') // Fix adjacent lists
+        // Inline code
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        // Code blocks
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        // Links
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+        // Horizontal rules
+        .replace(/^---$/gm, '<hr>')
+        // Paragraphs (last step)
+        .replace(/^\s*(\n)?(.+)/gm, (m, n, p) => {
+            return p.startsWith('<') ? m : `<p>${p}</p>`;
+        });
+
+    return html;
+}
 
   // ============================================
   // Breadcrumb Navigation
@@ -9866,6 +10284,12 @@ export function closeTab(tab, force = false) {
     }
 
     const index = state.openTabs.indexOf(tab);
+    
+    // Revoke blob URL if it exists (for PDFs)
+    if (tab._blobUrl) {
+        URL.revokeObjectURL(tab._blobUrl);
+    }
+
     state.openTabs.splice(index, 1);
 
     if (state.activeTab === tab) {
@@ -9880,6 +10304,10 @@ export function closeTab(tab, force = false) {
         }
         if (elements.welcomeScreen) {
           elements.welcomeScreen.style.display = "";
+        }
+        if (elements.assetPreview) {
+          elements.assetPreview.classList.remove("visible");
+          elements.assetPreview.innerHTML = "";
         }
         if (elements.filePath) {
           elements.filePath.textContent = "";
@@ -10254,6 +10682,10 @@ export function initEventListeners() {
       elements.btnDownloadSelected.addEventListener("click", downloadSelectedItems);
     }
 
+    if (elements.btnDeleteSelected) {
+      elements.btnDeleteSelected.addEventListener("click", deleteSelectedItems);
+    }
+
     if (elements.btnCancelSelection) {
       elements.btnCancelSelection.addEventListener("click", toggleSelectionMode);
     }
@@ -10271,6 +10703,10 @@ export function initEventListeners() {
     // App Settings
     if (elements.btnAppSettings) {
       elements.btnAppSettings.addEventListener("click", showAppSettings);
+    }
+
+    if (elements.btnMarkdownPreview) {
+      elements.btnMarkdownPreview.addEventListener("click", toggleMarkdownPreview);
     }
 
     // AI Studio button
@@ -11306,7 +11742,7 @@ export async function initWebSocketSubscription() {
             if (state._wsUpdateTimer) clearTimeout(state._wsUpdateTimer);
             state._wsUpdateTimer = setTimeout(() => {
                 checkFileUpdates();
-                checkGitStatusIfEnabled();
+                checkGitStatusIfEnabled(false, true); // silent = true
                 
                 // If a file was structurally changed (created/deleted/renamed), refresh the tree
                 if (event && ["create", "delete", "rename", "create_folder", "upload", "upload_folder"].includes(event.action)) {
@@ -11337,8 +11773,8 @@ export async function init() {
     await loadSettings();
     applyTheme();
     applyVersionControlVisibility(); // Apply version control visibility setting
-    gitStatus(true);
-    giteaStatus(true);
+    gitStatus(true, true);
+    giteaStatus(true, true);
     updateShowHiddenButton();
     initEventListeners();
     initResizeHandle();
@@ -11676,42 +12112,12 @@ export function startGitStatusPolling() {
 
         // Poll GitHub if enabled
         if (state.gitIntegrationEnabled) {
-            const data = await fetchWithAuth(API_BASE, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "git_status" }),
-            });
-
-            if (data.success && data.files) {
-              gitState.files = data.files;
-              gitState.totalChanges = [
-                ...gitState.files.modified,
-                ...gitState.files.added,
-                ...gitState.files.deleted,
-                ...gitState.files.untracked
-              ].length;
-              updateGitPanel();
-            }
+            await gitStatus(false, true); // silent = true
         }
         
         // Poll Gitea if enabled
         if (state.giteaIntegrationEnabled) {
-            const data = await fetchWithAuth(API_BASE, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "gitea_status" }),
-            });
-
-            if (data.success && data.files) {
-              giteaState.files = data.files;
-              giteaState.totalChanges = [
-                ...giteaState.files.modified,
-                ...giteaState.files.added,
-                ...giteaState.files.deleted,
-                ...giteaState.files.untracked
-              ].length;
-              updateGiteaPanel();
-            }
+            await giteaStatus(false, true); // silent = true
         }
       } catch (error) {
         // Silently fail

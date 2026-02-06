@@ -140,6 +140,24 @@ class FileManager:
             return json_response({"content": content, "is_base64": False, "mime_type": mimetypes.guess_type(safe_path.name)[0] or "text/plain;charset=utf-8", "mtime": safe_path.stat().st_mtime})
         except Exception as e: return json_message(str(e), status_code=500)
 
+    async def serve_file(self, path: str) -> web.Response:
+        """Serve raw file content with correct MIME type."""
+        safe_path = get_safe_path(self.config_dir, path)
+        if not safe_path or not safe_path.is_file(): return web.Response(status=404, text="File not found")
+        if not self._is_file_allowed(safe_path): return web.Response(status=403, text="Not allowed")
+        try:
+            content = await self.hass.async_add_executor_job(safe_path.read_bytes)
+            mime_type = mimetypes.guess_type(safe_path.name)[0] or "application/octet-stream"
+            
+            # Add Content-Disposition: inline to encourage browser preview
+            headers = {
+                "Content-Type": mime_type,
+                "Content-Disposition": f'inline; filename="{safe_path.name}"'
+            }
+            
+            return web.Response(body=content, headers=headers)
+        except Exception as e: return web.Response(status=500, text=str(e))
+
     async def get_file_stat(self, path: str) -> web.Response:
         """Get file statistics."""
         safe_path = get_safe_path(self.config_dir, path)
@@ -197,6 +215,47 @@ class FileManager:
             self._fire_update("delete", path)
             return json_response({"success": True})
         except Exception as e: return json_message(str(e), status_code=500)
+
+    async def delete_multi(self, paths: list[str]) -> web.Response:
+        """Delete multiple files or folders."""
+        for path in paths:
+            if self._is_protected(path): continue # Skip protected
+            safe_path = get_safe_path(self.config_dir, path)
+            if not safe_path or not safe_path.exists() or safe_path == self.config_dir: continue
+            try:
+                if safe_path.is_dir(): await self.hass.async_add_executor_job(shutil.rmtree, safe_path)
+                else: await self.hass.async_add_executor_job(safe_path.unlink)
+            except Exception as e:
+                _LOGGER.error("Error deleting %s: %s", path, e)
+        
+        self._fire_update("delete_multi")
+        return json_response({"success": True})
+
+    async def move_multi(self, paths: list[str], destination: str | None) -> web.Response:
+        """Move multiple files or folders to a destination."""
+        dest_folder = get_safe_path(self.config_dir, destination or "")
+        if not dest_folder or not dest_folder.is_dir():
+            return json_message("Invalid destination", status_code=400)
+
+        for path in paths:
+            if self._is_protected(path): continue
+            src = get_safe_path(self.config_dir, path)
+            if not src or not src.exists(): continue
+            
+            # Destination path: dest_folder / original_filename
+            dest = dest_folder / src.name
+            
+            if dest.exists():
+                _LOGGER.warning("Move skipped: %s already exists in %s", src.name, destination)
+                continue
+
+            try:
+                await self.hass.async_add_executor_job(src.rename, dest)
+            except Exception as e:
+                _LOGGER.error("Error moving %s to %s: %s", path, destination, e)
+
+        self._fire_update("move_multi")
+        return json_response({"success": True})
 
     async def copy(self, source: str, destination: str) -> web.Response:
         """Copy a file or folder."""
