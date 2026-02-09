@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/soulripper13/blueprint-studio.svg)](https://github.com/soulripper13/blueprint-studio/releases)
 [![License](https://img.shields.io/github/license/soulripper13/blueprint-studio.svg)](LICENSE)
-![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%2B-blue.svg)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.4.0%2B-blue.svg)
 ![Maintenance](https://img.shields.io/maintenance/yes/2026.svg)
 [![GitHub Stars](https://img.shields.io/github/stars/soulripper13/blueprint-studio?style=social)](https://github.com/soulripper13/blueprint-studio)
 [![GitHub Issues](https://img.shields.io/github/issues/soulripper13/blueprint-studio?style=flat-square)](https://github.com/soulripper13/blueprint-studio/issues)
