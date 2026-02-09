@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 from homeassistant.components import frontend
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -16,6 +15,18 @@ from .api import BlueprintStudioApiView
 from .websocket import async_register_websockets, async_stop_watcher
 
 _LOGGER = logging.getLogger(__name__)
+
+# Compatibility shim for StaticPathConfig (introduced in HA 2024.7)
+try:
+    from homeassistant.components.http import StaticPathConfig
+except ImportError:
+    # Fallback for HA < 2024.7
+    class StaticPathConfig:
+        """Shim for StaticPathConfig for older HA versions."""
+        def __init__(self, url_path: str, path: str, cache_headers: bool) -> None:
+            self.url_path = url_path
+            self.path = path
+            self.cache_headers = cache_headers
 
 # Storage version for credentials
 STORAGE_VERSION = 1
@@ -55,13 +66,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register WebSocket commands
     async_register_websockets(hass)
 
-    await hass.http.async_register_static_paths([
-        StaticPathConfig(
-            f"/local/{DOMAIN}",
-            str(hass.config.path("custom_components", DOMAIN)),
-            cache_headers=False,
-        )
-    ])
+    # Register Static Paths with fallback for different HA versions
+    url_path = f"/local/{DOMAIN}"
+    path = str(hass.config.path("custom_components", DOMAIN))
+    
+    if hasattr(hass.http, "async_register_static_paths"):
+        await hass.http.async_register_static_paths([
+            StaticPathConfig(
+                url_path=url_path,
+                path=path,
+                cache_headers=False,
+            )
+        ])
+    elif hasattr(hass.http, "register_static_path"):
+        hass.http.register_static_path(url_path, path, False)
+    else:
+        _LOGGER.error("Failed to register static path: No registration method found on hass.http")
 
     frontend.async_register_built_in_panel(
         hass,

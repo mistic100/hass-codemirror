@@ -3021,7 +3021,11 @@ export async function loadFile(path) {
     try {
       // Large File Protection
       const fileInfo = state.files.find(f => f.path === path);
-      if (fileInfo && fileInfo.size > 2 * 1024 * 1024) { // 2MB limit
+      const isText = isTextFile(path);
+      
+      // We only enforce the 2MB warning for TEXT files that would be loaded into the editor.
+      // Images and PDFs are handled as binary previews and are generally safe to load at larger sizes.
+      if (isText && fileInfo && fileInfo.size > 2 * 1024 * 1024) { // 2MB limit for TEXT files
           const confirmed = await showConfirmDialog({
               title: "Large File Detected",
               message: `This file is <b>${formatBytes(fileInfo.size)}</b>. Opening it may cause the browser to freeze.<br><br>Do you want to download it instead?`,
