@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.5] - 2026-02-09
+
+### 🛡️ Fixes
+*   **Home Assistant Compatibility**: Resolved `ImportError` for `StaticPathConfig` on Home Assistant versions older than 2024.7 (e.g., 2024.4.1).
+*   **Dynamic Resource Registration**: Implemented a robust fallback system that detects and uses the appropriate static path registration method (`async_register_static_paths` or `register_static_path`) at runtime.
+*   **Version Shim**: Added a `StaticPathConfig` compatibility shim to ensure stable performance across Home Assistant versions 2024.1 through 2026+.
+*   **Asset Preview**: Removed the 2MB size restriction/warning for images and PDFs, allowing them to open instantly as binary assets.
+
+
 ## [2.1.4] - 2026-02-08
 
 ### ✨ New Features
@@ -240,6 +249,7 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 ---
 
 ## Version History
+- **2.1.5** - Compatibility & Reliability Update
 - **2.1.4** - Quality of Life Update
 - **2.1.3** - AI Models Update
 - **2.1.2** - Visuals & Efficiency Update
@@ -257,7 +267,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.1.4...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.1.5...HEAD
+[2.1.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.5
 [2.1.4]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.4
 [2.1.3]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.3
 [2.1.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.2
