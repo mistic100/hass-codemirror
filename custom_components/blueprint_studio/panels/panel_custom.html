@@ -26,6 +26,11 @@
   <!-- GitHub Octicons (for Git features) -->
   <link href="https://unpkg.com/@primer/octicons@19.8.0/dist/octicons.css" rel="stylesheet">
 
+  <!-- Google Fonts for Editor -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
@@ -56,6 +61,11 @@
   <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
+  <!-- Marked.js for GitHub Flavored Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-gfm-heading-id@3.1.3/lib/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-mangle@1.1.7/lib/index.umd.js"></script>
+
   <style>
     /* Theme variables will be set dynamically via JavaScript */
     :root {
@@ -85,6 +95,11 @@
       --cm-theme: material-darker;
       --safe-area-top: env(safe-area-inset-top, 0px);
       --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Utility */
+    .hidden {
+      display: none !important;
     }
 
     /* Light theme override - will be applied by JS */
@@ -214,6 +229,18 @@
     .toolbar-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+
+    .toolbar-btn.small-btn {
+        min-width: 28px;
+        height: 28px;
+        padding: 0 4px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .rotated {
+        transform: rotate(90deg);
     }
 
     .toolbar-btn .material-icons {
@@ -374,16 +401,79 @@
 
     /* Sidebar */
     .sidebar {
-      width: 320px;
-      min-width: 200px;
+      width: 368px; /* 320px content + 48px bar */
+      min-width: 248px;
       max-width: 80vw;
       background: var(--bg-secondary);
       border-right: 1px solid var(--border-color);
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       flex-shrink: 0;
       z-index: 100;
       transition: transform 0.3s ease;
+    }
+
+    /* Activity Bar */
+    .activity-bar {
+        width: 48px;
+        background: var(--bg-tertiary);
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 8px;
+        flex-shrink: 0;
+        z-index: 2;
+    }
+
+    .activity-item {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s, background 0.2s;
+        border-left: 2px solid transparent;
+    }
+
+    .activity-item:hover {
+        opacity: 1;
+        background: var(--bg-hover);
+    }
+
+    .activity-item.active {
+        opacity: 1;
+        border-left-color: var(--accent-color);
+        background: var(--bg-secondary); /* Match sidebar content bg */
+    }
+
+    .activity-item .material-icons {
+        font-size: 24px;
+        color: var(--text-primary);
+    }
+
+    /* Sidebar Content Wrapper */
+    .sidebar-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+        background: var(--bg-secondary);
+    }
+
+    .sidebar-view {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .sidebar-view.hidden {
+        display: none;
     }
 
     .sidebar.hidden {
@@ -628,7 +718,20 @@
       100% { opacity: 0.4; }
     }
 
-    .search-input:focus {
+    /* Pulsing Animation - Used for all loading indicators */
+    @keyframes pulse-opacity {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+
+    .pulsing {
+        animation: pulse-opacity 1.5s infinite ease-in-out;
+        pointer-events: none; /* Prevent clicking while pulsing */
+        cursor: wait !important;
+    }
+
+    /* Loading States */
       border-color: var(--accent-color);
     }
 
@@ -816,6 +919,123 @@
       display: none;
     }
 
+    /* Lazy Loading - Loading spinner in tree */
+    .tree-chevron .loading-spinner {
+      animation: spin 1s linear infinite;
+      font-size: 16px;
+      color: var(--accent-color);
+    }
+
+    /* Lazy Loading - Loading placeholder item */
+    .loading-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      min-height: 40px;
+      pointer-events: none;
+    }
+
+    .loading-item .loading-spinner {
+      animation: spin 1s linear infinite;
+      font-size: 16px;
+      margin-right: 8px;
+      color: var(--accent-color);
+    }
+
+    /* Folder Navigation Bar */
+    .folder-navigation {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-height: 48px; /* Ensure consistent height */
+    }
+
+    .nav-back-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.1s;
+      flex-shrink: 0; /* Don't shrink */
+    }
+
+    .nav-back-btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--accent-color);
+    }
+
+    .nav-back-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .nav-back-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      border-color: var(--border-color);
+    }
+
+    .nav-back-btn .material-icons {
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      overflow-x: auto;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .breadcrumb-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+      color: var(--text-secondary);
+      transition: background 0.1s;
+    }
+
+    .breadcrumb-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .breadcrumb-item.active {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .breadcrumb-item .material-icons {
+      font-size: 16px;
+    }
+
+    .breadcrumb-separator {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin: 0 4px;
+    }
+
     .tree-action-btn {
       display: flex;
       align-items: center;
@@ -990,6 +1210,138 @@
       position: relative;
     }
 
+    /* CodeMirror wrapper positioning */
+    #codemirror-wrapper,
+    #codemirror-wrapper-secondary {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    /* Split View */
+    .split-container {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Editor Panes */
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .editor-pane.active {
+      box-shadow: inset 0 0 0 1px var(--accent-color);
+    }
+
+    .primary-pane {
+      flex: 1;
+    }
+
+    .secondary-pane {
+      flex: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Split Resize Handle */
+    .split-resize-handle {
+      background: var(--border-color);
+      cursor: col-resize;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+      transition: background 0.2s ease, width 0.1s ease, height 0.1s ease;
+    }
+
+    .split-resize-handle {
+      background: var(--border-color);
+      width: 4px;
+      cursor: col-resize;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+
+    .split-resize-handle:hover {
+      background: var(--accent-color);
+      width: 6px;
+    }
+
+    .split-resize-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 24px;
+      height: 24px;
+      background: var(--accent-color);
+      border: 2px solid var(--bg-primary);
+      border-radius: 50%;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .split-resize-handle:hover .split-resize-indicator {
+      display: block;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+    }
+
+    /* Tab Pane Badges */
+    .tab-pane-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      margin-left: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 3px;
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+      line-height: 1;
+    }
+
+    .tab-pane-badge.primary {
+      background: rgba(var(--accent-color-rgb, 99, 102, 241), 0.1);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+
+    .tab-pane-badge.secondary {
+      background: rgba(var(--warning-color-rgb, 245, 158, 11), 0.1);
+      border-color: var(--warning-color);
+      color: var(--warning-color);
+    }
+
+    .tab.active .tab-pane-badge {
+      font-weight: 700;
+      transform: scale(1.05);
+    }
+
+    /* Tab drag and drop */
+    .tab.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
+      transition: all 0.2s ease;
+    }
+
+    .tab.drop-target {
+      border-left: 2px solid var(--accent-color);
+    }
+
     /* Asset Preview */
     .asset-preview {
         position: absolute;
@@ -1100,6 +1452,97 @@
         border-left: 0.25em solid var(--border-color);
         margin-bottom: 16px;
     }
+
+    /* GitHub-style tables */
+    .markdown-body table {
+        border-spacing: 0;
+        border-collapse: collapse;
+        display: block;
+        width: max-content;
+        max-width: 100%;
+        overflow: auto;
+        margin-bottom: 16px;
+    }
+    .markdown-body table tr {
+        background-color: var(--bg-primary);
+        border-top: 1px solid var(--border-color);
+    }
+    .markdown-body table tr:nth-child(2n) {
+        background-color: var(--bg-secondary);
+    }
+    .markdown-body table th,
+    .markdown-body table td {
+        padding: 6px 13px;
+        border: 1px solid var(--border-color);
+    }
+    .markdown-body table th {
+        font-weight: 600;
+        background-color: var(--bg-secondary);
+    }
+
+    /* Task lists */
+    .markdown-body input[type="checkbox"] {
+        margin: 0 0.5em 0 0;
+        vertical-align: middle;
+    }
+    .markdown-body ul.contains-task-list {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .markdown-body .task-list-item {
+        list-style-type: none;
+    }
+    .markdown-body .task-list-item input {
+        margin: 0 0.2em 0.25em -1.6em;
+        vertical-align: middle;
+    }
+
+    /* Horizontal rules */
+    .markdown-body hr {
+        height: 0.25em;
+        padding: 0;
+        margin: 24px 0;
+        background-color: var(--border-color);
+        border: 0;
+    }
+
+    /* Links */
+    .markdown-body a {
+        color: var(--accent-color);
+        text-decoration: none;
+    }
+    .markdown-body a:hover {
+        text-decoration: underline;
+    }
+
+    /* Strikethrough */
+    .markdown-body del {
+        text-decoration: line-through;
+        opacity: 0.7;
+    }
+
+    /* Images */
+    .markdown-body img {
+        max-width: 100%;
+        box-sizing: content-box;
+        background-color: var(--bg-primary);
+        border-radius: 6px;
+    }
+
+    /* Code blocks with language labels */
+    .markdown-body pre.code-block {
+        position: relative;
+    }
+    .markdown-body pre.code-block::before {
+        content: attr(data-language);
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 0.75em;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+
 
     .CodeMirror {
       height: 100% !important;
@@ -1219,19 +1662,24 @@
     .CodeMirror-hints {
       background: var(--modal-bg) !important;
       border: 1px solid var(--border-color) !important;
-      border-radius: 6px !important;
-      box-shadow: 0 4px 16px var(--shadow-color) !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif !important;
       font-size: 13px !important;
-      max-height: 300px !important;
+      max-height: 200px !important;
+      max-width: 400px !important;
       overflow-y: auto !important;
+      opacity: 0.98 !important;
     }
 
     .CodeMirror-hint {
       color: var(--text-primary) !important;
-      padding: 6px 12px !important;
-      border-radius: 4px !important;
-      margin: 2px 4px !important;
+      padding: 4px 10px !important;
+      border-radius: 3px !important;
+      margin: 1px 2px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     .CodeMirror-hint-active {
@@ -1244,17 +1692,20 @@
     }
 
     .ha-hint-type {
-      opacity: 0.6;
+      opacity: 0.5;
       font-size: 11px;
-      margin-left: 8px;
+      margin-left: 6px;
       font-style: italic;
     }
 
     .ha-hint-description {
-      opacity: 0.7;
+      opacity: 0.6;
       font-size: 11px;
       display: block;
-      margin-top: 2px;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Home Assistant YAML syntax highlighting */
@@ -1477,6 +1928,62 @@
 
     .status-spacer {
       flex: 1;
+    }
+
+    /* Tab Size Picker */
+    .tab-size-picker {
+      position: fixed;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      min-width: 200px;
+      z-index: 10001;
+      overflow: hidden;
+    }
+
+    .picker-header {
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      background: var(--bg-hover);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .picker-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .picker-option:hover {
+      background: var(--bg-hover);
+    }
+
+    .picker-option .material-icons {
+      font-size: 16px;
+      width: 16px;
+      color: var(--accent-color);
+    }
+
+    .picker-option span:last-child {
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .picker-divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 4px 0;
+    }
+
+    .picker-toggle {
+      border-top: 1px solid var(--border-color);
     }
 
     /* Modal */
@@ -2140,6 +2647,41 @@
       position: relative;
     }
 
+    .cm-whitespace-indent-start, .cm-whitespace-indent-end {
+      position: relative;
+    }
+
+    /* The line part of the arrow */
+    .cm-whitespace-indent-start::before {
+      content: "";
+      position: absolute;
+      left: 20%;
+      right: -50%; /* Span across into the next span */
+      top: 50%;
+      height: 1px;
+      background: var(--text-muted);
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* The arrowhead part */
+    .cm-whitespace-indent-end::after {
+      content: "";
+      position: absolute;
+      right: 15%;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 2.5px solid transparent;
+      border-bottom: 2.5px solid transparent;
+      border-left: 3.5px solid var(--text-muted);
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 2;
+    }
+
     /* Whitespace Visualization */
     .cm-whitespace-space {
       background-image: radial-gradient(circle, var(--text-muted) 1.5px, transparent 1.5px);
@@ -2247,7 +2789,12 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Pulsing Animation for Git/Gitea buttons */
+    @keyframes spin-centered {
+      from { transform: translateY(-50%) rotate(0deg); }
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    /* Pulsing Animation - Used for all loading indicators */
     @keyframes pulse-opacity {
         0% { opacity: 1; }
         50% { opacity: 0.5; }
@@ -2264,30 +2811,26 @@
       animation: spin 1s linear infinite;
     }
 
+    .spinning-centered {
+      animation: spin-centered 1s linear infinite;
+    }
+
     /* Loading States */
     .toolbar-btn.loading {
       position: relative;
-      color: transparent !important;
       pointer-events: none;
+      animation: pulse-opacity 1.5s infinite ease-in-out;
+      cursor: wait !important;
+      /* Reset generic .loading class properties to prevent jumping */
+      top: auto;
+      left: auto;
+      transform: none;
     }
 
+    /* Prevent generic .loading spinner from appearing */
     .toolbar-btn.loading::after {
-      content: "";
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      top: 50%;
-      left: 50%;
-      margin-left: -8px;
-      margin-top: -8px;
-      border: 2px solid var(--text-secondary);
-      border-top-color: var(--accent-color);
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-
-    .toolbar-btn.loading .material-icons {
-      opacity: 0;
+      content: none;
+      display: none;
     }
 
     /* Global Loading Overlay */
@@ -2650,6 +3193,30 @@
 
     /* Mobile shortcuts overlay */
     @media (max-width: 768px) {
+      /* Prevent status bar from wrapping on mobile */
+      .status-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+      }
+
+      .status-bar::-webkit-scrollbar {
+        display: none; /* Chrome, Safari */
+      }
+
+      .status-item {
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 0 6px; /* Slightly smaller padding on mobile */
+        font-size: 11px; /* Slightly smaller font */
+      }
+
+      .status-spacer {
+        min-width: 8px; /* Ensure spacer doesn't collapse */
+      }
+
       .shortcuts-modal {
         width: 95%;
         max-height: 90vh;
@@ -2990,7 +3557,64 @@
       font-size: 13px;
     }
 
-    /* Git Settings Modal */
+    /* ─── SFTP Panel ─────────────────────────────────────────────────────── */
+    .sftp-panel {
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      min-height: 0;
+      max-height: none;
+    }
+    .sftp-panel-body {
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: 300px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sftp-resize-handle {
+      height: 5px;
+      cursor: row-resize;
+      background: var(--border-color);
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .sftp-resize-handle:hover {
+      background: var(--accent-color);
+    }
+    .sftp-connection-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      user-select: none;
+    }
+    .sftp-connection-item:hover { background: var(--bg-hover); }
+    .sftp-connection-item.active { color: var(--accent-color); }
+    .sftp-conn-label { font-weight: 500; }
+    .sftp-connection-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .sftp-connection-item:hover .sftp-connection-actions { opacity: 1; }
+    .sftp-breadcrumb {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .sftp-crumb:hover { color: var(--accent-color); text-decoration: underline; }
+    /* #sftp-file-tree reuses .tree-item / .tree-icon / .tree-name from the local tree */
+    /* Connection / Edit dialog — reuses standard .modal-overlay / .modal classes */
+    /* ─────────────────────────────────────────────────────────────────────── */
     .git-settings-content {
       display: flex;
       flex-direction: column;
@@ -3422,7 +4046,7 @@
       <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>
         <span class="material-icons">redo</span>
       </button>
-      <button class="toolbar-btn" id="btn-format" title="Format Code (Shift+Alt+F)" style="display: none;">
+      <button class="toolbar-btn" id="btn-format" title="Format Code (Shift+Alt+F)">
         <span class="material-icons">format_align_left</span>
       </button>
     </div>
@@ -3430,6 +4054,15 @@
     <div class="toolbar-group">
       <button class="toolbar-btn" id="btn-search" title="Search (Ctrl+F)">
         <span class="material-icons">search</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group" id="group-split-view">
+      <button class="toolbar-btn" id="btn-split-vertical" title="Split Editor (Cmd+\)">
+        <span class="material-icons">vertical_split</span>
+      </button>
+      <button class="toolbar-btn" id="btn-split-close" title="Close Split View" style="display: none;">
+        <span class="material-icons">close_fullscreen</span>
       </button>
     </div>
 
@@ -3553,7 +4186,23 @@
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">
+      <!-- Activity Bar -->
+      <div class="activity-bar">
+          <div class="activity-item active" id="activity-explorer" title="Explorer">
+              <span class="material-icons">folder_open</span>
+          </div>
+          <div class="activity-item" id="activity-search" title="Search">
+              <span class="material-icons">search</span>
+          </div>
+          <div style="flex: 1"></div>
+          <div class="activity-item" id="btn-close-sidebar-bar" title="Close Sidebar">
+            <span class="material-icons">chevron_left</span>
+          </div>
+      </div>
+
+      <div class="sidebar-content">
+        <div id="view-explorer" class="sidebar-view">
+          <div class="sidebar-header">
         <span>Explorer</span>
         <div class="sidebar-header-actions">
           <button class="sidebar-header-btn" id="btn-new-file-sidebar" title="New File">
@@ -3568,16 +4217,13 @@
           <button class="sidebar-header-btn" id="btn-toggle-select" title="Select Files">
             <span class="material-icons">checklist</span>
           </button>
-          <button class="sidebar-header-btn" id="btn-toggle-all" title="Expand All">
-            <span class="material-icons">unfold_more</span>
-          </button>
           <button class="sidebar-header-btn" id="btn-close-sidebar" title="Close">
             <span class="material-icons">close</span>
           </button>
         </div>
       </div>
       <div class="search-container" style="display: flex; gap: 8px;">
-        <input type="text" class="search-input" id="file-search" placeholder="Search files..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 1;">
+        <input type="text" class="search-input" id="file-search" placeholder="Search all files..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 1;">
         <button id="btn-content-search" title="Match File Content" style="width: 32px; height: 32px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
             <span class="material-icons" style="font-size: 18px;">text_snippet</span>
         </button>
@@ -3673,80 +4319,236 @@
         </div>
       </div>
 
-      <div id="recent-files-panel" class="recent-files-panel"></div>
-      <div class="favorites-panel" id="favorites-panel"></div>
+      <!-- Favorites Panel -->
+      <div class="favorites-panel" id="favorites-panel" style="display: none;">
+        <div class="favorites-header">FAVORITES</div>
+        <div class="file-tree" id="favorites-tree" style="flex: none; min-height: 0; max-height: 200px;"></div>
+      </div>
+
+      <!-- Recent Files Panel -->
+      <div class="recent-files-panel" id="recent-files-panel" style="display: none;">
+        <div class="recent-files-header">RECENT</div>
+        <div class="recent-files-list" id="recent-files-list"></div>
+      </div>
+
+      <!-- Folder Navigation Bar -->
+      <div class="folder-navigation" id="folder-navigation">
+        <button class="nav-back-btn" id="btn-nav-back" title="Go back (Alt+Left)" disabled>
+          <span class="material-icons">arrow_back</span>
+        </button>
+        <div class="breadcrumb" id="breadcrumb">
+          <span class="breadcrumb-item breadcrumb-home" data-path="">
+            <span class="material-icons">home</span>
+            <span class="breadcrumb-text">Home</span>
+          </span>
+        </div>
+        <button class="nav-back-btn" id="btn-file-tree-collapse" title="Collapse file tree" style="margin-left:auto;flex-shrink:0">
+          <span class="material-icons">expand_less</span>
+        </button>
+      </div>
+
       <div class="file-tree" id="file-tree"></div>
-    </div>
+
+      <!-- Resize handle between local tree and SFTP panel -->
+      <div class="sftp-resize-handle" id="sftp-resize-handle" title="Drag to resize SFTP panel"></div>
+
+      <!-- SFTP Panel -->
+      <div class="git-panel sftp-panel" id="sftp-panel">
+        <div class="git-panel-header">
+          <div class="git-panel-title">
+            <span class="material-icons" style="font-size:16px;margin-right:6px;color:var(--accent-color)">folder_shared</span>
+            <span>SFTP</span>
+          </div>
+          <div class="git-panel-actions">
+            <button class="git-panel-btn" id="btn-sftp-add" title="Add SFTP Connection">
+              <span class="material-icons" style="font-size:18px">add</span>
+            </button>
+            <button class="git-panel-btn" id="btn-sftp-collapse" title="Collapse SFTP Panel">
+              <span class="material-icons">expand_less</span>
+            </button>
+          </div>
+        </div>
+        <div class="sftp-panel-body" id="sftp-panel-body">
+          <div id="sftp-connections-list"></div>
+          <div id="sftp-breadcrumb" class="sftp-breadcrumb" style="display:none"></div>
+          <div id="sftp-file-tree" style="display:none"></div>
+        </div>
+      </div>
+
+      </div> <!-- End View Explorer -->
+
+      <!-- SEARCH VIEW -->
+      <div id="view-search" class="sidebar-view hidden" style="display: none;">
+          <div class="sidebar-header">
+            <span>Search</span>
+            <div class="sidebar-header-actions">
+                <button class="sidebar-header-btn" id="btn-refresh-search" title="Refresh">
+                    <span class="material-icons">refresh</span>
+                </button>
+                <button class="sidebar-header-btn" id="btn-collapse-search" title="Collapse All">
+                    <span class="material-icons">unfold_less</span>
+                </button>
+            </div>
+          </div>
+          <div class="search-container" style="padding: 12px; border-bottom: 1px solid var(--border-color);">
+              <!-- Search Row -->
+              <div style="position: relative; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+                  <span class="material-icons" id="btn-toggle-replace-all" style="font-size: 18px; cursor: pointer; color: var(--text-secondary); transition: transform 0.2s;">chevron_right</span>
+                  <div style="position: relative; flex: 1;">
+                      <input type="text" class="search-input" id="global-search-input" placeholder="Search" autocomplete="off" style="width: 100%; padding-right: 30px;">
+                      <span id="global-search-loading" class="material-icons spinning-centered" style="position: absolute; right: 8px; top: 50%; font-size: 16px; color: var(--text-secondary); display: none;">sync</span>
+                  </div>
+                  <div style="display: flex; gap: 2px;">
+                      <button class="toolbar-btn small-btn" id="btn-match-case" title="Match Case">Aa</button>
+                      <button class="toolbar-btn small-btn" id="btn-match-word" title="Match Whole Word">ab</button>
+                      <button class="toolbar-btn small-btn" id="btn-use-regex" title="Use Regular Expression">.*</button>
+                  </div>
+              </div>
+
+              <!-- Replace Row (Initially Hidden) -->
+              <div id="global-replace-container" style="display: none; margin-bottom: 8px; margin-left: 22px; align-items: center; gap: 4px;">
+                  <input type="text" class="search-input" id="global-replace-input" placeholder="Replace" autocomplete="off" style="flex: 1;">
+                  <button class="toolbar-btn" id="btn-global-replace-all" title="Replace All" style="width: 32px; height: 32px;">
+                      <span class="material-icons" style="font-size: 18px;">find_replace</span>
+                  </button>
+              </div>
+
+              <!-- Patterns Row Toggle -->
+              <div style="margin-left: 22px; margin-bottom: 4px;">
+                  <span id="btn-toggle-patterns" style="font-size: 11px; cursor: pointer; color: var(--accent-color); font-weight: 600;">Files to include / exclude</span>
+              </div>
+
+              <!-- Patterns Container (Initially Hidden) -->
+              <div id="global-patterns-container" style="display: none; margin-left: 22px; flex-direction: column; gap: 4px;">
+                  <input type="text" class="search-input" id="global-search-include" placeholder="files to include (e.g. *.yaml)" autocomplete="off" style="font-size: 12px; padding: 4px 8px;">
+                  <input type="text" class="search-input" id="global-search-exclude" placeholder="files to exclude (e.g. !secrets.yaml)" autocomplete="off" style="font-size: 12px; padding: 4px 8px;">
+              </div>
+          </div>
+          <div id="global-search-results" style="flex: 1; overflow-y: auto; padding: 0;">
+              <div class="search-empty-state" style="padding: 40px 20px; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center;">
+                  <span class="material-icons" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;">search</span>
+                  <p style="margin: 0; font-size: 14px;">Type to search across all files</p>
+              </div>
+          </div>
+      </div>
+    </div> <!-- End Sidebar Content -->
+  </div> <!-- End Sidebar -->
 
     <!-- Resize handle -->
     <div class="resize-handle" id="resize-handle"></div>
 
     <!-- Editor area -->
     <div class="editor-area">
-      <div class="tabs-container" id="tabs-container"></div>
-      <div class="editor-container" id="editor-container">
-        <div class="asset-preview" id="asset-preview"></div>
-        <div class="search-widget" id="search-widget">
-            <div class="search-row">
-                <span class="material-icons search-toggle-icon" id="search-toggle-replace" title="Toggle Replace">expand_more</span>
-                <div class="search-input-wrapper">
-                    <input type="text" id="search-find-input" placeholder="Find">
-                    <span id="search-results-count" class="search-count"></span>
+      <div class="split-container" id="split-container">
+        <!-- Primary Pane -->
+        <div class="editor-pane primary-pane" id="primary-pane" data-pane="primary">
+          <div class="tabs-container primary-tabs-container" id="primary-tabs-container"></div>
+          <div class="editor-container" id="editor-container">
+            <div class="asset-preview" id="asset-preview"></div>
+            <div class="search-widget" id="search-widget">
+                <div class="search-row">
+                    <span class="material-icons search-toggle-icon" id="search-toggle-replace" title="Toggle Replace">expand_more</span>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="search-find-input" placeholder="Find">
+                        <span id="search-results-count" class="search-count"></span>
+                    </div>
+                    <div class="search-actions">
+                        <button id="search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
+                        <button id="search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
+                        <button id="search-close" title="Close (Esc)"><span class="material-icons">close</span></button>
+                    </div>
                 </div>
-                <div class="search-actions">
-                    <button id="search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
-                    <button id="search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
-                    <button id="search-close" title="Close (Esc)"><span class="material-icons">close</span></button>
+                <div class="search-row replace-row" id="search-replace-row" style="display: none;">
+                    <span class="material-icons search-spacer"></span>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="search-replace-input" placeholder="Replace">
+                    </div>
+                    <div class="search-actions">
+                        <button id="search-replace" title="Replace">
+                            <span class="material-icons" style="font-size: 16px;">find_replace</span>
+                        </button>
+                        <button id="search-replace-all" title="Replace All">
+                            <span class="material-icons" style="font-size: 16px;">done_all</span>
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="search-row replace-row" id="search-replace-row" style="display: none;">
-                <span class="material-icons search-spacer"></span>
-                <div class="search-input-wrapper">
-                    <input type="text" id="search-replace-input" placeholder="Replace">
+
+            <div class="welcome-screen" id="welcome-screen">
+              <span class="material-icons">edit_note</span>
+              <h2>Blueprint Studio</h2>
+                    <p>Get started by opening an existing file, or:</p>
+                    <div class="welcome-actions">
+                        <button class="btn-primary" id="btn-welcome-new-file">
+                            <span class="material-icons">add_circle_outline</span>
+                            Create New File
+                        </button>
+                        <button class="btn-secondary" id="btn-welcome-upload-file">
+                            <span class="material-icons">upload_file</span>
+                            Upload File
+                        </button>
+                    </div>
+                    <!-- Existing shortcuts section -->
+                    <div class="welcome-shortcuts">
+                <h3>Keyboard Shortcuts</h3>
+                <div class="shortcut-item">
+                  <span class="shortcut-key">Ctrl+S</span>
+                  <span>Save file</span>
                 </div>
-                <div class="search-actions">
-                    <button id="search-replace" title="Replace">
-                        <span class="material-icons" style="font-size: 16px;">find_replace</span>
-                    </button>
-                    <button id="search-replace-all" title="Replace All">
-                        <span class="material-icons" style="font-size: 16px;">done_all</span>
-                    </button>
+                <div class="shortcut-item">
+                  <span class="shortcut-key">Ctrl+F</span>
+                  <span>Search</span>
                 </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-key">Ctrl+G</span>
+                  <span>Go to line</span>
+                </div>
+                <div class="shortcut-item">
+                  <span class="shortcut-key">Ctrl+/</span>
+                  <span>Toggle comment</span>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
 
-        <div class="welcome-screen" id="welcome-screen">
-          <span class="material-icons">edit_note</span>
-          <h2>Blueprint Studio</h2>
-                <p>Get started by opening an existing file, or:</p>
-                <div class="welcome-actions">
-                    <button class="btn-primary" id="btn-welcome-new-file">
-                        <span class="material-icons">add_circle_outline</span>
-                        Create New File
-                    </button>
-                    <button class="btn-secondary" id="btn-welcome-upload-file">
-                        <span class="material-icons">upload_file</span>
-                        Upload File
-                    </button>
+        <!-- Resize Handle -->
+        <div class="split-resize-handle" id="split-resize-handle" style="display: none;">
+          <div class="split-resize-indicator"></div>
+        </div>
+
+        <!-- Secondary Pane -->
+        <div class="editor-pane secondary-pane" id="secondary-pane" data-pane="secondary" style="display: none;">
+          <div class="tabs-container secondary-tabs-container" id="secondary-tabs-container"></div>
+          <div class="editor-container" id="secondary-editor-container">
+            <div class="asset-preview" id="secondary-asset-preview"></div>
+            <div class="search-widget" id="secondary-search-widget" style="display: none;">
+                <div class="search-row">
+                    <span class="material-icons search-toggle-icon" id="secondary-search-toggle-replace" title="Toggle Replace">expand_more</span>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="secondary-search-find-input" placeholder="Find">
+                        <span id="secondary-search-results-count" class="search-count"></span>
+                    </div>
+                    <div class="search-actions">
+                        <button id="secondary-search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
+                        <button id="secondary-search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
+                        <button id="secondary-search-close" title="Close (Esc)"><span class="material-icons">close</span></button>
+                    </div>
                 </div>
-                <!-- Existing shortcuts section -->
-                <div class="welcome-shortcuts">
-            <h3>Keyboard Shortcuts</h3>
-            <div class="shortcut-item">
-              <span class="shortcut-key">Ctrl+S</span>
-              <span>Save file</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-key">Ctrl+F</span>
-              <span>Search</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-key">Ctrl+G</span>
-              <span>Go to line</span>
-            </div>
-            <div class="shortcut-item">
-              <span class="shortcut-key">Ctrl+/</span>
-              <span>Toggle comment</span>
+                <div class="search-row replace-row" id="secondary-search-replace-row" style="display: none;">
+                    <span class="material-icons search-spacer"></span>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="secondary-search-replace-input" placeholder="Replace">
+                    </div>
+                    <div class="search-actions">
+                        <button id="secondary-search-replace" title="Replace">
+                            <span class="material-icons" style="font-size: 16px;">find_replace</span>
+                        </button>
+                        <button id="secondary-search-replace-all" title="Replace All">
+                            <span class="material-icons" style="font-size: 16px;">done_all</span>
+                        </button>
+                    </div>
+                </div>
             </div>
           </div>
         </div>
@@ -3903,6 +4705,10 @@
       <span class="material-icons">edit</span>
       Rename
     </div>
+    <div class="context-menu-item" data-action="move">
+      <span class="material-icons">drive_file_move</span>
+      Move
+    </div>
     <div class="context-menu-item" data-action="copy">
       <span class="material-icons">content_copy</span>
       Copy
@@ -3923,6 +4729,19 @@
   </div>
 
   <div class="context-menu" id="tab-context-menu">
+    <div class="context-menu-item" id="tab-menu-move-to-left" data-action="move_to_left" style="display: none;">
+      <span class="material-icons">arrow_back</span>
+      Move to Left Pane
+    </div>
+    <div class="context-menu-item" id="tab-menu-move-to-right" data-action="move_to_right" style="display: none;">
+      <span class="material-icons">arrow_forward</span>
+      Move to Right Pane
+    </div>
+    <div class="context-menu-item" id="tab-menu-open-right" data-action="open_to_right" style="display: none;">
+      <span class="material-icons">vertical_split</span>
+      Open to the Right
+    </div>
+    <div class="context-menu-divider" id="tab-menu-split-divider" style="display: none;"></div>
     <div class="context-menu-item" data-action="close_others">
       <span class="material-icons">close_fullscreen</span>
       Close Others
@@ -4002,7 +4821,7 @@
         </div>
         
         <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 12px;">
-          Blueprint Studio <span id="app-version-display">v2.1.2</span> • Soulripper13
+          Blueprint Studio <span id="app-version-display">v2.2.0</span> • Soulripper13
         </div>
       </div>
     </div>
@@ -4027,10 +4846,6 @@
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></span>
             <span class="shortcut-desc">Save all files</span>
-          </div>
-          <div class="shortcut-item">
-            <span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>W</kbd></span>
-            <span class="shortcut-desc">Close current tab</span>
           </div>
           <div class="shortcut-item">
             <span class="shortcut-keys">Right-Click</span>
@@ -4061,6 +4876,10 @@
             <span class="shortcut-desc">Find and replace</span>
           </div>
           <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd</kbd> + <kbd>Option</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Find and replace (macOS alternative)</span>
+          </div>
+          <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>G</kbd></span>
             <span class="shortcut-desc">Jump to line</span>
           </div>
@@ -4069,16 +4888,40 @@
             <span class="shortcut-desc">Toggle comment</span>
           </div>
           <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>D</kbd></span>
+            <span class="shortcut-desc">Select next occurrence (multi-cursor)</span>
+          </div>
+          <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
             <span class="shortcut-desc">Autocomplete</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Tab</kbd></span>
+            <span class="shortcut-desc">Indent selection or insert spaces</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Tab</kbd></span>
+            <span class="shortcut-desc">Unindent selection</span>
           </div>
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
             <span class="shortcut-desc">Move line up/down</span>
           </div>
           <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Cmd/Ctrl</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Move line up/down (alternative)</span>
+          </div>
+          <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
             <span class="shortcut-desc">Duplicate line up/down</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd/Ctrl</kbd> + <kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Duplicate line up/down (alternative)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Format code</span>
           </div>
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd></span>
@@ -4109,22 +4952,46 @@
             <span class="shortcut-desc">Toggle Sidebar</span>
           </div>
           <div class="shortcut-item">
-            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>[</kbd>/<kbd>]</kbd></span>
-            <span class="shortcut-desc">Prev/Next Tab</span>
+            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>]</kbd></span>
+            <span class="shortcut-desc">Next Tab</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>[</kbd></span>
+            <span class="shortcut-desc">Previous Tab</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Alt/Option</kbd> + <kbd>W</kbd></span>
+            <span class="shortcut-desc">Close Tab</span>
           </div>
           <div class="shortcut-item">
             <span class="shortcut-keys"><kbd>Esc</kbd></span>
             <span class="shortcut-desc">Close modal/menu or hide sidebar (mobile)</span>
           </div>
           <div class="shortcut-item">
-            <span class="shortcut-keys"><kbd>?</kbd></span>
+            <span class="shortcut-keys"><kbd>F1</kbd></span>
             <span class="shortcut-desc">Show this keyboard shortcuts help</span>
+          </div>
+        </div>
+
+        <div class="shortcuts-section">
+          <h3>Split View</h3>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd/Ctrl</kbd> + <kbd>\</kbd></span>
+            <span class="shortcut-desc">Toggle Split Editor</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd/Ctrl</kbd> + <kbd>1</kbd></span>
+            <span class="shortcut-desc">Focus Primary Pane</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd/Ctrl</kbd> + <kbd>2</kbd></span>
+            <span class="shortcut-desc">Focus Secondary Pane</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=2.1.57"></script>
+      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=3.6.1-sftp"></script>
   </body>
   </html>

@@ -2,7 +2,7 @@
 
 DOMAIN = "blueprint_studio"
 NAME = "Blueprint Studio"
-VERSION = "2.1.5"
+VERSION = "2.2.0"
 
 # File extensions allowed for editing
 ALLOWED_EXTENSIONS = {
@@ -13,13 +13,15 @@ ALLOWED_EXTENSIONS = {
     ".lock",
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp", ".ico",
     ".pdf", ".zip",
+    ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v",
 }
 
 # Binary file extensions that should be base64 encoded
 BINARY_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip",
     ".db", ".sqlite",
-    ".der", ".bin", ".ota", ".tar", ".gz"
+    ".der", ".bin", ".ota", ".tar", ".gz",
+    ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v",
 }
 
 # Specific filenames allowed even if they don't have an extension

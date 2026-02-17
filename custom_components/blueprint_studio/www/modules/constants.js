@@ -1,11 +1,94 @@
 /**
- * Constants and Configuration for Blueprint Studio
+ * ============================================================================
+ * CONSTANTS MODULE
+ * ============================================================================
+ *
+ * PURPOSE:
+ * Centralized configuration and constant values used throughout Blueprint
+ * Studio. Modify these values to change app-wide behavior without hunting
+ * through code.
+ *
+ * EXPORTED CONSTANTS:
+ * - API_BASE: Base URL for API endpoints
+ * - MOBILE_BREAKPOINT: Screen width for mobile detection (px)
+ * - STORAGE_KEY: LocalStorage key for settings
+ * - MAX_RECENT_FILES: Maximum recent files to track
+ * - TEXT_FILE_EXTENSIONS: Set of text file extensions
+ * - BINARY_FILE_EXTENSIONS: Set of binary file extensions
+ *
+ * HOW TO ADD NEW FEATURES:
+ *
+ * 1. Adding a new constant:
+ *    - Export as const
+ *    - Use UPPER_SNAKE_CASE naming
+ *    - Group with related constants
+ *    - Document purpose in comment
+ *    - Example: export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+ *
+ * 2. Adding a new file extension:
+ *    - Add to TEXT_FILE_EXTENSIONS for text files
+ *    - Add to BINARY_FILE_EXTENSIONS for binary files
+ *    - Update utils.js isTextFile() if special handling needed
+ *
+ * 3. Changing API endpoint:
+ *    - Modify API_BASE constant
+ *    - All API calls will automatically use new endpoint
+ *    - Coordinate with backend server changes
+ *
+ * 4. Adjusting UI thresholds:
+ *    - Modify MOBILE_BREAKPOINT for mobile detection
+ *    - Modify MAX_RECENT_FILES for recent files limit
+ *    - Changes apply app-wide immediately
+ *
+ * INTEGRATION POINTS:
+ * - api.js: Uses API_BASE
+ * - state.js: Uses MOBILE_BREAKPOINT
+ * - settings.js: Uses STORAGE_KEY
+ * - utils.js: Uses file extension sets
+ * - recent-files.js: Uses MAX_RECENT_FILES
+ *
+ * FILE EXTENSION SETS:
+ * - TEXT_FILE_EXTENSIONS: Files that can be edited as text
+ * - BINARY_FILE_EXTENSIONS: Files that need special preview
+ * - Used by isTextFile() in utils.js
+ * - Determines editor vs preview mode
+ *
+ * ARCHITECTURE NOTES:
+ * - Immutable constants - never modify at runtime
+ * - Single source of truth for configuration
+ * - Changes here affect entire application
+ * - No logic in this file - just data
+ *
+ * COMMON PATTERNS:
+ * - Import specific constant: import { API_BASE } from './constants.js'
+ * - Check file type: TEXT_FILE_EXTENSIONS.has(extension)
+ * - API calls: fetchWithAuth(API_BASE, options)
+ * - Mobile check: window.innerWidth <= MOBILE_BREAKPOINT
+ *
+ * CONFIGURATION GUIDELINES:
+ * - Keep constants simple and atomic
+ * - Don't add computed values (use getters instead)
+ * - Don't add state here (use state.js)
+ * - Document units (px, ms, bytes, etc.)
+ * - Use sensible defaults
+ *
+ * ============================================================================
  */
 
 export const API_BASE = "/api/blueprint_studio";
 export const MOBILE_BREAKPOINT = 768;
 export const STORAGE_KEY = "blueprint_studio_settings";
 export const MAX_RECENT_FILES = 10;
+
+// File Size Limits
+export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB - Hard limit to prevent OOM crashes
+export const TEXT_FILE_WARNING_SIZE = 2 * 1024 * 1024; // 2MB - Warning for text files
+
+export const TEXT_FILE_EXTENSIONS = new Set([
+  "yaml", "yml", "json", "py", "js", "css", "html", "txt",
+  "md", "conf", "cfg", "ini", "sh", "log", "svg", "jinja", "jinja2", "j2",
+  "pem", "crt", "key", "cpp", "h", "gitignore", "lock"
+]);
 
 export const THEME_PRESETS = {
   dark: {

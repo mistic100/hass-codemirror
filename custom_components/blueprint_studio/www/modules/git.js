@@ -1,5 +1,101 @@
 /**
- * Git and Gitea management module for Blueprint Studio
+ * ============================================================================
+ * GIT & GITEA MODULE
+ * ============================================================================
+ *
+ * PURPOSE: Comprehensive Git and Gitea operations. Handles repository
+ * initialization, status checking, commits, push/pull, staging, diff viewing,
+ * and panel rendering for both GitHub and Gitea integrations.
+ *
+ * EXPORTED FUNCTIONS:
+ * Git Operations:
+ * - gitStatus(shouldFetch) - Get repository status
+ * - gitCommit(message) - Commit staged changes
+ * - gitPush() - Push to remote
+ * - gitPull() - Pull from remote
+ * - gitStage(files) - Stage files for commit
+ * - gitUnstage(files) - Unstage files
+ * - gitReset(files) - Discard changes
+ * - gitInit(skipConfirm) - Initialize repository
+ * - gitGetRemotes() - Get remote URLs
+ *
+ * Gitea Operations:
+ * - giteaStatus(shouldFetch) - Get Gitea status
+ * - giteaPull() - Pull from Gitea
+ *
+ * UI Functions:
+ * - updateGitPanel() - Render GitHub panel
+ * - updateGiteaPanel() - Render Gitea panel
+ * - showDiffModal(path) - Show file diff viewer
+ *
+ * Utility:
+ * - isGitEnabled() - Check if Git integration enabled
+ * - isGiteaEnabled() - Check if Gitea integration enabled
+ *
+ * HOW TO ADD FEATURES:
+ * 1. Add branch management:
+ *    - Create new branch: POST action=git_create_branch
+ *    - Switch branch: POST action=git_checkout
+ *    - Delete branch: POST action=git_delete_branch
+ *    - Update gitState.localBranches and renderBranchSelector()
+ *
+ * 2. Add merge/rebase support:
+ *    - Merge branch: POST action=git_merge
+ *    - Rebase: POST action=git_rebase
+ *    - Handle conflicts with conflict resolution UI
+ *
+ * 3. Add commit history browser:
+ *    - Fetch history: POST action=git_log
+ *    - Render commits in modal with diff preview
+ *    - Add commit search/filter
+ *
+ * 4. Add cherry-pick:
+ *    - Select commits from history
+ *    - Apply to current branch: POST action=git_cherry_pick
+ *
+ * 5. Add stash support:
+ *    - Stash changes: POST action=git_stash
+ *    - List stashes: POST action=git_stash_list
+ *    - Apply stash: POST action=git_stash_apply
+ *
+ * 6. Add blame view:
+ *    - For each line: POST action=git_blame with path
+ *    - Render blame info in gutter or tooltip
+ *
+ * INTEGRATION POINTS:
+ * - state.js: Uses gitState, giteaState for all Git data
+ * - api.js: fetchWithAuth for all Git operations
+ * - polling.js: Calls gitStatus/giteaStatus periodically
+ * - ui.js: showModal, showToast, showGlobalLoading for user feedback
+ * - utils.js: ensureDiffLibrariesLoaded for diff2html library
+ *
+ * COMMON PATTERNS:
+ * ```javascript
+ * // Check status and update UI
+ * await gitStatus(shouldFetch = true); // Fetches from remote
+ * updateGitPanel(); // Renders changes
+ *
+ * // Stage and commit workflow
+ * await gitStage(['automations/test.yaml']);
+ * await gitCommit('Add test automation');
+ * await gitPush();
+ *
+ * // Show diff for modified file
+ * await showDiffModal('scripts/example.yaml');
+ *
+ * // Initialize new repository
+ * const success = await gitInit(skipConfirm = false);
+ * if (success) await gitStatus();
+ * ```
+ *
+ * ARCHITECTURE NOTES:
+ * - Dual integration: Separate state objects for GitHub (gitState) and Gitea (giteaState)
+ * - Status tracking: ahead/behind commits, staged/unstaged files, branches
+ * - Panel rendering: Dynamic badges showing changes, ahead/behind indicators
+ * - Diff viewing: Uses CodeMirror MergeView with diff2html library
+ * - File grouping: Groups files by status (staged, modified, untracked)
+ * - Operations: All operations use POST requests to backend, then refresh status
+ * ============================================================================
  */
 import { state, elements, gitState, giteaState } from './state.js';
 import { API_BASE } from './constants.js';

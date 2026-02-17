@@ -5,18 +5,6 @@ import logging
 from pathlib import Path
 
 from homeassistant.components import frontend
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.storage import Store
-
-from .const import DOMAIN, NAME
-from .api import BlueprintStudioApiView
-from .websocket import async_register_websockets, async_stop_watcher
-
-_LOGGER = logging.getLogger(__name__)
-
-# Compatibility shim for StaticPathConfig (introduced in HA 2024.7)
 try:
     from homeassistant.components.http import StaticPathConfig
 except ImportError:
@@ -27,6 +15,17 @@ except ImportError:
             self.url_path = url_path
             self.path = path
             self.cache_headers = cache_headers
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.storage import Store
+
+from .const import DOMAIN, NAME
+from .api import BlueprintStudioApiView
+from .websocket import async_register_websockets, async_stop_watcher
+
+_LOGGER = logging.getLogger(__name__)
 
 # Storage version for credentials
 STORAGE_VERSION = 1
@@ -68,18 +67,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register Static Paths with fallback for different HA versions
     url_path = f"/local/{DOMAIN}"
-    path = str(hass.config.path("custom_components", DOMAIN))
+    path_on_disk = str(hass.config.path("custom_components", DOMAIN))
     
     if hasattr(hass.http, "async_register_static_paths"):
         await hass.http.async_register_static_paths([
             StaticPathConfig(
                 url_path=url_path,
-                path=path,
+                path=path_on_disk,
                 cache_headers=False,
             )
         ])
     elif hasattr(hass.http, "register_static_path"):
-        hass.http.register_static_path(url_path, path, False)
+        hass.http.register_static_path(url_path, path_on_disk, False)
     else:
         _LOGGER.error("Failed to register static path: No registration method found on hass.http")
 

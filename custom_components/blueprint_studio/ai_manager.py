@@ -838,7 +838,9 @@ class AIManager:
 
         return f"New {domain.title()} Automation"
 
-    async def query(self, query: str | None, current_file: str | None, file_content: str | None) -> web.Response:
+    async def query(self, query: str | None, current_file: str | None, file_content: str | None,
+                   ai_type: str | None = None, cloud_provider: str | None = None,
+                   ai_model: str | None = None) -> web.Response:
         """Process AI query with advanced natural language understanding."""
         try:
             if not query:
@@ -846,11 +848,31 @@ class AIManager:
 
             query_lower = query.lower()
             settings = self.data.get("settings", {})
-            provider = settings.get("aiProvider", "local")
-            model = settings.get("aiModel")
+
+            # Use provided ai_type from request, or get from settings
+            if not ai_type:
+                ai_type = settings.get("aiType")
+                if not ai_type:
+                    # Migrate from old aiProvider structure
+                    old_provider = settings.get("aiProvider", "local")
+                    if old_provider == "local":
+                        ai_type = "rule-based"
+                    elif old_provider in ["gemini", "openai", "claude"]:
+                        ai_type = "cloud"
+                        if not cloud_provider:
+                            cloud_provider = old_provider
+                    else:
+                        ai_type = "rule-based"
+
+            # Get cloud provider and model
+            if ai_type == "cloud":
+                if not cloud_provider:
+                    cloud_provider = settings.get("cloudProvider") or settings.get("aiProvider", "gemini")
+                if not ai_model:
+                    ai_model = settings.get("aiModel")
 
             # Cloud AI providers
-            if provider in ["gemini", "openai", "claude"]:
+            if ai_type == "cloud" and cloud_provider in ["gemini", "openai", "claude"]:
                 system = """You are the Blueprint Studio AI Copilot, a Senior Home Assistant Configuration Expert.
 
 CRITICAL RULES (2024+ Best Practices):
@@ -882,21 +904,21 @@ Example modern automation:
                 context = f"Current file:\n```yaml\n{file_content}\n```\n" if file_content else ""
                 prompt = f"{context}\nUser request: {query}"
 
-                if provider == "gemini":
+                if cloud_provider == "gemini":
                     key = settings.get("geminiApiKey")
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model or 'gemini-3-flash-preview'}:generateContent?key={key}"
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{ai_model or 'gemini-3-flash-preview'}:generateContent?key={key}"
                     async with aiohttp.ClientSession() as s:
                         async with s.post(url, json={"contents": [{"parts": [{"text": f"{system}\n\n{prompt}"}]}]}) as r:
                             if r.status == 200:
                                 res = await r.json()
                                 return json_response({"success": True, "response": res['candidates'][0]['content']['parts'][0]['text']})
                             return json_message(f"Gemini Error: {r.status}", status_code=r.status)
-                elif provider == "openai":
+                elif cloud_provider == "openai":
                     key = settings.get("openaiApiKey")
                     url = "https://api.openai.com/v1/chat/completions"
                     async with aiohttp.ClientSession() as s:
                         async with s.post(url, headers={"Authorization": f"Bearer {key}"}, json={
-                            "model": model or "gpt-5.2",
+                            "model": ai_model or "gpt-5.2",
                             "messages": [
                                 {"role": "system", "content": system},
                                 {"role": "user", "content": prompt}
@@ -906,7 +928,7 @@ Example modern automation:
                                 res = await r.json()
                                 return json_response({"success": True, "response": res['choices'][0]['message']['content']})
                             return json_message(f"OpenAI Error: {r.status}", status_code=r.status)
-                elif provider == "claude":
+                elif cloud_provider == "claude":
                     key = settings.get("claudeApiKey")
                     url = "https://api.anthropic.com/v1/messages"
                     async with aiohttp.ClientSession() as s:
@@ -915,7 +937,7 @@ Example modern automation:
                             "anthropic-version": "2023-06-01",
                             "content-type": "application/json"
                         }, json={
-                            "model": model or "claude-3-5-sonnet-20241022",
+                            "model": ai_model or "claude-3-5-sonnet-20241022",
                             "max_tokens": 4096,
                             "system": system,
                             "messages": [

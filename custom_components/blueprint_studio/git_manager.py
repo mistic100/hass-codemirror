@@ -356,7 +356,7 @@ class GitManager:
         """Create a new GitHub repository."""
         try:
             if not repo_name: return json_message("Repository name is required", status_code=400)
-            creds = self.data.get("credentials", {})
+            creds = self.data.get("github_credentials", {})
             if not creds or "token" not in creds: return json_message("Not authenticated.", status_code=401)
             token = base64.b64decode(creds["token"]).decode()
             async with aiohttp.ClientSession() as session:
@@ -382,7 +382,7 @@ class GitManager:
             match = re.search(r"github\.com[:/](.+?)/(.+?)(\.git)?$", url)
             if not match: return json_message(f"Could not parse GitHub owner/repo from URL", status_code=400)
             owner, repo = match.group(1), match.group(2)
-            creds = self.data.get("credentials", {})
+            creds = self.data.get("github_credentials", {})
             if not creds or "token" not in creds: return json_message("Not authenticated", status_code=401)
             token = base64.b64decode(creds["token"]).decode()
             api_url = f"https://api.github.com/repos/{owner}/{repo}"
@@ -522,7 +522,7 @@ class GitManager:
     async def github_star(self) -> web.Response:
         """Star the repository on behalf of the user."""
         try:
-            creds = self.data.get("credentials", {})
+            creds = self.data.get("github_credentials", {})
             if not creds or "token" not in creds: return json_message("Not authenticated with GitHub", status_code=401)
             token = base64.b64decode(creds["token"]).decode()
             url = "https://api.github.com/user/starred/soulripper13/blueprint-studio"
@@ -535,7 +535,7 @@ class GitManager:
     async def github_follow(self) -> web.Response:
         """Follow the author on behalf of the user."""
         try:
-            creds = self.data.get("credentials", {})
+            creds = self.data.get("github_credentials", {})
             if not creds or "token" not in creds: return json_message("Not authenticated with GitHub", status_code=401)
             token = base64.b64decode(creds["token"]).decode()
             url = "https://api.github.com/user/following/soulripper13"
@@ -544,6 +544,60 @@ class GitManager:
                     if response.status == 204: return json_response({"success": True, "message": "Now following soulripper13!"})
                     return json_message(f"GitHub Error: {response.status}", status_code=response.status)
         except Exception as e: return json_message(str(e), status_code=500)
+
+    async def gitea_create_repo(self, repo_name: str, description: str, is_private: bool, gitea_url: str) -> web.Response:
+        """Create a new Gitea repository."""
+        try:
+            if not repo_name: return json_message("Repository name is required", status_code=400)
+            if not gitea_url: return json_message("Gitea server URL is required", status_code=400)
+
+            # Get Gitea credentials
+            creds = self.data.get("gitea_credentials", {})
+            if not creds or "token" not in creds: return json_message("Not authenticated with Gitea.", status_code=401)
+            token = base64.b64decode(creds["token"]).decode()
+
+            # Normalize Gitea URL (remove trailing slash)
+            gitea_url = gitea_url.rstrip('/')
+
+            # Gitea API endpoint for creating repos
+            create_url = f"{gitea_url}/api/v1/user/repos"
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    create_url,
+                    json={
+                        "name": repo_name,
+                        "description": description,
+                        "private": is_private,
+                        "auto_init": False
+                    },
+                    headers={
+                        "Authorization": f"token {token}",
+                        "Content-Type": "application/json"
+                    }
+                ) as response:
+                    if response.status == 201:
+                        repo_data = await response.json()
+                        # Initialize git if not already done
+                        await self.init()
+                        # Add Gitea remote
+                        clone_url = repo_data.get("clone_url")
+                        if clone_url:
+                            await self.add_remote("gitea", clone_url)
+                        return json_response({
+                            "success": True,
+                            "message": f"Repository '{repo_name}' created successfully on Gitea",
+                            "html_url": repo_data.get("html_url"),
+                            "clone_url": clone_url,
+                            "username": creds.get("username", "")
+                        })
+                    else:
+                        error_text = await response.text()
+                        _LOGGER.error(f"Gitea API error ({response.status}): {error_text}")
+                        return json_message(f"Failed to create repository: {error_text}", status_code=response.status)
+        except Exception as err:
+            _LOGGER.error("Error creating Gitea repo: %s", err)
+            return json_message(str(err), status_code=500)
 
     async def stage(self, files: list[str]) -> web.Response:
         """Stage specific files."""

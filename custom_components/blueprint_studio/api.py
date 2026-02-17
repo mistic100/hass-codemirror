@@ -16,6 +16,7 @@ from .util import json_message, json_response
 from .git_manager import GitManager
 from .ai_manager import AIManager
 from .file_manager import FileManager
+from .sftp_manager import SftpManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +32,11 @@ class BlueprintStudioApiView(HomeAssistantView):
         self.config_dir = config_dir
         self.store = store
         self.data = data
+
         self.git = GitManager(None, config_dir, data, store)
         self.ai = AIManager(None, data)
         self.file = FileManager(None, config_dir)
+        self.sftp = SftpManager()
 
     def _update_hass(self, hass: HomeAssistant) -> None:
         """Update hass instance in managers."""
@@ -59,6 +62,12 @@ class BlueprintStudioApiView(HomeAssistantView):
             force_refresh = params.get("force", "false").lower() == "true"
             items = await hass.async_add_executor_job(self.file.list_all, show_hidden, force_refresh)
             return json_response(items)
+        if action == "list_directory":
+            # LAZY LOADING: List only one directory (non-recursive)
+            path = params.get("path", "")  # Empty string = root
+            show_hidden = params.get("show_hidden", "false").lower() == "true"
+            result = await hass.async_add_executor_job(self.file.list_directory, path, show_hidden)
+            return json_response(result)
         if action == "list_git_files":
             items = await hass.async_add_executor_job(self.file.list_git_files)
             return json_response(items)
@@ -70,6 +79,17 @@ class BlueprintStudioApiView(HomeAssistantView):
             path = params.get("path")
             if not path: return web.Response(status=400, text="Missing path")
             return await self.file.serve_file(path)
+        if action == "global_search":
+            results = await hass.async_add_executor_job(
+                self.file.global_search, 
+                params.get("query"), 
+                params.get("case_sensitive", "false").lower() == "true", 
+                params.get("use_regex", "false").lower() == "true",
+                params.get("match_word", "false").lower() == "true",
+                params.get("include", ""),
+                params.get("exclude", "")
+            )
+            return json_response(results)
         if action == "get_file_stat":
             path = params.get("path")
             if not path: return json_message("Missing path", status_code=400)
@@ -158,17 +178,17 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "git_status": return await self.git.get_status(data.get("fetch", False))
         if action == "git_log": return await self.git.get_log(data.get("count", 20))
         if action == "git_diff_commit": return await self.git.diff_commit(data.get("hash"))
-        if action == "git_pull": 
+        if action == "git_pull":
             response = await self.git.pull()
-            if response.status == 200: self.file._file_cache = None
+            if response.status == 200: self.file.clear_cache()  # 🔒 Thread-safe cache clear
             return response
         if action == "git_push": return await self.git.push(data.get("commit_message", "Update via Blueprint Studio"))
         if action == "git_push_only": return await self.git.push_only()
         if action == "git_commit": return await self.git.commit(data.get("commit_message", "Update via Blueprint Studio"))
         if action == "git_show": return await self.git.show(data.get("path"))
-        if action == "git_init": 
+        if action == "git_init":
             response = await self.git.init()
-            if response.status == 200: self.file._file_cache = None
+            if response.status == 200: self.file.clear_cache()  # 🔒 Thread-safe cache clear
             return response
         if action == "git_add_remote": return await self.git.add_remote(data.get("name", "origin"), data.get("url"))
         if action == "git_remove_remote": return await self.git.remove_remote(data.get("name"))
@@ -180,11 +200,11 @@ class BlueprintStudioApiView(HomeAssistantView):
             remote = data.get("remote", "origin")
             auth = "gitea" if remote == "gitea" else "github"
             return await self.git.force_push(remote, auth_provider=auth)
-        if action == "git_hard_reset": 
+        if action == "git_hard_reset":
             remote = data.get("remote", "origin")
             auth = "gitea" if remote == "gitea" else "github"
             response = await self.git.hard_reset(remote, data.get("branch", "main"), auth_provider=auth)
-            if response.status == 200: self.file._file_cache = None
+            if response.status == 200: self.file.clear_cache()  # 🔒 Thread-safe cache clear
             return response
         if action == "git_delete_remote_branch": return await self.git.delete_remote_branch(data.get("branch"))
         if action == "git_abort": return await self.git.abort()
@@ -214,9 +234,17 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "gitea_test_connection": return await self.git.test_connection(remote="gitea", auth_provider="gitea")
         if action == "gitea_add_remote": return await self.git.add_remote(data.get("name", "gitea"), data.get("url"))
         if action == "gitea_remove_remote": return await self.git.remove_remote("gitea")
+        if action == "gitea_create_repo": return await self.git.gitea_create_repo(data.get("repo_name"), data.get("description", ""), data.get("is_private", True), data.get("gitea_url"))
 
         # AI
-        if action == "ai_query": return await self.ai.query(data.get("query"), data.get("current_file"), data.get("file_content"))
+        if action == "ai_query": return await self.ai.query(
+            data.get("query"),
+            data.get("current_file"),
+            data.get("file_content"),
+            data.get("ai_type"),
+            data.get("cloud_provider"),
+            data.get("ai_model")
+        )
 
         # GitHub Specific
         if action == "github_create_repo": return await self.git.github_create_repo(data.get("repo_name"), data.get("description", ""), data.get("is_private", True))
@@ -246,33 +274,107 @@ class BlueprintStudioApiView(HomeAssistantView):
             # Limit results to avoid massive payloads if query is empty/broad
             return json_response({"entities": entities[:1000]})
         if action == "global_search":
-            results = await hass.async_add_executor_job(self._global_search, data.get("query"), data.get("case_sensitive", False), data.get("use_regex", False))
+            results = await hass.async_add_executor_job(
+                self.file.global_search, 
+                data.get("query"), 
+                data.get("case_sensitive", False), 
+                data.get("use_regex", False),
+                data.get("match_word", False),
+                data.get("include", ""),
+                data.get("exclude", "")
+            )
             return json_response(results)
+        if action == "global_replace":
+            results = await hass.async_add_executor_job(
+                self.file.global_replace,
+                data.get("query"),
+                data.get("replacement"),
+                data.get("case_sensitive", False),
+                data.get("use_regex", False),
+                data.get("match_word", False),
+                data.get("include", ""),
+                data.get("exclude", "")
+            )
+            return json_response(results)
+
+        # SFTP
+        if action in ("sftp_test", "sftp_list", "sftp_read", "sftp_write",
+                       "sftp_create", "sftp_delete", "sftp_rename", "sftp_mkdir"):
+            return await self._sftp_action(action, data, hass)
 
         return json_message("Unknown action", status_code=400)
 
-    def _global_search(self, query: str, case_sensitive: bool, use_regex: bool) -> list[dict]:
-        """Perform global search across config files."""
-        # Simple implementation for now, moved from __init__
-        import re
-        results = []
+    async def _sftp_action(self, action: str, data: dict, hass) -> web.Response:
+        """Dispatch an SFTP action to SftpManager via executor."""
+        conn = data.get("connection", {})
+        host = conn.get("host", "")
+        port = int(conn.get("port", 22))
+        username = conn.get("username", "")
+        auth = conn.get("auth", {})
+
+        if not host or not username:
+            return json_message("Missing connection parameters", status_code=400)
+
         try:
-            pattern = re.compile(query if use_regex else re.escape(query), 0 if case_sensitive else re.IGNORECASE)
-            for root, dirs, files in os.walk(self.config_dir):
-                # Exclude all hidden folders (starting with .) and specific dependency/cache folders
-                dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ["__pycache__", "deps", "tts"]]
-                for name in files:
-                    file_path = Path(root) / name
-                    # Skip if file is not allowed or is binary (e.g., .db, .sqlite, .zip)
-                    if not self.file._is_file_allowed(file_path): continue
-                    if file_path.suffix.lower() in BINARY_EXTENSIONS: continue
-                    
-                    try:
-                        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                            for i, line in enumerate(f):
-                                if pattern.search(line):
-                                    results.append({"path": str(file_path.relative_to(self.config_dir)), "line": i + 1, "content": line.strip()})
-                                if len(results) >= 1000: return results
-                    except: pass
-        except: pass
-        return results
+            if action == "sftp_test":
+                result = await hass.async_add_executor_job(
+                    self.sftp.test_connection, host, port, username, auth
+                )
+            elif action == "sftp_list":
+                path = data.get("path", "/")
+                result = await hass.async_add_executor_job(
+                    self.sftp.list_directory, host, port, username, auth, path
+                )
+            elif action == "sftp_read":
+                path = data.get("path")
+                if not path:
+                    return json_message("Missing path", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.read_file, host, port, username, auth, path
+                )
+            elif action == "sftp_write":
+                path = data.get("path")
+                content = data.get("content", "")
+                if not path:
+                    return json_message("Missing path", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.write_file, host, port, username, auth, path, content
+                )
+            elif action == "sftp_create":
+                path = data.get("path")
+                content = data.get("content", "")
+                if not path:
+                    return json_message("Missing path", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.create_file, host, port, username, auth, path, content
+                )
+            elif action == "sftp_delete":
+                path = data.get("path")
+                if not path:
+                    return json_message("Missing path", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.delete_path, host, port, username, auth, path
+                )
+            elif action == "sftp_rename":
+                src = data.get("source")
+                dest = data.get("destination")
+                if not src or not dest:
+                    return json_message("Missing source or destination", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.rename_path, host, port, username, auth, src, dest
+                )
+            elif action == "sftp_mkdir":
+                path = data.get("path")
+                if not path:
+                    return json_message("Missing path", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.make_directory, host, port, username, auth, path
+                )
+            else:
+                return json_message("Unknown SFTP action", status_code=400)
+
+            return json_response(result)
+        except Exception as exc:
+            _LOGGER.error("SFTP action %s failed: %s", action, exc)
+            return json_response({"success": False, "message": str(exc)})
+

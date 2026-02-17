@@ -1,5 +1,51 @@
 /**
- * File Explorer module for Blueprint Studio
+ * ============================================================================
+ * FILE EXPLORER MODULE
+ * ============================================================================
+ *
+ * PURPOSE: File system loading and hierarchical tree building. Loads all
+ * files/folders from the server and constructs the nested file tree structure
+ * for rendering in the sidebar.
+ *
+ * EXPORTED FUNCTIONS:
+ * - loadFiles(force) - Load all files/folders from server
+ * - buildFileTree(items) - Build hierarchical tree from flat list
+ * - renderFileTree() - Render tree to DOM
+ * - toggleFolder(path) - Expand/collapse folder
+ *
+ * HOW TO ADD FEATURES:
+ * 1. Add virtual folders: Group files by type (scripts, automations, etc.)
+ * 2. Add file sorting: Sort by name, date, size, type
+ * 3. Add folder pinning: Pin important folders to top
+ * 4. Add lazy loading: Only load visible folders
+ * 5. Add tree search/filter: Filter visible items in tree
+ *
+ * INTEGRATION POINTS:
+ * - state.js: Uses files, folders, fileTree, expandedFolders, showHidden
+ * - api.js: fetchWithAuth for loading items
+ * - file-tree.js: Calls renderFileTree after loading
+ * - ui.js: showToast, showGlobalLoading
+ * - utils.js: getFileIcon, formatBytes
+ *
+ * COMMON PATTERNS:
+ * ```javascript
+ * // Load files from server
+ * await loadFiles(force = true); // Force refresh
+ *
+ * // Build tree structure
+ * const tree = buildFileTree(flatItems);
+ * // Result: { folder1: { _files: [...], subfolder: {...} }, _files: [...] }
+ *
+ * // Toggle folder
+ * toggleFolder('automations'); // Expands/collapses automations folder
+ * ```
+ *
+ * ARCHITECTURE NOTES:
+ * - Tree structure: Nested objects with special _files and _path properties
+ * - Flat to tree conversion: Splits paths and builds nested structure
+ * - Rendering: Recursive function renderTreeLevel() for nested display
+ * - State: expandedFolders Set tracks which folders are open
+ * ============================================================================
  */
 import { state, elements } from './state.js';
 import { API_BASE } from './constants.js';

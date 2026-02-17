@@ -1,5 +1,23 @@
 /**
- * AI Copilot module for Blueprint Studio
+ * ============================================================================
+ * AI MODULE - Backend Integration
+ * ============================================================================
+ *
+ * PURPOSE: AI backend integration for chat, code formatting, and AI operations.
+ * Handles communication with AI providers (Gemini, OpenAI, Claude, local models).
+ *
+ * EXPORTED FUNCTIONS:
+ * - toggleAISidebar() - Toggle AI sidebar
+ * - sendAIChat(message) - Send chat message to AI
+ * - formatWithAI(code) - Format code with AI
+ *
+ * HOW TO ADD FEATURES:
+ * 1. Add AI provider: Add to settings, implement API integration
+ * 2. Add AI operation: Create function, call fetchWithAuth with action
+ * 3. Add streaming: Implement SSE or WebSocket for streaming responses
+ *
+ * INTEGRATION: ai-ui.js (UI), api.js, settings.js
+ * ============================================================================
  */
 import { state, elements } from './state.js';
 import { API_BASE } from './constants.js';
@@ -70,7 +88,10 @@ export async function sendAIChatMessage() {
           action: "ai_query",
           query: query,
           current_file: state.activeTab ? state.activeTab.path : null,
-          file_content: (state.activeTab && state.editor) ? state.editor.getValue() : null
+          file_content: (state.activeTab && state.editor) ? state.editor.getValue() : null,
+          ai_type: state.aiType,
+          cloud_provider: state.cloudProvider,
+          ai_model: state.aiModel
         })
       });
 
