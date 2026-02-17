@@ -1023,7 +1023,6 @@ export async function openFile(path, forceReload = false, noActivate = false) {
 
     // If it's a binary file that's not an image, PDF, or video, just download it
     if (isBinary && !isImage && !isPdf && !isVideo) {
-      showToast(`Downloading ${filename}...`, "info");
       downloadFileByPath(path);
       return;
     }

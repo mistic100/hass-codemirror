@@ -203,6 +203,8 @@ export const state = {
   contextMenuTarget: null,
   tabContextMenuTarget: null,
   currentFolderPath: "",
+  // Tree display mode: false = folder navigation (default), true = collapsable tree
+  treeCollapsableMode: false,
   // Lazy loading state (NEW - for on-demand folder loading)
   lazyLoadingEnabled: true, // Enable lazy loading by default
   loadedDirectories: new Map(), // Cache: path -> {folders: [], files: []}
@@ -282,6 +284,10 @@ export const state = {
   // Search overlay
   searchOverlay: null,
   activeMatchMark: null,
+  searchCaseSensitive: false, // Editor search: match case (exact match)
+  searchWholeWord: false,     // Editor search: match whole word
+  searchUseRegex: false,      // Editor search: use regular expression
+  syntaxTheme: 'custom',      // Pre-defined syntax highlighting theme
 
   // Split view configuration
   splitView: {

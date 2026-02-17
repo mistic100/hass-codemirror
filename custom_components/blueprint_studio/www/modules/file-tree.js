@@ -383,6 +383,17 @@ export function renderFileTree() {
     return; // Exit early - don't show folder navigation
   }
 
+  // COLLAPSABLE TREE MODE: Classic expand/collapse tree (when treeCollapsableMode is enabled)
+  if (state.treeCollapsableMode && !state.lazyLoadingEnabled) {
+    const fragment = document.createDocumentFragment();
+    if (state.fileTree && Object.keys(state.fileTree).length > 0) {
+      renderTreeLevel(state.fileTree, fragment, 0);
+    }
+    elements.fileTree.appendChild(fragment);
+    updateToggleAllButton();
+    return;
+  }
+
   // FOLDER NAVIGATION MODE: Show only current folder contents
   const currentPath = state.currentNavigationPath;
 

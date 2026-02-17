@@ -1661,6 +1661,36 @@ export function initEventListeners() {
       elements.searchClose.addEventListener("click", closeSearchWidget);
       elements.searchReplaceBtn.addEventListener("click", doReplace);
       elements.searchReplaceAllBtn.addEventListener("click", doReplaceAll);
+
+      // Match Case (Exact Match) toggle
+      if (elements.searchCaseSensitiveBtn) {
+        elements.searchCaseSensitiveBtn.addEventListener("click", () => {
+          state.searchCaseSensitive = !state.searchCaseSensitive;
+          elements.searchCaseSensitiveBtn.classList.toggle("active", state.searchCaseSensitive);
+          const query = elements.searchFindInput.value;
+          if (query) { updateSearchHighlights(query); updateMatchStatus(query); }
+        });
+      }
+
+      // Match Whole Word toggle
+      if (elements.searchWholeWordBtn) {
+        elements.searchWholeWordBtn.addEventListener("click", () => {
+          state.searchWholeWord = !state.searchWholeWord;
+          elements.searchWholeWordBtn.classList.toggle("active", state.searchWholeWord);
+          const query = elements.searchFindInput.value;
+          if (query) { updateSearchHighlights(query); updateMatchStatus(query); }
+        });
+      }
+
+      // Use Regular Expression toggle
+      if (elements.searchUseRegexBtn) {
+        elements.searchUseRegexBtn.addEventListener("click", () => {
+          state.searchUseRegex = !state.searchUseRegex;
+          elements.searchUseRegexBtn.classList.toggle("active", state.searchUseRegex);
+          const query = elements.searchFindInput.value;
+          if (query) { updateSearchHighlights(query); updateMatchStatus(query); }
+        });
+      }
     }
 
     // Quick Switcher Events - handled in quick-switcher.js module

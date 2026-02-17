@@ -200,6 +200,7 @@ export async function loadSettings() {
     state.recentFiles = settings.recentFiles || [];
     state.gitConfig = settings.gitConfig || null;
     state.customColors = settings.customColors || {};
+    state.syntaxTheme = settings.syntaxTheme || 'custom';
     state.geminiApiKey = settings.geminiApiKey || null;
     state.openaiApiKey = settings.openaiApiKey || null;
     state.claudeApiKey = settings.claudeApiKey || null;
@@ -221,6 +222,9 @@ export async function loadSettings() {
     state.autoSaveDelay = parseInt(settings.autoSaveDelay) || 1000;
     state.fileTreeCompact = settings.fileTreeCompact || false;
     state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
+    state.treeCollapsableMode = settings.treeCollapsableMode || false;
+    // Apply tree mode to lazyLoadingEnabled
+    state.lazyLoadingEnabled = !state.treeCollapsableMode;
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
     state.breadcrumbStyle = settings.breadcrumbStyle || "path";
     state.showToasts = settings.showToasts !== false; // default true
@@ -368,6 +372,7 @@ export async function saveSettings() {
       favoriteFiles: state.favoriteFiles,
       recentFiles: state.recentFiles,
       customColors: state.customColors,
+      syntaxTheme: state.syntaxTheme,
       openTabs: openTabsState,
       activeTabPath: activeTabPath,
       gitConfig: state.gitConfig,
@@ -411,6 +416,7 @@ export async function saveSettings() {
       autoSaveDelay: state.autoSaveDelay,
       fileTreeCompact: state.fileTreeCompact,
       fileTreeShowIcons: state.fileTreeShowIcons,
+      treeCollapsableMode: state.treeCollapsableMode,
       recentFilesLimit: state.recentFilesLimit,
       breadcrumbStyle: state.breadcrumbStyle,
       gitPanelCollapsed: state.gitPanelCollapsed,

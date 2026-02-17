@@ -112,7 +112,6 @@
  *
  * ============================================================================
  */
-import { state, elements } from './state.js';
 import { MOBILE_BREAKPOINT, TEXT_FILE_EXTENSIONS } from './constants.js';
 
 /**
@@ -320,50 +319,75 @@ export async function ensureDiffLibrariesLoaded(showGlobalLoading, hideGlobalLoa
   }
 }
 
-// Memoized getFileIcon for better performance (called frequently in file tree/tabs)
-export const getFileIcon = memoize(function getFileIconImpl(filename) {
+// Memoized file icon lookup (theme support reverted)
+function _getFileIcon(filename) {
+  // Home Assistant .storage entries are JSON
   if (filename && (filename.includes(".storage/") || filename.startsWith(".storage/"))) {
-      return { icon: "data_object", class: "json" };
+    return { icon: "data_object", class: "json" };
   }
-  const ext = filename.split(".").pop().toLowerCase();
-  const iconMap = {
-    yaml: { icon: "description", class: "yaml" },
-    yml: { icon: "description", class: "yaml" },
-    json: { icon: "data_object", class: "json" },
-    py: { icon: "code", class: "python" },
-    js: { icon: "javascript", class: "js" },
-    css: { icon: "style", class: "default" },
-    html: { icon: "html", class: "default" },
-    md: { icon: "article", class: "default" },
-    txt: { icon: "text_snippet", class: "default" },
-    log: { icon: "receipt_long", class: "default" },
-    sh: { icon: "terminal", class: "default" },
-    conf: { icon: "settings", class: "default" },
-    cfg: { icon: "settings", class: "default" },
-    ini: { icon: "settings", class: "default" },
-    jinja: { icon: "integration_instructions", class: "default" },
-    jinja2: { icon: "integration_instructions", class: "default" },
-    j2: { icon: "integration_instructions", class: "default" },
-    db: { icon: "storage", class: "default" },
-    sqlite: { icon: "storage", class: "default" },
-    pem: { icon: "verified_user", class: "default" },
-    crt: { icon: "verified_user", class: "default" },
-    key: { icon: "vpn_key", class: "default" },
-    der: { icon: "verified_user", class: "default" },
-    bin: { icon: "memory", class: "default" },
-    zip: { icon: "archive", class: "default" },
-    tar: { icon: "archive", class: "default" },
-    gz: { icon: "archive", class: "default" },
-    jpg: { icon: "image", class: "default" },
-    jpeg: { icon: "image", class: "default" },
-    png: { icon: "image", class: "default" },
-    gif: { icon: "image", class: "default" },
-    svg: { icon: "image", class: "default" },
-    webp: { icon: "image", class: "default" },
-    pdf: { icon: "picture_as_pdf", class: "default" }
-  };
-  return iconMap[ext] || { icon: "insert_drive_file", class: "default" };
-}); // Close memoize() wrapper
+
+  const ext = filename ? filename.split(".").pop().toLowerCase() : "";
+
+  switch (ext) {
+    case "yaml":
+    case "yml":
+      return { icon: "description", class: "yaml" };
+    case "json":
+      return { icon: "data_object", class: "json" };
+    case "py":
+      return { icon: "code", class: "python" };
+    case "js":
+      return { icon: "javascript", class: "js" };
+    case "css":
+      return { icon: "style", class: "default" };
+    case "html":
+      return { icon: "html", class: "default" };
+    case "md":
+      return { icon: "article", class: "default" };
+    case "txt":
+      return { icon: "text_snippet", class: "default" };
+    case "log":
+      return { icon: "receipt_long", class: "default" };
+    case "sh":
+      return { icon: "terminal", class: "default" };
+    case "conf":
+    case "cfg":
+    case "ini":
+      return { icon: "settings", class: "default" };
+    case "jinja":
+    case "jinja2":
+    case "j2":
+      return { icon: "integration_instructions", class: "default" };
+    case "db":
+    case "sqlite":
+      return { icon: "storage", class: "default" };
+    case "pem":
+    case "crt":
+    case "der":
+      return { icon: "verified_user", class: "default" };
+    case "key":
+      return { icon: "vpn_key", class: "default" };
+    case "bin":
+      return { icon: "memory", class: "default" };
+    case "zip":
+    case "tar":
+    case "gz":
+      return { icon: "archive", class: "default" };
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "svg":
+    case "webp":
+      return { icon: "image", class: "default" };
+    case "pdf":
+      return { icon: "picture_as_pdf", class: "default" };
+    default:
+      return { icon: "insert_drive_file", class: "default" };
+  }
+}
+
+export const getFileIcon = memoize(_getFileIcon);
 
 export function getEditorMode(filename) {
     if (!filename) return null;

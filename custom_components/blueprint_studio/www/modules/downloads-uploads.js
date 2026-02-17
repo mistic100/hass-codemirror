@@ -23,8 +23,8 @@
 import { state, elements } from './state.js';
 import { fetchWithAuth } from './api.js';
 import { API_BASE } from './constants.js';
-import { showToast, showGlobalLoading, hideGlobalLoading } from './ui.js';
-import { isTextFile } from './utils.js';
+import { showToast, showGlobalLoading, hideGlobalLoading, showConfirmDialog } from './ui.js';
+import { isTextFile, formatBytes } from './utils.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
@@ -70,15 +70,56 @@ export function downloadCurrentFile() {
 
 /**
  * Downloads a file by its path
+ * Shows a confirmation dialog for large/binary file types before downloading
  */
 export async function downloadFileByPath(path) {
+  const filename = path.split("/").pop();
+  const ext = filename.split(".").pop().toLowerCase();
+  const LARGE_FILE_EXTENSIONS = ["db", "sqlite", "sqlite3", "bak", "tar", "gz", "zip", "tar.gz"];
+
+  // Check if we know the file size from state
+  let fileSizeInfo = "";
+  const fileInfo = state.files.find(f => f.path === path) ||
+    (() => {
+      for (const [, dir] of state.loadedDirectories) {
+        const f = dir.files?.find(f => f.path === path);
+        if (f) return f;
+      }
+      return null;
+    })();
+
+  if (fileInfo && typeof fileInfo.size === "number") {
+    fileSizeInfo = ` (${formatBytes(fileInfo.size)})`;
+  }
+
+  if (LARGE_FILE_EXTENSIONS.includes(ext)) {
+    const confirmed = await showConfirmDialog({
+      title: "Download Large File?",
+      message: `<b>${filename}</b>${fileSizeInfo} may be a very large file.<br><br>Are you sure you want to download it?`,
+      confirmText: "Download",
+      cancelText: "Cancel"
+    });
+    if (!confirmed) return;
+  }
+
+  // Perform the actual download
   try {
-    const data = await fetchWithAuth( // data will contain { content: ..., is_base64: ... }
-      `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}`
+    showGlobalLoading(`Downloading ${filename}...`);
+    const data = await fetchWithAuth(
+      `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}&_t=${Date.now()}`
     );
-    downloadContent(path.split("/").pop(), data.content, data.is_base64);
+    hideGlobalLoading();
+
+    if (data && data.content !== undefined) {
+      const isBinary = data.is_base64 || false;
+      const mimeType = data.mime_type || "application/octet-stream";
+      downloadContent(filename, data.content, isBinary, mimeType);
+    } else {
+      showToast(`Failed to download ${filename}`, "error");
+    }
   } catch (error) {
-    // Error already shown by loadFile
+    hideGlobalLoading();
+    showToast(`Failed to download ${filename}: ${error.message}`, "error");
   }
 }
 
