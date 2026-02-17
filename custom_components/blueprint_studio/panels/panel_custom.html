@@ -29,7 +29,7 @@
   <!-- Google Fonts for Editor -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Ubuntu+Mono:wght@400;700&family=Libertinus+Mono:wght@400;500;600&family=Reddit+Mono:wght@400;500;600&family=DM+Mono:wght@400;500;600&family=Azeret+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
@@ -4019,6 +4019,36 @@
     .search-spacer {
         width: 20px;
     }
+
+    .search-case-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0;
+        border-radius: 2px;
+        font-size: 12px;
+        font-weight: 600;
+        font-family: monospace;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        letter-spacing: -0.5px;
+    }
+
+    .search-case-btn:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+    }
+
+    .search-case-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
   </style>
 </head>
 <body>
@@ -4452,6 +4482,9 @@
                         <input type="text" id="search-find-input" placeholder="Find">
                         <span id="search-results-count" class="search-count"></span>
                     </div>
+                    <button class="search-case-btn" id="search-case-sensitive" title="Match Case (Exact Match)">Aa</button>
+                    <button class="search-case-btn" id="search-whole-word" title="Match Whole Word">ab|</button>
+                    <button class="search-case-btn" id="search-use-regex" title="Use Regular Expression">.*</button>
                     <div class="search-actions">
                         <button id="search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
                         <button id="search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
@@ -4529,6 +4562,9 @@
                         <input type="text" id="secondary-search-find-input" placeholder="Find">
                         <span id="secondary-search-results-count" class="search-count"></span>
                     </div>
+                    <button class="search-case-btn" id="secondary-search-case-sensitive" title="Match Case (Exact Match)">Aa</button>
+                    <button class="search-case-btn" id="secondary-search-whole-word" title="Match Whole Word">ab|</button>
+                    <button class="search-case-btn" id="secondary-search-use-regex" title="Use Regular Expression">.*</button>
                     <div class="search-actions">
                         <button id="secondary-search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
                         <button id="secondary-search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
