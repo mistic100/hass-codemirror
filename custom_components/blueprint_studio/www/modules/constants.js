@@ -296,7 +296,40 @@ export const THEME_PRESETS = {
       cmTheme: "material-darker",
       bgGutter: "#6272a4"
     }
-  }
+  },
+
+  midnightBlue: {
+    name: "Midnight Blue",
+    colors: {
+      bgPrimary: "#0d1117",
+      bgSecondary: "#161b22",
+      bgTertiary: "#1c2128",
+      bgHover: "#21262d",
+      bgActive: "#1f6feb",
+      textPrimary: "#e6edf3",
+      textSecondary: "#8b949e",
+      textMuted: "#6e7681",
+      borderColor: "#30363d",
+      accentColor: "#1f6feb",
+      accentHover: "#388bfd",
+      successColor: "#3fb950",
+      warningColor: "#d29922",
+      errorColor: "#f85149",
+      iconFolder: "#58a6ff",
+      iconYaml: "#79c0ff",
+      iconJson: "#ffa657",
+      iconPython: "#3fb950",
+      iconJs: "#e3b341",
+      iconDefault: "#8b949e",
+      modalBg: "#161b22",
+      inputBg: "#0d1117",
+      shadowColor: "rgba(0, 0, 0, 0.6)",
+      cmTheme: "material-darker",
+      bgGutter: "#161b22"
+    }
+  },
+
+
 };
 
 export const ACCENT_COLORS = [
@@ -309,6 +342,80 @@ export const ACCENT_COLORS = [
   { name: "Teal", value: "#00bfa5", lightValue: "#00897b" },
   { name: "Cyan", value: "#00b8d4", lightValue: "#0097a7" }
 ];
+
+// NOTE: Icon themes were reverted. Keep a single, consistent icon mapping in utils.js.
+export const SYNTAX_THEMES = {
+  custom: {
+    name: "Custom",
+    description: "Your own custom colors below",
+    colors: null  // null = use customColors from state
+  },
+  dracula: {
+    name: "Dracula",
+    description: "Dark purple & pink tones",
+    colors: {
+      comment:  "#6272a4",
+      keyword:  "#ff79c6",
+      string:   "#f1fa8c",
+      number:   "#bd93f9",
+      boolean:  "#bd93f9",
+      key:      "#8be9fd",
+      tag:      "#50fa7b"
+    }
+  },
+  nord: {
+    name: "Nord",
+    description: "Cool arctic blue tones",
+    colors: {
+      comment:  "#616e88",
+      keyword:  "#81a1c1",
+      string:   "#a3be8c",
+      number:   "#b48ead",
+      boolean:  "#b48ead",
+      key:      "#88c0d0",
+      tag:      "#ebcb8b"
+    }
+  },
+  monokai: {
+    name: "Monokai",
+    description: "Vibrant yellow & green",
+    colors: {
+      comment:  "#75715e",
+      keyword:  "#f92672",
+      string:   "#e6db74",
+      number:   "#ae81ff",
+      boolean:  "#ae81ff",
+      key:      "#a6e22e",
+      tag:      "#66d9e8"
+    }
+  },
+  solarized: {
+    name: "Solarized",
+    description: "Warm amber & teal",
+    colors: {
+      comment:  "#586e75",
+      keyword:  "#859900",
+      string:   "#2aa198",
+      number:   "#d33682",
+      boolean:  "#d33682",
+      key:      "#268bd2",
+      tag:      "#b58900"
+    }
+  },
+  oneDark: {
+    name: "One Dark",
+    description: "Soft pastel atom colors",
+    colors: {
+      comment:  "#5c6370",
+      keyword:  "#c678dd",
+      string:   "#98c379",
+      number:   "#d19a66",
+      boolean:  "#56b6c2",
+      key:      "#61afef",
+      tag:      "#e06c75"
+    }
+  }
+};
 
 export const HA_SCHEMA = {
   // Core configuration keys

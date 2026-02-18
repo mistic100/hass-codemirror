@@ -34,7 +34,7 @@
 import { state, elements } from './state.js';
 import { saveSettings } from './settings.js';
 import { fetchWithAuth } from './api.js';
-import { API_BASE, THEME_PRESETS, ACCENT_COLORS } from './constants.js';
+import { API_BASE, THEME_PRESETS, ACCENT_COLORS, SYNTAX_THEMES } from './constants.js';
 import { showToast, showConfirmDialog } from './ui.js';
 
 // Callbacks for cross-module functions
@@ -220,6 +220,17 @@ export async function showAppSettings() {
                 <span class="toggle-slider"></span>
               </label>
             </div>
+
+            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
+              <div style="flex: 1;">
+                <div style="font-weight: 500; margin-bottom: 4px;">Collapsable Tree Mode</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">Show folders as a collapsable tree (single click to expand/collapse) instead of the default folder navigation mode (double click to enter)</div>
+              </div>
+              <label class="toggle-switch" style="margin-left: 16px;">
+                <input type="checkbox" id="tree-collapsable-mode-toggle" ${state.treeCollapsableMode ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -239,16 +250,20 @@ export async function showAppSettings() {
             <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="font-weight: 500; margin-bottom: 8px;">Font Family</div>
               <select id="font-family-select" class="git-settings-input" style="width: 100%; margin-bottom: 8px;">
-                <option value="'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ${state.fontFamily === "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ? 'selected' : ''}>SF Mono (Default)</option>
-                <option value="'Fira Code', monospace" ${state.fontFamily === "'Fira Code', monospace" ? 'selected' : ''}>Fira Code</option>
-                <option value="'JetBrains Mono', monospace" ${state.fontFamily === "'JetBrains Mono', monospace" ? 'selected' : ''}>JetBrains Mono</option>
-                <option value="'Source Code Pro', monospace" ${state.fontFamily === "'Source Code Pro', monospace" ? 'selected' : ''}>Source Code Pro</option>
-                <option value="'Roboto Mono', monospace" ${state.fontFamily === "'Roboto Mono', monospace" ? 'selected' : ''}>Roboto Mono</option>
-                <option value="'Ubuntu Mono', monospace" ${state.fontFamily === "'Ubuntu Mono', monospace" ? 'selected' : ''}>Ubuntu Mono</option>
-                <option value="'Monaco', 'Courier New', monospace" ${state.fontFamily === "'Monaco', 'Courier New', monospace" ? 'selected' : ''}>Monaco</option>
-                <option value="'Consolas', monospace" ${state.fontFamily === "'Consolas', monospace" ? 'selected' : ''}>Consolas</option>
-                <option value="monospace" ${state.fontFamily === "monospace" ? 'selected' : ''}>System Monospace</option>
-              </select>
+                  <option value="'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ${state.fontFamily === "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ? 'selected' : ''}>SF Mono (Default)</option>
+                  <option value="'Fira Code', monospace" ${state.fontFamily === "'Fira Code', monospace" ? 'selected' : ''}>Fira Code</option>
+                  <option value="'JetBrains Mono', monospace" ${state.fontFamily === "'JetBrains Mono', monospace" ? 'selected' : ''}>JetBrains Mono</option>
+                  <option value="'Source Code Pro', monospace" ${state.fontFamily === "'Source Code Pro', monospace" ? 'selected' : ''}>Source Code Pro</option>
+                  <option value="'Roboto Mono', monospace" ${state.fontFamily === "'Roboto Mono', monospace" ? 'selected' : ''}>Roboto Mono</option>
+                  <option value="'Ubuntu Mono', monospace" ${state.fontFamily === "'Ubuntu Mono', monospace" ? 'selected' : ''}>Ubuntu Mono</option>
+                  <option value="'Monaco', 'Courier New', monospace" ${state.fontFamily === "'Monaco', 'Courier New', monospace" ? 'selected' : ''}>Monaco</option>
+                  <option value="'Consolas', monospace" ${state.fontFamily === "'Consolas', monospace" ? 'selected' : ''}>Consolas</option>
+                  <option value="'DM Mono', monospace" ${state.fontFamily === "'DM Mono', monospace" ? 'selected' : ''}>DM Mono</option>
+                  <option value="'Reddit Mono', monospace" ${state.fontFamily === "'Reddit Mono', monospace" ? 'selected' : ''}>Reddit Mono</option>
+                  <option value="'Libertinus Mono', monospace" ${state.fontFamily === "'Libertinus Mono', monospace" ? 'selected' : ''}>Libertinus Mono</option>
+                  <option value="'Azeret Mono', monospace" ${state.fontFamily === "'Azeret Mono', monospace" ? 'selected' : ''}>Azeret Mono</option>
+                  <option value="monospace" ${state.fontFamily === "monospace" ? 'selected' : ''}>System Monospace</option>
+                </select>
               <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Choose a monospace font for the code editor</div>
             </div>
 
@@ -321,7 +336,32 @@ export async function showAppSettings() {
             <div class="git-settings-label" style="margin-top: 20px;">Syntax Highlighting</div>
             <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Customize the font colors for the code editor</div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- Pre-defined Syntax Themes -->
+            <div style="margin-bottom: 16px;">
+              <div style="font-weight: 500; margin-bottom: 10px; font-size: 13px;">Pre-defined Themes</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;" id="syntax-theme-grid">
+                ${Object.entries(SYNTAX_THEMES).map(([key, theme]) => {
+                  const isActive = (state.syntaxTheme || 'custom') === key;
+                  const swatches = theme.colors ? Object.values(theme.colors).slice(0, 5).map(c =>
+                    `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:2px;"></span>`
+                  ).join('') : '<span style="opacity:0.5;font-size:10px;">custom</span>';
+                  return `
+                    <button class="syntax-theme-btn ${isActive ? 'active' : ''}" data-theme="${key}"
+                      style="padding:8px 6px;border-radius:6px;border:2px solid ${isActive ? 'var(--accent-color)' : 'var(--border-color)'};
+                      background:${isActive ? 'var(--bg-hover)' : 'var(--bg-primary)'};cursor:pointer;text-align:left;
+                      transition:border-color 0.15s,background 0.15s;">
+                      <div style="font-size:12px;font-weight:600;color:var(--text-primary);margin-bottom:4px;">${theme.name}</div>
+                      <div style="margin-bottom:4px;">${swatches}</div>
+                      <div style="font-size:10px;color:var(--text-secondary);">${theme.description}</div>
+                    </button>`;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Custom Colors (shown only when Custom theme selected) -->
+            <div id="custom-colors-section" style="display:${(state.syntaxTheme || 'custom') === 'custom' ? 'block' : 'none'};">
+              <div style="font-weight: 500; margin-bottom: 8px; font-size: 13px;">Custom Colors</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 ${renderColorInput("Comment", "comment")}
                 ${renderColorInput("Keyword", "keyword")}
                 ${renderColorInput("String", "string")}
@@ -331,11 +371,11 @@ export async function showAppSettings() {
                 ${renderColorInput("Tag", "tag")}
                 ${renderColorInput("Line Numbers", "lineNumberColor")}
                 ${renderColorInput("Fold Arrows", "foldColor")}
-            </div>
-
-            <button class="btn-secondary" id="btn-reset-colors" style="margin-top: 12px; width: 100%; font-size: 12px;">
+              </div>
+              <button class="btn-secondary" id="btn-reset-colors" style="margin-top: 12px; width: 100%; font-size: 12px;">
                 Reset to Default Colors
-            </button>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1069,7 +1109,40 @@ export async function showAppSettings() {
       });
     }
 
-    // Handle Toast Notifications
+    // Handle Collapsable Tree Mode
+    const treeCollapsableModeToggle = document.getElementById("tree-collapsable-mode-toggle");
+    if (treeCollapsableModeToggle) {
+      treeCollapsableModeToggle.addEventListener("change", async (e) => {
+        state.treeCollapsableMode = e.target.checked;
+        state.lazyLoadingEnabled = !state.treeCollapsableMode;
+        await saveSettingsImpl();
+
+        // Reset navigation state when switching modes
+        if (!state.treeCollapsableMode) {
+          // Switching back to folder navigation: reset to root
+          state.currentNavigationPath = "";
+          state.navigationHistory = [];
+        } else {
+          // Switching to collapsable tree: clear expanded folders
+          state.expandedFolders.clear();
+        }
+
+        // Reload file tree with new mode
+        if (callbacks.loadFiles) {
+          await callbacks.loadFiles(true);
+        } else if (callbacks.renderFileTree) {
+          callbacks.renderFileTree();
+        }
+
+        // Show/hide nav elements based on mode
+        const breadcrumb = document.getElementById("breadcrumb");
+        const backBtn = document.getElementById("btn-nav-back");
+        if (breadcrumb) breadcrumb.style.display = state.treeCollapsableMode ? "none" : "";
+        if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
+
+        showToast(state.treeCollapsableMode ? "Collapsable tree mode enabled" : "Folder navigation mode enabled", "success");
+      });
+    }
     const showToastsToggle = document.getElementById("show-toasts-toggle");
     if (showToastsToggle) {
       showToastsToggle.addEventListener("change", async (e) => {
@@ -1393,6 +1466,37 @@ export async function showAppSettings() {
     });
 
     // Handle Reset Colors button
+    // Handle Syntax Theme selection
+    const syntaxThemeBtns = modalBody.querySelectorAll(".syntax-theme-btn");
+    syntaxThemeBtns.forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const themeKey = btn.dataset.theme;
+        state.syntaxTheme = themeKey;
+        await saveSettingsImpl();
+
+        // Apply immediately
+        if (callbacks.applyCustomSyntaxColors) {
+          callbacks.applyCustomSyntaxColors();
+        }
+
+        // Update button styles
+        syntaxThemeBtns.forEach(b => {
+          const isActive = b.dataset.theme === themeKey;
+          b.classList.toggle("active", isActive);
+          b.style.borderColor = isActive ? "var(--accent-color)" : "var(--border-color)";
+          b.style.background = isActive ? "var(--bg-hover)" : "var(--bg-primary)";
+        });
+
+        // Show/hide custom colors section
+        const customSection = document.getElementById("custom-colors-section");
+        if (customSection) {
+          customSection.style.display = themeKey === "custom" ? "block" : "none";
+        }
+
+        showToast(`Syntax theme: ${SYNTAX_THEMES[themeKey].name}`, "success");
+      });
+    });
+
     const btnResetColors = document.getElementById("btn-reset-colors");
     if (btnResetColors) {
         btnResetColors.addEventListener("click", async () => {

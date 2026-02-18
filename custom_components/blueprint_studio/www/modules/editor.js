@@ -225,11 +225,15 @@ export function createEditor(container = null, isPrimary = true) {
       },
       "Cmd-D": (cm) => selectNextOccurrence(cm),
       "Ctrl-D": (cm) => selectNextOccurrence(cm),
-      "Ctrl-F": () => {
+      "Ctrl-F": (cm) => {
         if (callbacks.openSearchWidget) callbacks.openSearchWidget(false);
+        // Blur editörü: CodeMirror handler bittikten sonra focus'u geri çekiyor,
+        // blur ile bunu engelliyoruz; search.js'deki setTimeout focus'u alıyor.
+        cm.getInputField().blur();
       },
-      "Cmd-F": () => {
+      "Cmd-F": (cm) => {
         if (callbacks.openSearchWidget) callbacks.openSearchWidget(false);
+        cm.getInputField().blur();
       },
       "Ctrl-H": () => {
         if (callbacks.openSearchWidget) callbacks.openSearchWidget(true);

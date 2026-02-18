@@ -58,13 +58,29 @@ import { state, elements } from './state.js';
 import { showToast } from './ui.js';
 
 /**
- * Updates search highlights overlay in the editor
- * @param {string} query - Search query
+ * Build effective search query/pattern based on current search options
+ * Returns a string (for CodeMirror getSearchCursor) or RegExp (for regex/whole-word mode)
  */
+function buildSearchQuery(rawQuery) {
+  if (!rawQuery) return rawQuery;
+  if (state.searchUseRegex) {
+    try {
+      return new RegExp(rawQuery, state.searchCaseSensitive ? "" : "i");
+    } catch (e) {
+      return null; // Invalid regex
+    }
+  }
+  if (state.searchWholeWord) {
+    const escaped = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, state.searchCaseSensitive ? "" : "i");
+  }
+  return rawQuery;
+}
+
+
 export function updateSearchHighlights(query) {
   if (!state.editor) return;
 
-  // Remove existing overlay if any
   if (state.searchOverlay) {
     state.editor.removeOverlay(state.searchOverlay);
     state.searchOverlay = null;
@@ -72,13 +88,22 @@ export function updateSearchHighlights(query) {
 
   if (!query) return;
 
-  // Create a new overlay for all matches
+  const pattern = buildSearchQuery(query);
+  if (!pattern) return; // Invalid regex
+
+  const caseInsensitive = !state.searchCaseSensitive;
+
   state.searchOverlay = {
     token: function(stream) {
-      if (stream.match(query, true, true)) {
+      if (pattern instanceof RegExp) {
+        if (stream.match(pattern)) return "search-match";
+        stream.next();
+        return null;
+      }
+      if (stream.match(pattern, true, caseInsensitive)) {
         return "search-match";
       }
-      while (stream.next() != null && !stream.match(query, false, true)) {}
+      while (stream.next() != null && !stream.match(pattern, false, caseInsensitive)) {}
       return null;
     }
   };
@@ -100,7 +125,7 @@ export function updateMatchStatus(query) {
     return;
   }
 
-  const cursor = state.editor.getSearchCursor(query, null, { caseFold: true });
+  const cursor = state.editor.getSearchCursor(buildSearchQuery(query), null, { caseFold: !state.searchCaseSensitive });
   let count = 0;
   let currentIdx = -1;
 
@@ -170,8 +195,12 @@ export function openSearchWidget(replaceMode = false) {
     }
   }
 
-  elements.searchFindInput.focus();
-  elements.searchFindInput.select();
+  // setTimeout(0): CodeMirror'un keydown handler'ı callback'ten sonra çalışıp
+  // focus'u editöre geri çekiyor. Bir tick erteleyince biz kazanıyoruz.
+  setTimeout(() => {
+    elements.searchFindInput.focus();
+    elements.searchFindInput.select();
+  }, 0);
 }
 
 /**
@@ -213,10 +242,16 @@ export function doFind(reverse = false) {
     return;
   }
 
+  const pattern = buildSearchQuery(query);
+  if (!pattern) {
+    showToast("Invalid regular expression", "warning", 2000);
+    return;
+  }
+
   // Determine start position based on direction and current selection
   const startPos = state.editor.getCursor(reverse ? "from" : "to");
 
-  let cursor = state.editor.getSearchCursor(query, startPos, { caseFold: true });
+  let cursor = state.editor.getSearchCursor(buildSearchQuery(query), startPos, { caseFold: !state.searchCaseSensitive });
 
   let found = false;
 
@@ -232,7 +267,7 @@ export function doFind(reverse = false) {
       ? { line: state.editor.lineCount(), ch: 0 }
       : { line: 0, ch: 0 };
 
-    cursor = state.editor.getSearchCursor(query, wrapStart, { caseFold: true });
+    cursor = state.editor.getSearchCursor(buildSearchQuery(query), wrapStart, { caseFold: !state.searchCaseSensitive });
 
     if (reverse) {
       found = cursor.findPrevious();
@@ -267,7 +302,7 @@ export function doReplace() {
 
   // Check if current selection matches query
   const selection = state.editor.getSelection();
-  if (selection && selection.toLowerCase() === query.toLowerCase()) {
+  if (selection && (state.searchCaseSensitive ? selection === query : selection.toLowerCase() === query.toLowerCase())) {
     state.editor.replaceSelection(replacement);
     doFind(); // Find next
   } else {
@@ -286,7 +321,7 @@ export function doReplaceAll() {
   const replacement = elements.searchReplaceInput.value;
   if (!query) return;
 
-  const cursor = state.editor.getSearchCursor(query, null, { caseFold: true });
+  const cursor = state.editor.getSearchCursor(buildSearchQuery(query), null, { caseFold: !state.searchCaseSensitive });
   state.editor.operation(() => {
     let count = 0;
     while (cursor.findNext()) {

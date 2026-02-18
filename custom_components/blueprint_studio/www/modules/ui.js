@@ -122,7 +122,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
-import { THEME_PRESETS, ACCENT_COLORS } from './constants.js';
+import { THEME_PRESETS, ACCENT_COLORS, SYNTAX_THEMES } from './constants.js';
 import { lightenColor } from './utils.js';
 
 let callbacks = {
@@ -149,7 +149,15 @@ export function applyCustomSyntaxColors() {
       document.head.appendChild(styleEl);
     }
 
-    const colors = state.customColors || {};
+    // Determine which color set to use
+    let colors;
+    const themeDef = SYNTAX_THEMES[state.syntaxTheme];
+    if (themeDef && themeDef.colors) {
+      colors = themeDef.colors;
+    } else {
+      colors = state.customColors || {};
+    }
+
     let css = "";
 
     const addRule = (selector, color) => {
@@ -655,6 +663,9 @@ export function initElements() {
     elements.searchReplaceBtn = document.getElementById("search-replace");
     elements.searchReplaceAllBtn = document.getElementById("search-replace-all");
     elements.searchCount = document.getElementById("search-results-count");
+    elements.searchCaseSensitiveBtn = document.getElementById("search-case-sensitive");
+    elements.searchWholeWordBtn = document.getElementById("search-whole-word");
+    elements.searchUseRegexBtn = document.getElementById("search-use-regex");
 }
 
 export function applyEditorSettings() {
@@ -722,6 +733,12 @@ export function applyLayoutSettings() {
     document.body.setAttribute('data-tab-position', state.tabPosition);
     document.body.classList.toggle('file-tree-compact', state.fileTreeCompact);
     document.body.classList.toggle('file-tree-no-icons', !state.fileTreeShowIcons);
+
+    // Show/hide folder navigation elements based on tree mode
+    const breadcrumb = document.getElementById("breadcrumb");
+    const backBtn = document.getElementById("btn-nav-back");
+    if (breadcrumb) breadcrumb.style.display = state.treeCollapsableMode ? "none" : "";
+    if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
 }
 
 export function setThemePreset(preset) {
