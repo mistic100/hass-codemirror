@@ -97,6 +97,7 @@ import {
 import {
   loadEntities,
   defineHAYamlMode,
+  defineCSVMode,
   defineShowWhitespaceMode
 } from './ha-autocomplete.js';
 
@@ -286,6 +287,7 @@ export async function init() {
 
     // Register custom CodeMirror modes
     defineHAYamlMode();
+    defineCSVMode();
     defineShowWhitespaceMode();
 
     await loadSettings();

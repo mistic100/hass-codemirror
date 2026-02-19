@@ -1928,13 +1928,7 @@ export async function restoreOpenTabs() {
             state.primaryEditor.setValue(primaryTab.content || primaryTab.originalContent || "");
 
             // Set mode
-            const ext = primaryTab.path.split('.').pop().toLowerCase();
-            const modeMap = {
-              'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-              'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-              'css': 'css', 'xml': 'xml', 'md': 'markdown',
-            };
-            const mode = modeMap[ext] || null;
+            const mode = getEditorMode(primaryTab.path);
             if (mode) state.primaryEditor.setOption('mode', mode);
 
             if (primaryTab.cursor) state.primaryEditor.setCursor(primaryTab.cursor);
@@ -1955,13 +1949,7 @@ export async function restoreOpenTabs() {
             state.secondaryEditor.setValue(secondaryTab.content || secondaryTab.originalContent || "");
 
             // Set mode
-            const ext = secondaryTab.path.split('.').pop().toLowerCase();
-            const modeMap = {
-              'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-              'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-              'css': 'css', 'xml': 'xml', 'md': 'markdown',
-            };
-            const mode = modeMap[ext] || null;
+            const mode = getEditorMode(secondaryTab.path);
             if (mode) state.secondaryEditor.setOption('mode', mode);
 
             if (secondaryTab.cursor) state.secondaryEditor.setCursor(secondaryTab.cursor);

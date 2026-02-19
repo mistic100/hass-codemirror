@@ -417,6 +417,44 @@ export function defineHAYamlMode() {
   }
 }
 
+export function defineCSVMode() {
+  try {
+    if (typeof CodeMirror === 'undefined') return;
+
+    CodeMirror.defineMode("csv", function() {
+      return {
+        token: function(stream) {
+          // Handle quoted strings
+          if (stream.peek() === '"') {
+            stream.next();
+            let escaped = false;
+            while (!stream.eol()) {
+              const ch = stream.next();
+              if (ch === '"' && !escaped) break;
+              escaped = !escaped && ch === '\\';
+            }
+            return "string";
+          }
+          
+          // Handle numbers
+          if (stream.match(/^-?\d+(\.\d+)?/)) return "number";
+          
+          // Handle operators (commas)
+          if (stream.match(/^[ \t]*,[ \t]*/)) return "operator";
+          
+          // Handle regular text/variables
+          if (stream.match(/^[^,]+/)) return "variable";
+          
+          stream.next();
+          return null;
+        }
+      };
+    });
+  } catch (error) {
+    console.error("Error defining CSV mode:", error);
+  }
+}
+
 export function defineShowWhitespaceMode() {
   try {
     CodeMirror.defineMode("show-whitespace", function(config, parserConfig) {

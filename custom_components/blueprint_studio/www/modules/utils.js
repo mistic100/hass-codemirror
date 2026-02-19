@@ -252,13 +252,7 @@ export function isTextFile(filename) {
   if (!filename) return false;
   if (filename.includes(".storage/") || filename.startsWith(".storage/")) return true;
   const ext = filename.split(".").pop().toLowerCase();
-  // Using a local copy of extensions for now or passing it
-  const extensions = new Set([
-    "yaml", "yml", "json", "py", "js", "css", "html", "txt",
-    "md", "conf", "cfg", "ini", "sh", "log", "svg", "jinja", "jinja2", "j2",
-    "pem", "crt", "key", "cpp", "h", "gitignore", "lock"
-  ]);
-  return extensions.has(ext);
+  return TEXT_FILE_EXTENSIONS.has(ext);
 }
 
 export function isMobile() {
@@ -334,6 +328,8 @@ function _getFileIcon(filename) {
       return { icon: "description", class: "yaml" };
     case "json":
       return { icon: "data_object", class: "json" };
+    case "csv":
+      return { icon: "table_chart", class: "default" };
     case "py":
       return { icon: "code", class: "python" };
     case "js":
@@ -403,6 +399,7 @@ export function getEditorMode(filename) {
       yaml: yamlMode,
       yml: yamlMode,
       json: { name: "javascript", json: true },
+      csv: "csv",
       py: "python",
       js: "javascript",
       css: "css",
@@ -442,6 +439,7 @@ export function getLanguageName(filename) {
       yaml: "YAML",
       yml: "YAML",
       json: "JSON",
+      csv: "CSV",
       py: "Python",
       js: "JavaScript",
       css: "CSS",

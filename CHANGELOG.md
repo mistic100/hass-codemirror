@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-02-20
+
+### ✨ Feature & Fix Update
+
+#### 🆕 New Features
+*   **Collapse All Folders**: Added a "Collapse All" button (`unfold_less` icon) to the toolbar. Clears all expanded folder states and re-renders the file tree for a clean view.
+*   **One Tab Mode**: Added an optional mode to keep only the last opened file active.
+    *   Automatically saves and closes the previous tab when opening a new one.
+    *   Toggle via the new toolbar button (`tab` icon) or **Settings → Editor → Behavior**.
+    *   State is persisted across sessions.
+*   **Toolbar Enhancements**: "Show Hidden Files" and "Select Files" buttons have been moved from the sidebar header to the main toolbar for better accessibility.
+*   **Scrollbar Visibility**: Significantly increased the visibility of scrollbars in modals, shortcuts, and settings by darkening the default thumb color.
+*   **CSV Support**: Added full support for creating, editing, and viewing `.csv` files with syntax highlighting and spreadsheet-inspired icons.
+
+#### 🌍 Internationalisation
+*   **Global Language Support**: Added translation files for 31 new languages, including Chinese (Simplified), Spanish, Hindi, Arabic, French, Portuguese, Russian, German, Japanese, and many European languages.
+
+#### 🐛 Bug Fixes
+*   **Favorites Panel**: Fixed an issue where the Favorites panel header was destroyed during rendering.
+*   **Folder Pinning**: Validates both files and folders now, preventing favorited folders from disappearing from the list.
+
+#### 🧹 UI Cleanup
+*   **Explorer Header**: Removed the redundant "EXPLORER" sidebar header to maximize vertical space.
+*   **Accent Color**: Removed the redundant dropdown selector in Appearance settings, keeping the cleaner color circle buttons.
+
+## [2.2.1] - 2026-02-20
+
+### ✨ Editor & UI Enhancement Suite
+
+#### 🆕 New Features
+*   **Collapsible File Tree**: A traditional tree view for navigating files with single-click expand/collapse. Can be toggled via Settings → File Tree. When active, breadcrumbs and back buttons are automatically hidden for a cleaner workspace.
+*   **Improved Search (Ctrl+F)**: The cursor now correctly jumps to the search bar when opening search in the code editor. Three new search filters have been added:
+    *   **Match Case (Aa)**: Case-sensitive lookups
+    *   **Whole Word (ab|)**: Excludes partial matches
+    *   **Regex (.*)**: Full regular expression support with real-time syntax validation
+*   **Syntax Themes**: Five predefined themes available: Dracula, Nord, Monokai, Solarized, and One Dark.
+*   **New UI Preset**: Midnight Blue added to appearance settings.
+*   **New Font Options**: Additional font choices available in editor settings.
+
+#### ⚡ Improvements
+*   **Large File Protection**: A confirmation dialog is now shown before downloading potentially large files (.db, .sqlite, .zip) to prevent accidental transfers.
+
+---
+A big thank you to @cataseven for putting together this extensive UI enhancement PR — 13 files changed, all manually tested. The effort and attention to detail are greatly appreciated!
+
 ## [2.2.0] - 2026-02-12
 
 ### ✨ New Features
@@ -460,6 +505,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 ---
 
 ## Version History
+- **2.2.2** - Feature & Fix Update (31 Languages)
+- **2.2.1** - Editor & UI Enhancement Suite
 - **2.2.0** - Performance, Architecture & SFTP Integration Update
 - **2.1.5** - Compatibility & Reliability Update
 - **2.1.4** - Quality of Life Update
@@ -479,7 +526,9 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.2
+[2.2.1]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.1
 [2.2.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.0
 [2.1.5]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.5
 [2.1.4]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.1.4

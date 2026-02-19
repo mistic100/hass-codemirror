@@ -85,7 +85,7 @@ export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB - Hard limit to prevent
 export const TEXT_FILE_WARNING_SIZE = 2 * 1024 * 1024; // 2MB - Warning for text files
 
 export const TEXT_FILE_EXTENSIONS = new Set([
-  "yaml", "yml", "json", "py", "js", "css", "html", "txt",
+  "yaml", "yml", "json", "py", "js", "css", "html", "txt", "csv",
   "md", "conf", "cfg", "ini", "sh", "log", "svg", "jinja", "jinja2", "j2",
   "pem", "crt", "key", "cpp", "h", "gitignore", "lock"
 ]);

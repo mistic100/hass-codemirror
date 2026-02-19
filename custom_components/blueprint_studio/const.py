@@ -2,11 +2,11 @@
 
 DOMAIN = "blueprint_studio"
 NAME = "Blueprint Studio"
-VERSION = "2.2.0"
+VERSION = "2.2.2"
 
 # File extensions allowed for editing
 ALLOWED_EXTENSIONS = {
-    ".yaml", ".yml", ".json", ".py", ".js", ".css", ".html", ".txt",
+    ".yaml", ".yml", ".json", ".py", ".js", ".css", ".html", ".txt", ".csv",
     ".md", ".conf", ".cfg", ".ini", ".sh", ".log", ".gitignore", ".jinja", ".jinja2", ".j2",
     ".db", ".sqlite",
     ".pem", ".crt", ".key", ".der", ".bin", ".ota", ".cpp", ".h", ".tar", ".gz",

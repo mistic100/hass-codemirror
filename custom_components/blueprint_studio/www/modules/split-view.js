@@ -52,7 +52,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
-import { rafThrottle } from './utils.js';
+import { rafThrottle, getEditorMode } from './utils.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
@@ -158,19 +158,7 @@ export function enableSplitView(orientation = 'vertical', skipInitialization = f
     state.editor = state.secondaryEditor;
 
     // Load content with proper mode and settings
-    const ext = tab.path.split('.').pop().toLowerCase();
-    const modeMap = {
-      'yaml': 'ha-yaml',
-      'yml': 'ha-yaml',
-      'js': 'javascript',
-      'json': 'application/json',
-      'py': 'python',
-      'html': 'htmlmixed',
-      'css': 'css',
-      'xml': 'xml',
-      'md': 'markdown',
-    };
-    const mode = modeMap[ext] || null;
+    const mode = getEditorMode(tab.path);
 
     if (mode) {
       state.secondaryEditor.setOption('mode', mode);
@@ -322,13 +310,7 @@ export function moveToPrimaryPane(tabIndex) {
         state.secondaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
         // Set correct mode
-        const ext = movedTab.path.split('.').pop().toLowerCase();
-        const modeMap = {
-          'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-          'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-          'css': 'css', 'xml': 'xml', 'md': 'markdown',
-        };
-        const mode = modeMap[ext] || null;
+        const mode = getEditorMode(movedTab.path);
         if (mode) state.secondaryEditor.setOption('mode', mode);
 
         // Restore cursor and scroll
@@ -350,13 +332,7 @@ export function moveToPrimaryPane(tabIndex) {
     state.primaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
     // Set correct mode
-    const ext = movedTab.path.split('.').pop().toLowerCase();
-    const modeMap = {
-      'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-      'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-      'css': 'css', 'xml': 'xml', 'md': 'markdown',
-    };
-    const mode = modeMap[ext] || null;
+    const mode = getEditorMode(movedTab.path);
     if (mode) state.primaryEditor.setOption('mode', mode);
 
     // Restore cursor and scroll
@@ -415,13 +391,7 @@ export function moveToSecondaryPane(tabIndex) {
         state.primaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
         // Set correct mode
-        const ext = movedTab.path.split('.').pop().toLowerCase();
-        const modeMap = {
-          'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-          'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-          'css': 'css', 'xml': 'xml', 'md': 'markdown',
-        };
-        const mode = modeMap[ext] || null;
+        const mode = getEditorMode(movedTab.path);
         if (mode) state.primaryEditor.setOption('mode', mode);
 
         // Restore cursor and scroll
@@ -443,13 +413,7 @@ export function moveToSecondaryPane(tabIndex) {
     state.secondaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
     // Set correct mode
-    const ext = movedTab.path.split('.').pop().toLowerCase();
-    const modeMap = {
-      'yaml': 'ha-yaml', 'yml': 'ha-yaml', 'js': 'javascript',
-      'json': 'application/json', 'py': 'python', 'html': 'htmlmixed',
-      'css': 'css', 'xml': 'xml', 'md': 'markdown',
-    };
-    const mode = modeMap[ext] || null;
+    const mode = getEditorMode(movedTab.path);
     if (mode) state.secondaryEditor.setOption('mode', mode);
 
     // Restore cursor and scroll
