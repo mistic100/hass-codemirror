@@ -151,8 +151,6 @@ let callbacks = {
     restartHomeAssistant: null, // If we decide to keep it in app.js, otherwise we export it
     debouncedContentSearch: null,
     debouncedFilenameSearch: null,
-    toggleTerminal: null,
-    runCommand: null,
     // Split view callbacks
     enableSplitView: null,
     disableSplitView: null,
@@ -631,14 +629,6 @@ export function initEventListeners() {
           callbacks.disableSplitView();
           updateSplitViewButtons();
         }
-      });
-    }
-
-    // Terminal button
-    const btnTerminal = document.getElementById("btn-terminal");
-    if (btnTerminal) {
-      btnTerminal.addEventListener("click", () => {
-        if (callbacks.toggleTerminal) callbacks.toggleTerminal();
       });
     }
 
@@ -1370,22 +1360,6 @@ export function initEventListeners() {
               if (callbacks.promptNewFolder) await callbacks.promptNewFolder(targetPath);
             }
             break;
-          case "run_in_terminal":
-            if (callbacks.runCommand) {
-              let cmd = "";
-              if (target.isFolder) {
-                cmd = `ls -la "${target.path}"`;
-              } else {
-                const ext = target.path.split('.').pop().toLowerCase();
-                if (ext === 'py') {
-                  cmd = `python3 "${target.path}"`;
-                } else {
-                  cmd = `cat "${target.path}"`;
-                }
-              }
-              await callbacks.runCommand(cmd);
-            }
-            break;
           case "rename":
             if (callbacks.promptRename) await callbacks.promptRename(target.path, target.isFolder);
             break;
@@ -1589,12 +1563,6 @@ export function initEventListeners() {
             elements.globalSearchInput.focus();
             elements.globalSearchInput.select();
         }
-      }
-
-      // Ctrl/Cmd + Shift + T - Toggle Terminal
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key.toLowerCase() === "t" || e.code === "KeyT")) {
-        e.preventDefault();
-        if (callbacks.toggleTerminal) callbacks.toggleTerminal();
       }
 
       // Ctrl/Cmd + K - Command Palette

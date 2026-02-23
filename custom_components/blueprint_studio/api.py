@@ -19,7 +19,6 @@ from .git_manager import GitManager
 from .ai_manager import AIManager
 from .file_manager import FileManager
 from .sftp_manager import SftpManager
-from .terminal_manager import TerminalManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +39,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         self.ai = AIManager(None, data)
         self.file = FileManager(None, config_dir)
         self.sftp = SftpManager()
-        self.terminal = None # Initialized in _update_hass
 
     async def _authenticate(self, request):
         """Authenticate request via header or token query param."""
@@ -66,10 +64,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         self.git.hass = hass
         self.ai.hass = hass
         self.file.hass = hass
-        if not self.terminal:
-            self.terminal = TerminalManager(hass)
-        else:
-            self.terminal.hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
         """Handle GET requests."""
@@ -83,105 +77,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         
         hass = request.app["hass"]
         self._update_hass(hass)
-
-        if action == "terminal_ws":
-            # Only allow admins
-            if not user.is_admin:
-                _LOGGER.warning("Blueprint Studio: Non-admin user %s attempted terminal access", user.name)
-                return web.Response(status=403, text="Unauthorized: Admin access required")
-
-            _LOGGER.debug("Blueprint Studio: Starting Terminal WebSocket for %s", user.name)
-
-            # Upgrade to WebSocket
-            ws = web.WebSocketResponse()
-            await ws.prepare(request)
-            
-            # Spawn PTY
-            try:
-                master_fd, pid = await hass.async_add_executor_job(self.terminal.spawn)
-                _LOGGER.debug("Blueprint Studio: PTY spawned (pid %s)", pid)
-            except Exception as e:
-                _LOGGER.error("Failed to spawn terminal: %s", e)
-                await ws.close()
-                return ws
-
-            # Reader callback (runs in event loop thread, reads from fd)
-            def forward_output():
-                try:
-                    data = os.read(master_fd, 1024)
-                    if data:
-                        # Schedule sending data to WS
-                        try:
-                            hass.async_create_task(ws.send_bytes(data))
-                        except Exception as e:
-                            _LOGGER.warning("Failed to send terminal data to WS: %s", e)
-                            hass.loop.remove_reader(master_fd)
-                            hass.async_create_task(ws.close())
-                    else:
-                        # EOF (Process exited)
-                        _LOGGER.info("Terminal PTY EOF - shell process has exited (this is normal when closing terminal or when remote SSH session ends)")
-                        hass.loop.remove_reader(master_fd)
-                        hass.async_create_task(ws.close())
-                except OSError as e:
-                    # Input/Output error (PTY closed)
-                    if e.errno != 5: # Ignore EIO (standard PTY close error on Linux)
-                        _LOGGER.warning("Terminal PTY Read Error (errno %s): %s - This may indicate the remote SSH session closed unexpectedly", e.errno, e)
-                    hass.loop.remove_reader(master_fd)
-                    hass.async_create_task(ws.close())
-                except Exception as e:
-                    _LOGGER.error("Unexpected error in terminal reader: %s", e)
-                    hass.loop.remove_reader(master_fd)
-                    hass.async_create_task(ws.close())
-
-            # Register reader
-            hass.loop.add_reader(master_fd, forward_output)
-
-            # Writer loop (from WS to PTY)
-            try:
-                async for msg in ws:
-                    try:
-                        if msg.type == web.WSMsgType.BINARY:
-                            os.write(master_fd, msg.data)
-                        elif msg.type == web.WSMsgType.TEXT:
-                            try:
-                                data = msg.json()
-                                # Ensure data is a dict before calling .get()
-                                if isinstance(data, dict):
-                                    if data.get('type') == 'resize':
-                                        await hass.async_add_executor_job(
-                                            self.terminal.resize, master_fd, data['rows'], data['cols']
-                                        )
-                                    elif data.get('type') == 'input':
-                                        os.write(master_fd, data['data'].encode())
-                                    else:
-                                        os.write(master_fd, msg.data.encode())
-                                else:
-                                    # If JSON is not a dict, treat as raw text
-                                    os.write(master_fd, msg.data.encode())
-                            except ValueError:
-                                # Not valid JSON, treat as raw text
-                                os.write(master_fd, msg.data.encode())
-                    except OSError as e:
-                        _LOGGER.warning("Terminal PTY Write Error: %s", e)
-                        # If we can't write, the PTY might be dead. Break loop to close.
-                        break
-                    except Exception as e:
-                        _LOGGER.error("Unexpected error in terminal writer: %s", e)
-                        break
-                    
-                    if msg.type == web.WSMsgType.ERROR:
-                        _LOGGER.error('Terminal WS error: %s', ws.exception())
-            finally:
-                hass.loop.remove_reader(master_fd)
-                os.close(master_fd)
-                # Cleanup process
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                    os.waitpid(pid, os.WNOHANG)
-                except OSError:
-                    pass
-            
-            return ws
 
         if action == "list_files":
             show_hidden = params.get("show_hidden", "false").lower() == "true"
@@ -307,20 +202,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "check_jinja":
             result = await hass.async_add_executor_job(self.ai.check_jinja, data.get("content", ""))
             return result
-
-        # Terminal
-        if action == "terminal_exec":
-            if not self.terminal: return json_message("Terminal not initialized", status_code=500)
-            # Only allow admins
-            if not user.is_admin:
-                return json_message("Unauthorized: Admin access required", status_code=403)
-            
-            result = await self.terminal.execute_command(
-                data.get("command", ""),
-                user=user.name or "Unknown",
-                cwd=data.get("cwd")
-            )
-            return json_response(result)
 
         # Git
         if action == "git_status": return await self.git.get_status(data.get("fetch", False))
@@ -534,4 +415,3 @@ class BlueprintStudioApiView(HomeAssistantView):
         except Exception as exc:
             _LOGGER.error("SFTP action %s failed: %s", action, exc)
             return json_response({"success": False, "message": str(exc)})
-

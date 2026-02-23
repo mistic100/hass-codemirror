@@ -197,7 +197,6 @@ export const state = {
   contentSearchResults: null,
   isMobile: window.innerWidth <= MOBILE_BREAKPOINT,
   sidebarVisible: window.innerWidth > MOBILE_BREAKPOINT,
-  terminalVisible: false, // Terminal panel state
   theme: "dark",
   showHidden: false,
   showRecentFiles: true,

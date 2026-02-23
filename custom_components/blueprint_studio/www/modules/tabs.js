@@ -170,12 +170,7 @@ function createTabElement(tab, tabIndex, isActive, pane) {
     tabEl.setAttribute('data-pane', pane);
   }
 
-  let icon;
-  if (tab.isTerminal) {
-    icon = { icon: "terminal", class: "default" };
-  } else {
-    icon = getFileIcon(tab.path);
-  }
+  const icon = getFileIcon(tab.path);
   
   const fileName = tab.path.split("/").pop();
 

@@ -519,16 +519,6 @@ import {
   promptDelete as promptDeleteImpl
 } from './file-operations-ui.js';
 
-import {
-  toggleTerminal as toggleTerminalImpl,
-  runCommand as runCommandImpl,
-  setTerminalMode,
-  getTerminalContainer,
-  fitTerminal,
-  registerTerminalCallbacks,
-  initTerminal
-} from './terminal.js';
-
   // ============================================
   // State Management
   // ============================================
@@ -1017,10 +1007,6 @@ export async function promptDelete(path, isFolder) {
   return await promptDeleteImpl(path, isFolder);
 }
 
-// Re-export terminal module functions
-export const toggleTerminal = toggleTerminalImpl;
-export const runCommand = runCommandImpl;
-
   // ============================================
   // File Tree Rendering
   // ============================================
@@ -1033,44 +1019,6 @@ export const performContentSearch = performContentSearchImpl;
 
   // Tab Management
   // ============================================
-
-// Terminal Management
-function openTerminalTab() {
-  let tab = state.openTabs.find(t => t.isTerminal);
-  
-  if (!tab) {
-    tab = {
-      path: "terminal://local",
-      name: "Terminal",
-      isTerminal: true,
-      modified: false,
-      isBinary: false
-    };
-    state.openTabs.push(tab);
-  }
-  
-  // Hide bottom panel if open
-  toggleTerminalImpl(false);
-  
-  activateTab(tab);
-  renderTabs();
-}
-
-function closeTerminalTab() {
-  const tab = state.openTabs.find(t => t.isTerminal);
-  if (tab) {
-    closeTab(tab, true);
-    // Re-open as panel
-    toggleTerminalImpl(true);
-  }
-}
-
-// Register terminal callbacks
-registerTerminalCallbacks({
-  openTerminalTab,
-  closeTerminalTab,
-  getAuthToken
-});
 
 export async function openFile(path, forceReload = false, noActivate = false) {
     if (isSftpPathImpl(path)) {
@@ -1182,12 +1130,6 @@ export function activateTab(tab, skipSave = false) {
       elements.welcomeScreen.style.display = "none";
     }
 
-    // Detach terminal if leaving terminal tab
-    if (state.activeTab && state.activeTab.isTerminal && tab !== state.activeTab) {
-        setTerminalMode('panel'); // Moves back to body, fixed
-        toggleTerminalImpl(false); // Ensure hidden
-    }
-
     // Determine which pane this tab should be in
     const tabIndex = state.openTabs.indexOf(tab);
     let pane = null;
@@ -1240,7 +1182,7 @@ export function activateTab(tab, skipSave = false) {
 
     // Save current tab state before switching (only for text files)
     // CRITICAL FIX: Use currentEditor (the editor of the OLD tab) to save state
-    if (!skipSave && state.activeTab && currentEditor && !state.activeTab.isBinary && !state.activeTab.isTerminal) {
+    if (!skipSave && state.activeTab && currentEditor && !state.activeTab.isBinary) {
       state.activeTab.content = currentEditor.getValue();
       state.activeTab.history = currentEditor.getHistory();
       state.activeTab.cursor = currentEditor.getCursor();
@@ -1262,39 +1204,6 @@ export function activateTab(tab, skipSave = false) {
             previewContainer.classList.add("visible");
             renderAssetPreview(tab, previewContainer);
         }
-    } else if (tab.isTerminal) {
-        // Handle Terminal Tab
-        if (targetEditor) {
-            targetEditor.getWrapperElement().style.display = "none";
-        }
-        // Use preview container for terminal
-        const previewContainer = (pane === 'secondary') ?
-          document.getElementById('secondary-asset-preview') :
-          elements.assetPreview;
-          
-        if (previewContainer) {
-            if (!getTerminalContainer()) {
-                // Initialize if missing
-                previewContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary)"><span class="material-icons loading-spinner" style="font-size:24px;margin-right:8px">sync</span> Loading Terminal...</div>';
-                previewContainer.classList.add("visible");
-                
-                initTerminal().then(() => {
-                    // Check if tab is still active
-                    if (state.activeTab === tab) {
-                        previewContainer.innerHTML = '';
-                        previewContainer.appendChild(getTerminalContainer());
-                        setTerminalMode('tab');
-                        fitTerminal();
-                    }
-                });
-            } else {
-                previewContainer.innerHTML = ''; // Clear anything else
-                previewContainer.classList.add("visible");
-                previewContainer.appendChild(getTerminalContainer());
-                setTerminalMode('tab');
-                fitTerminal();
-            }
-        }
     } else {
         // Handle Text Editor
         // Hide preview in appropriate pane
@@ -1302,15 +1211,9 @@ export function activateTab(tab, skipSave = false) {
           document.getElementById('secondary-asset-preview') :
           elements.assetPreview;
         if (previewContainer) {
-            previewContainer.classList.remove("visible");
-            // Only clear if NOT terminal (terminal handles its own detach)
-            // But we already detached above if switching AWAY.
-            // If switching TO text from terminal, terminal is already detached.
-            // If switching TO text from binary, we need to clear.
-            if (!previewContainer.contains(getTerminalContainer())) {
-                 previewContainer.innerHTML = "";
-            }
-        }
+        previewContainer.classList.remove("visible");
+        previewContainer.innerHTML = "";
+      }
 
         // Create editor if it doesn't exist
         if (!targetEditor) {
@@ -1581,12 +1484,6 @@ export function closeTab(tab, force = false) {
       if (!confirm(`${tab.path.split("/").pop()} has unsaved changes. Close anyway?`)) {
         return;
       }
-    }
-
-    // Detach terminal if closing terminal tab
-    if (tab.isTerminal) {
-        setTerminalMode('panel');
-        toggleTerminalImpl(false);
     }
 
     const index = state.openTabs.indexOf(tab);
@@ -1929,8 +1826,6 @@ registerEventHandlerCallbacks({
   showCommandPalette,
   debouncedContentSearch,
   debouncedFilenameSearch,
-  toggleTerminal,
-  runCommand,
   // Split view callbacks
   enableSplitView,
   disableSplitView,
@@ -1998,18 +1893,6 @@ export async function restoreOpenTabs() {
             console.warn(`Failed to restore SFTP tab ${tabState.path}:`, err);
           }
         }
-      } else if (tabState.path.startsWith("terminal://")) {
-        // Restore terminal tab
-        const tab = {
-          path: tabState.path,
-          name: "Terminal",
-          isTerminal: true,
-          modified: false,
-          isBinary: false
-        };
-        state.openTabs.push(tab);
-        // Ensure bottom panel is hidden if terminal is in tab
-        toggleTerminalImpl(false);
       } else {
         // Local file - check if it exists
         const fileExists = state.files.some(f => f.path === tabState.path);
@@ -2234,7 +2117,6 @@ registerInitializationCallbacks({
   setButtonLoading,
   restoreOpenTabs,
   restoreSftpSession,
-  toggleTerminal,
   copyToClipboard,
   applyVersionControlVisibility,
   updateAIVisibility,
@@ -2296,7 +2178,6 @@ registerSplitViewCallbacks({
   renderTabs,
   saveSettings: saveSettingsImpl,
   renderFileTree,
-  fitTerminal
 });
 
 // Register editor module callbacks
@@ -2427,4 +2308,3 @@ initSftpPanelButtons();
 
 // Initial render of SFTP panel (visibility applied later after settings load)
 renderSftpPanelImpl();
-

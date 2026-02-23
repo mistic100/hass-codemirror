@@ -195,7 +195,6 @@ export async function loadSettings() {
     // 4. Apply to State
     state.theme = settings.theme || localSettings.theme || "dark";
     state.showHidden = settings.showHidden || false;
-    state.terminalVisible = settings.terminalVisible || false;
     state.sshHosts = settings.sshHosts || [];
     state.showRecentFiles = settings.showRecentFiles !== false;
     state.favoriteFiles = settings.favoriteFiles || [];
@@ -373,7 +372,6 @@ export async function saveSettings() {
     const settings = {
       theme: state.theme,
       showHidden: state.showHidden,
-      terminalVisible: state.terminalVisible,
       sshHosts: state.sshHosts,
       showRecentFiles: state.showRecentFiles,
       favoriteFiles: state.favoriteFiles,

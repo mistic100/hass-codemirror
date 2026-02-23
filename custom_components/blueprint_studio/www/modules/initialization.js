@@ -228,7 +228,7 @@ import {
 // These will need to be imported from app.js when we refactor
 let loadFiles, openFile, saveFile, saveCurrentFile, renderTabs, renderFileTree;
 let closeTab, loadFile, gitStage, gitUnstage, setButtonLoading;
-let restoreOpenTabs, restoreSftpSession, toggleTerminal, copyToClipboard, applyVersionControlVisibility, updateAIVisibility, applySftpVisibility, renderSftpPanel;
+let restoreOpenTabs, restoreSftpSession, copyToClipboard, applyVersionControlVisibility, updateAIVisibility, applySftpVisibility, renderSftpPanel;
 let updateGitPanel, updateToolbarState, updateStatusBar, updateSplitViewButtons;
 let isTextFile, toggleSelectionMode, processUploads;
 let renderRecentFilesPanel, renderFavoritesPanel, handleSelectionChange;
@@ -251,7 +251,6 @@ export function registerInitializationCallbacks(callbacks) {
   setButtonLoading = callbacks.setButtonLoading;
   restoreOpenTabs = callbacks.restoreOpenTabs;
   restoreSftpSession = callbacks.restoreSftpSession;
-  toggleTerminal = callbacks.toggleTerminal;
   copyToClipboard = callbacks.copyToClipboard;
   applyVersionControlVisibility = callbacks.applyVersionControlVisibility;
   updateAIVisibility = callbacks.updateAIVisibility;
@@ -532,13 +531,6 @@ export async function init() {
 
       // Restore SFTP session (connection and path)
       restoreSftpSession(),
-
-      // Restore Terminal
-      (async () => {
-        if (state.terminalVisible && toggleTerminal) {
-          await toggleTerminal(true);
-        }
-      })(),
 
       // Load git status silently
       (async () => {
