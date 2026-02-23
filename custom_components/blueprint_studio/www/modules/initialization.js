@@ -228,7 +228,7 @@ import {
 // These will need to be imported from app.js when we refactor
 let loadFiles, openFile, saveFile, saveCurrentFile, renderTabs, renderFileTree;
 let closeTab, loadFile, gitStage, gitUnstage, setButtonLoading;
-let restoreOpenTabs, copyToClipboard, applyVersionControlVisibility, updateAIVisibility;
+let restoreOpenTabs, copyToClipboard, applyVersionControlVisibility;
 let updateGitPanel, updateToolbarState, updateStatusBar, updateSplitViewButtons;
 let isTextFile, toggleSelectionMode, processUploads;
 let renderRecentFilesPanel, renderFavoritesPanel, handleSelectionChange;
@@ -252,7 +252,6 @@ export function registerInitializationCallbacks(callbacks) {
   restoreOpenTabs = callbacks.restoreOpenTabs;
   copyToClipboard = callbacks.copyToClipboard;
   applyVersionControlVisibility = callbacks.applyVersionControlVisibility;
-  updateAIVisibility = callbacks.updateAIVisibility;
   updateGitPanel = callbacks.updateGitPanel;
   updateToolbarState = callbacks.updateToolbarState;
   updateStatusBar = callbacks.updateStatusBar;
@@ -293,7 +292,6 @@ export async function init() {
     applyLayoutSettings();
     applyEditorSettings();
     applyVersionControlVisibility(); // Apply version control visibility setting
-    updateAIVisibility(); // Apply AI integration visibility setting
 
     // We wrap non-critical initializations in their own try-catches
     try { gitStatus(true, true); } catch(e) {}
@@ -363,8 +361,7 @@ export async function init() {
 
     registerSettingsCallbacks({
       applyTheme,
-      applyCustomSyntaxColors,
-      updateAIVisibility
+      applyCustomSyntaxColors
     });
 
     registerSettingsUICallbacks({
@@ -373,7 +370,6 @@ export async function init() {
       applyCustomSyntaxColors,
       applyLayoutSettings,
       applyEditorSettings,
-      updateAIVisibility,
       applyVersionControlVisibility,
       renderFileTree,
       showGitExclusions,

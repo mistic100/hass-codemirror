@@ -832,3 +832,37 @@ function duplicateLines(cm, direction) {
     }
   });
 }
+
+/**
+ * Copies text to clipboard with fallback for older browsers
+ * @param {string} text - Text to copy
+ */
+export function copyToClipboard(text) {
+  if (!navigator.clipboard) {
+      // Fallback for non-secure contexts or browsers without clipboard API
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+          document.execCommand('copy');
+          if (callbacks.showToast) callbacks.showToast("Code copied to clipboard", "success");
+      } catch (err) {
+          console.error("Fallback copy failed:", err);
+          if (callbacks.showToast) callbacks.showToast("Failed to copy code", "error");
+      }
+      document.body.removeChild(textArea);
+      return;
+  }
+
+  navigator.clipboard.writeText(text).then(() => {
+      if (callbacks.showToast) callbacks.showToast("Code copied to clipboard", "success");
+  }).catch(err => {
+      console.error("Async copy failed:", err);
+      if (callbacks.showToast) callbacks.showToast("Failed to copy code", "error");
+  });
+}

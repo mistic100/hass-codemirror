@@ -21,7 +21,7 @@
  *    - Add view content panel
  *    - Add case in switchSidebarView()
  *    - Update getSidebarView() if needed
- *    - Example: AI assistant panel, notifications panel
+ *    - Example: notifications panel
  *
  * 2. Adding view-specific state:
  *    - Track in state.currentSidebarView
@@ -45,7 +45,6 @@
  * - gitea: Gitea integration panel
  * - search: Global search panel
  * - settings: Settings panel
- * - ai: AI assistant (if enabled)
  *
  * COMMON PATTERNS:
  * - Switch view: switchSidebarView('git')

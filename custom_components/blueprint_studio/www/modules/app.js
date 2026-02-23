@@ -454,6 +454,7 @@ import {
 
 import {
   registerEditorCallbacks,
+  copyToClipboard as copyToClipboardImpl,
   createEditor as createEditorImpl,
   createSecondaryEditor as createSecondaryEditorImpl,
   destroySecondaryEditor as destroySecondaryEditorImpl,
@@ -468,15 +469,6 @@ import {
   renderAssetPreview as renderAssetPreviewImpl,
   toggleMarkdownPreview as toggleMarkdownPreviewImpl
 } from './asset-preview.js';
-
-import {
-  registerAICallbacks,
-  updateAIVisibility as updateAIVisibilityImpl,
-  toggleAISidebar as toggleAISidebarImpl,
-  formatAiResponse as formatAiResponseImpl,
-  copyToClipboard as copyToClipboardImpl,
-  sendAIChatMessage as sendAIChatMessageImpl
-} from './ai-ui.js';
 
 import {
   registerCommandPaletteCallbacks,
@@ -892,25 +884,8 @@ export function applyVersionControlVisibility() {
   return applyVersionControlVisibilityImpl();
 }
 
-// AI UI functions (wrapped from ai-ui.js)
-export function updateAIVisibility() {
-  return updateAIVisibilityImpl();
-}
-
-export function toggleAISidebar() {
-  return toggleAISidebarImpl();
-}
-
-export function formatAiResponse(text) {
-  return formatAiResponseImpl(text);
-}
-
 export function copyToClipboard(text) {
   return copyToClipboardImpl(text);
-}
-
-export async function sendAIChatMessage() {
-  return await sendAIChatMessageImpl();
 }
 
 
@@ -1740,8 +1715,6 @@ registerEventHandlerCallbacks({
   performGlobalReplace,
   performGlobalSearch,
   toggleMarkdownPreview,
-  toggleAISidebar,
-  sendAIChatMessage,
   promptNewFile: (path) => promptNewFile(path),
   promptNewFolder: (path) => promptNewFolder(path),
   toggleGitGroup,
@@ -2025,7 +1998,6 @@ registerInitializationCallbacks({
   restoreOpenTabs,
   copyToClipboard,
   applyVersionControlVisibility,
-  updateAIVisibility,
   updateGitPanel,
   updateToolbarState,
   updateStatusBar,
@@ -2111,13 +2083,6 @@ registerAssetPreviewCallbacks({
   openFile,
   closeTab,
   downloadContent
-});
-
-// Register AI UI module callbacks
-registerAICallbacks({
-  showToast,
-  fetchWithAuth,
-  getApiBase: () => API_BASE
 });
 
 // Register command palette module callbacks

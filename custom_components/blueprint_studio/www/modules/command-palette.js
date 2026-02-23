@@ -29,7 +29,6 @@
  *
  * View Operations:
  * - toggleSidebar: Toggle sidebar visibility
- * - toggleAISidebar: Toggle AI sidebar
  *
  * Search Operations:
  * - openSearchWidget: Open find/replace

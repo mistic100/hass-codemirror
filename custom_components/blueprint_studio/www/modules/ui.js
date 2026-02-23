@@ -662,7 +662,6 @@ export function initElements() {
     elements.groupMarkdown = document.getElementById("group-markdown");
     elements.btnMarkdownPreview = document.getElementById("btn-markdown-preview");
 
-    elements.btnAiStudio = document.getElementById("btn-ai-studio");
     elements.btnRestartHa = document.getElementById("btn-restart-ha");
     elements.btnAppSettings = document.getElementById("btn-app-settings");
     elements.btnValidate = document.getElementById("btn-validate");

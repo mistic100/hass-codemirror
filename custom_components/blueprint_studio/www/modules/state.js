@@ -95,16 +95,6 @@
  * - giteaIntegrationEnabled: Gitea feature toggle
  * - giteaPanelCollapsed: Gitea panel state
  *
- * AI INTEGRATION:
- * - aiIntegrationEnabled: AI feature toggle
- * - aiType: "cloud", "local", or "rule-based"
- * - cloudProvider: "gemini", "openai", "claude"
- * - aiModel: Selected AI model
- * - geminiApiKey, openaiApiKey, claudeApiKey: API keys
- * - localAiProvider: "ollama", "lmstudio", "custom"
- * - ollamaUrl, ollamaModel: Ollama config
- * - lmStudioUrl, lmStudioModel: LM Studio config
- *
  * EDITOR SETTINGS:
  * - fontSize: Editor font size
  * - fontFamily: Editor font family
@@ -218,28 +208,6 @@ export const state = {
   selectedItems: new Set(),
   customColors: {},
 
-  // AI Configuration (New Structure)
-  aiIntegrationEnabled: false,
-  aiType: "rule-based", // "none" | "rule-based" | "local-ai" | "cloud"
-
-  // Legacy field for migration
-  aiProvider: "local",
-
-  // Local AI Settings
-  localAiProvider: "ollama", // "ollama" | "lm-studio" | "custom"
-  ollamaUrl: "http://localhost:11434",
-  ollamaModel: "codellama:7b",
-  lmStudioUrl: "http://localhost:1234",
-  lmStudioModel: "",
-  customAiUrl: "",
-  customAiModel: "",
-
-  // Cloud AI Settings
-  cloudProvider: "gemini", // "gemini" | "openai" | "claude"
-  aiModel: "gemini-2.0-flash-exp",
-  geminiApiKey: "",
-  openaiApiKey: "",
-  claudeApiKey: "",
   themePreset: "dark",
   accentColor: null,
   fontSize: 14,

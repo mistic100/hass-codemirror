@@ -17,7 +17,6 @@
  * REQUIRED CALLBACKS (from app.js):
  * - applyTheme: Apply theme to UI
  * - applyCustomSyntaxColors: Apply custom syntax colors
- * - updateAIVisibility: Update AI feature visibility
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -33,12 +32,11 @@
  *    - Check for old format: if (settings.oldField)
  *    - Convert to new format: state.newField = convertOldToNew(settings.oldField)
  *    - Save migrated settings immediately
- *    - Example: aiProvider → aiType migration (lines 114-133)
  *
  * 3. Adding setting categories:
  *    - Group related settings together in code
  *    - Add comments to separate categories
- *    - Examples: UI, Editor, Git, AI, Performance
+ *    - Examples: UI, Editor, Git, Performance
  *
  * 4. Adding workspace state:
  *    - Save in saveSettings() if state.rememberWorkspace
@@ -84,14 +82,6 @@
  *    - giteaIntegrationEnabled
  *    - giteaPanelCollapsed, giteaCollapsedGroups
  *
- * 6. AI Integration:
- *    - aiIntegrationEnabled, aiType
- *    - cloudProvider, aiModel
- *    - geminiApiKey, openaiApiKey, claudeApiKey
- *    - localAiProvider, ollamaUrl, ollamaModel
- *    - lmStudioUrl, lmStudioModel
- *    - customAiUrl, customAiModel
- *
  * 7. Performance:
  *    - pollingInterval, remoteFetchInterval
  *    - fileCacheSize, enableVirtualScroll
@@ -118,7 +108,7 @@
  * 1. Load: Try server → Fall back to localStorage → Use defaults
  * 2. Migrate: If server empty but localStorage has data → Copy to server
  * 3. Save: Write to both server and localStorage
- * 4. Apply: Call callbacks to update UI (theme, colors, AI visibility)
+ * 4. Apply: Call callbacks to update UI (theme, colors)
  *
  * COMMON PATTERNS:
  * - Load setting: state.setting = settings.setting || defaultValue
@@ -134,12 +124,6 @@
  * - Restores workspace on reload
  * - Controlled by rememberWorkspace setting
  *
- * MIGRATION EXAMPLE (AI Settings):
- * - Old: aiProvider: "gemini"
- * - New: aiType: "cloud", cloudProvider: "gemini"
- * - Migration checks for old format and converts
- * - Keeps old field for backward compatibility
- *
  * ============================================================================
  */
 import { state, elements, gitState, giteaState } from './state.js';
@@ -149,8 +133,7 @@ import { API_BASE, STORAGE_KEY } from './constants.js';
 // Callbacks for cross-module functions
 let callbacks = {
   applyTheme: null,
-  applyCustomSyntaxColors: null,
-  updateAIVisibility: null
+  applyCustomSyntaxColors: null
 };
 
 export function registerSettingsCallbacks(cb) {
@@ -202,9 +185,6 @@ export async function loadSettings() {
     state.gitConfig = settings.gitConfig || null;
     state.customColors = settings.customColors || {};
     state.syntaxTheme = settings.syntaxTheme || 'custom';
-    state.geminiApiKey = settings.geminiApiKey || null;
-    state.openaiApiKey = settings.openaiApiKey || null;
-    state.claudeApiKey = settings.claudeApiKey || null;
 
     // New UI customization settings
     state.themePreset = settings.themePreset || "dark";
@@ -269,54 +249,11 @@ export async function loadSettings() {
       state._savedSecondaryActiveTabPath = settings.splitView.secondaryActiveTabPath;
     }
 
-    // AI Settings - with migration from old structure
-    state.aiIntegrationEnabled = settings.aiIntegrationEnabled ?? false;
-
-    // Migrate old aiProvider to new aiType structure
-    if (settings.aiType) {
-      // New structure exists
-      state.aiType = settings.aiType;
-    } else if (settings.aiProvider) {
-      // Migrate from old structure
-      const oldProvider = settings.aiProvider;
-
-      if (oldProvider === "local") {
-        state.aiType = "rule-based";
-      } else if (["gemini", "openai", "claude"].includes(oldProvider)) {
-        state.aiType = "cloud";
-        state.cloudProvider = oldProvider;
-      } else {
-        state.aiType = "rule-based";
-      }
-    } else {
-      state.aiType = "rule-based";
-    }
-
-    // Legacy field
-    state.aiProvider = settings.aiProvider || "local";
-
-    // Local AI settings
-    state.localAiProvider = settings.localAiProvider || "ollama";
-    state.ollamaUrl = settings.ollamaUrl || "http://localhost:11434";
-    state.ollamaModel = settings.ollamaModel || "codellama:7b";
-    state.lmStudioUrl = settings.lmStudioUrl || "http://localhost:1234";
-    state.lmStudioModel = settings.lmStudioModel || "";
-    state.customAiUrl = settings.customAiUrl || "";
-    state.customAiModel = settings.customAiModel || "";
-
-    // Cloud AI settings
-    state.cloudProvider = settings.cloudProvider || settings.aiProvider || "gemini";
-    state.aiModel = settings.aiModel || "gemini-2.0-flash-exp";
-    state.geminiApiKey = settings.geminiApiKey || "";
-    state.openaiApiKey = settings.openaiApiKey || "";
-    state.claudeApiKey = settings.claudeApiKey || "";
-
     state._savedOpenTabs = settings.openTabs || localSettings.openTabs || [];
     state._savedActiveTabPath = settings.activeTabPath || localSettings.activeTabPath || null;
 
     if (callbacks.applyTheme) callbacks.applyTheme();
     if (callbacks.applyCustomSyntaxColors) callbacks.applyCustomSyntaxColors();
-    if (callbacks.updateAIVisibility) callbacks.updateAIVisibility();
 
   } catch (e) {
     // Could not load settings
@@ -378,23 +315,6 @@ export async function saveSettings() {
       giteaIntegrationEnabled: state.giteaIntegrationEnabled,
       gitCollapsedGroups: Array.from(gitState.collapsedGroups),
       giteaCollapsedGroups: Array.from(giteaState.collapsedGroups),
-      aiIntegrationEnabled: state.aiIntegrationEnabled,
-      aiType: state.aiType,
-      aiProvider: state.aiProvider, // Legacy, for migration
-      // Local AI settings
-      localAiProvider: state.localAiProvider,
-      ollamaUrl: state.ollamaUrl,
-      ollamaModel: state.ollamaModel,
-      lmStudioUrl: state.lmStudioUrl,
-      lmStudioModel: state.lmStudioModel,
-      customAiUrl: state.customAiUrl,
-      customAiModel: state.customAiModel,
-      // Cloud AI settings
-      cloudProvider: state.cloudProvider,
-      aiModel: state.aiModel,
-      geminiApiKey: state.geminiApiKey,
-      openaiApiKey: state.openaiApiKey,
-      claudeApiKey: state.claudeApiKey,
       // New UI customization settings
       themePreset: state.themePreset,
       accentColor: state.accentColor,

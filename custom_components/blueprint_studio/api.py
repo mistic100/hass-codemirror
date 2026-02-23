@@ -263,16 +263,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "gitea_remove_remote": return await self.git.remove_remote("gitea")
         if action == "gitea_create_repo": return await self.git.gitea_create_repo(data.get("repo_name"), data.get("description", ""), data.get("is_private", True), data.get("gitea_url"))
 
-        # AI
-        if action == "ai_query": return await self.ai.query(
-            data.get("query"),
-            data.get("current_file"),
-            data.get("file_content"),
-            data.get("ai_type"),
-            data.get("cloud_provider"),
-            data.get("ai_model")
-        )
-
         # GitHub Specific
         if action == "github_create_repo": return await self.git.github_create_repo(data.get("repo_name"), data.get("description", ""), data.get("is_private", True))
         if action == "github_set_default_branch": return await self.git.github_set_default_branch(data.get("branch"))

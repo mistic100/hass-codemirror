@@ -17,7 +17,7 @@
  * - saveCurrentFile, openFile, closeTab, activateTab, nextTab, previousTab
  * - closeAllTabs, closeOtherTabs, closeTabsToRight
  * - performGlobalSearch, performGlobalReplace, showCommandPalette
- * - formatCode, toggleMarkdownPreview, toggleAISidebar, sendAIChatMessage
+ * - formatCode, toggleMarkdownPreview
  * - promptNewFile, promptNewFolder, saveSettings, loadSettings
  * - toggleSelectionMode, toggleFavorite, renderFileTree, openSearchWidget
  *
@@ -128,8 +128,6 @@ let callbacks = {
     performGlobalReplace: null,
     performGlobalSearch: null,
     toggleMarkdownPreview: null,
-    toggleAISidebar: null,
-    sendAIChatMessage: null,
     promptNewFile: null,
     promptNewFolder: null,
     toggleGitGroup: null,
@@ -632,37 +630,6 @@ export function initEventListeners() {
       });
     }
 
-    // AI Studio button
-    const btnAI = document.getElementById("btn-ai-studio");
-    if (btnAI) {
-      btnAI.addEventListener("click", () => {
-        if (callbacks.toggleAISidebar) callbacks.toggleAISidebar();
-      });
-    }
-
-    const btnCloseAI = document.getElementById("btn-close-ai");
-    if (btnCloseAI) {
-      btnCloseAI.addEventListener("click", () => {
-        if (callbacks.toggleAISidebar) callbacks.toggleAISidebar();
-      });
-    }
-
-    const btnAISend = document.getElementById("btn-ai-send");
-    if (btnAISend) {
-      btnAISend.addEventListener("click", () => {
-        if (callbacks.sendAIChatMessage) callbacks.sendAIChatMessage();
-      });
-    }
-
-    const aiInput = document.getElementById("ai-chat-input");
-    if (aiInput) {
-      aiInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          if (callbacks.sendAIChatMessage) callbacks.sendAIChatMessage();
-        }
-      });
-    }
 
     // Validate YAML
     if (elements.btnValidate) {

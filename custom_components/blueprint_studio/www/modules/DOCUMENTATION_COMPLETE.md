@@ -63,10 +63,6 @@ All JavaScript modules in Blueprint Studio now have comprehensive developer docu
 34. ✅ **gitea-integration.js** - Gitea operations
 35. ✅ **gitea-ui.js** - Gitea panel UI
 
-### AI Integration (2 modules)
-36. ✅ **ai.js** - AI backend integration
-37. ✅ **ai-ui.js** - AI sidebar and chat UI
-
 ### Home Assistant (1 module)
 38. ✅ **ha-autocomplete.js** - HA entity autocomplete
 
