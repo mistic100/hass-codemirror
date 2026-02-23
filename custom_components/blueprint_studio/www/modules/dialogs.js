@@ -32,7 +32,7 @@ import { elements } from './state.js';
  */
 export async function reportIssue() {
   let haVersion = "Unknown";
-  let integrationVersion = "2.2.0";
+  let integrationVersion = "2.3.0";
 
   try {
     const versionData = await fetchWithAuth(`${API_BASE}?action=get_version`);

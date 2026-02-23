@@ -2,11 +2,14 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="color-scheme" content="light dark">
   <title>Blueprint Studio</title>
+
+  <link rel="manifest" href="/local/blueprint_studio/manifest.json">
+  <link rel="apple-touch-icon" href="/local/blueprint_studio/icon.png">
 
   <!-- CodeMirror -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -162,7 +165,11 @@
 
     html, body {
       height: 100%;
+      height: 100dvh; /* Dynamic viewport height for mobile */
       overflow: hidden;
+      width: 100%;
+      position: fixed; /* Prevent bouncy scroll on iOS */
+      inset: 0;
     }
 
     body {
@@ -171,8 +178,8 @@
       color: var(--text-primary);
       display: flex;
       flex-direction: column;
-      padding-top: var(--safe-area-top);
-      padding-bottom: var(--safe-area-bottom);
+      margin: 0;
+      padding: 0;
       transition: background 0.3s, color 0.3s;
     }
 
@@ -181,6 +188,7 @@
       display: flex;
       align-items: center;
       padding: 4px 8px;
+      padding-top: max(4px, env(safe-area-inset-top));
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border-color);
       gap: 2px;
@@ -1893,10 +1901,12 @@
       align-items: center;
       margin-bottom: 8px;
       font-size: 13px;
+      color: var(--text-primary);
     }
 
     .shortcut-key {
       background: var(--bg-tertiary);
+      color: var(--text-primary);
       padding: 4px 8px;
       border-radius: 4px;
       font-family: monospace;
@@ -1911,6 +1921,7 @@
       display: flex;
       align-items: center;
       padding: 4px 12px;
+      padding-bottom: max(4px, env(safe-area-inset-bottom));
       background: var(--accent-color);
       color: white;
       font-size: 12px;
@@ -2325,6 +2336,7 @@
       min-width: 120px;
       margin-bottom: 4px;
       padding: 4px 0;
+      z-index: 10000; /* Ensure above sidebar and other overlays */
     }
 
     .theme-menu.visible {
@@ -2353,19 +2365,239 @@
       margin-right: 8px;
     }
 
-    /* Mobile-specific styles */
-    @media (max-width: 768px) {
-      .toolbar {
-        padding: 4px;
+    /* ============================================
+       RESPONSIVE STYLES - Mobile & Tablet
+       ============================================ */
+
+    /* Tablet Styles (769px - 1024px) */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      /* Adjust sidebar width for tablets */
+      .sidebar {
+        width: 300px;
+        min-width: 220px;
+        max-width: 40vw;
       }
 
+      /* Hide some toolbar labels to save space */
       .toolbar-group {
         padding: 0 2px;
       }
 
+      /* Reduce breadcrumb max-width */
+      .breadcrumb-container {
+        max-width: 200px;
+      }
+
+      /* Adjust search widget for tablet */
+      .search-widget {
+        width: 300px;
+        right: 10px;
+      }
+
+      /* AI Sidebar takes more space on tablet */
+      .ai-sidebar {
+        width: 320px;
+        min-width: 220px;
+        max-width: 45vw;
+      }
+
+      /* Adjust tab sizing */
+      .tab {
+        min-width: 100px;
+        max-width: 180px;
+      }
+
+      /* Split view adjustments */
+      .split-container {
+        flex-direction: column;
+      }
+
+      .split-container.split-vertical {
+        flex-direction: row;
+      }
+
+      .editor-pane {
+        min-height: 200px;
+      }
+
+      /* Modal adjustments for tablet */
+      .modal {
+        max-width: 500px;
+      }
+
+      /* Settings modal wider on tablet */
+      .settings-modal .modal {
+        max-width: 600px;
+      }
+
+      /* Git panel adjustments */
+      .git-panel {
+        max-height: 35vh;
+      }
+
+      /* Quick switcher adjustments */
+      .quick-switcher {
+        width: 450px;
+      }
+    }
+
+    /* Mobile Styles (max-width: 768px) */
+    @media (max-width: 768px) {
+      /* Mobile viewport setup - use 100% without fixed positioning issues */
+      html, body {
+        position: fixed;
+        height: 100% !important;
+        height: 100dvh !important;
+        width: 100%;
+        overflow: hidden;
+        inset: 0;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Main container fills remaining space */
+      .main-container {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        overflow: hidden;
+      }
+
+      /* Editor area fills available space */
+      .editor-area {
+        flex: 1;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Editor container fills parent */
+      .editor-container {
+        flex: 1;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Ensure CodeMirror wrapper fills container */
+      #codemirror-wrapper,
+      #codemirror-wrapper-secondary {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        height: 100% !important;
+        width: 100% !important;
+      }
+
+      .CodeMirror {
+        height: 100% !important;
+        width: 100% !important;
+      }
+
+      /* Split container fills available space */
+      .split-container {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .editor-pane {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .toolbar {
+        padding: 0 4px;
+        padding-top: env(safe-area-inset-top, 2px);
+        padding-bottom: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+        gap: 1px;
+        min-height: 38px;
+        max-height: 42px;
+        flex-shrink: 0;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--border-color);
+      }
+      
+      /* Hide scrollbar in toolbar but allow scrolling */
+      .toolbar::-webkit-scrollbar {
+        height: 0px;
+        background: transparent;
+      }
+
+      .toolbar-group {
+        padding: 0;
+        flex-shrink: 0;
+      }
+
+      /* Force status bar to single line with scroll */
+      .status-bar {
+        overflow-x: auto;
+        flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        min-height: 24px !important;
+        padding: 2px 8px !important;
+        padding-bottom: max(2px, env(safe-area-inset-bottom)) !important;
+      }
+      
+      .status-bar::-webkit-scrollbar {
+        height: 0px;
+        background: transparent;
+      }
+
+      /* More compact toolbar buttons */
       .toolbar-btn {
-        min-width: 40px;
-        height: 40px;
+        min-width: 30px;
+        height: 30px;
+        padding: 0;
+      }
+
+      .toolbar-btn .material-icons {
+        font-size: 18px;
+      }
+
+      /* Hide less important toolbar groups on small mobile */
+      #group-split-view,
+      #btn-upload-folder,
+      #btn-download-folder,
+      #btn-one-tab-mode,
+      #btn-toggle-select {
+        display: none;
+      }
+
+      /* Make toolbar groups more compact */
+      .toolbar-group {
+        padding: 0 2px;
+        gap: 0;
+        border-right: none;
+      }
+
+      /* Add subtle separator between groups */
+      .toolbar-group + .toolbar-group {
+        border-left: 1px solid var(--border-color);
+        padding-left: 2px;
+        margin-left: 2px;
+      }
+
+      /* Hide toolbar spacer on mobile to save space */
+      .toolbar-spacer {
+        display: none;
       }
 
       .file-path-display {
@@ -2376,160 +2608,569 @@
         display: none;
       }
 
+      /* Sidebar as overlay drawer on mobile */
       .sidebar {
-        position: absolute;
+        position: fixed;
         left: 0;
         top: 0;
         bottom: 0;
         width: 85vw;
+        min-width: 260px;
         max-width: 320px;
         transform: translateX(-100%);
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        background: var(--bg-secondary);
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       .sidebar.visible {
         transform: translateX(0);
       }
 
+      /* Sidebar overlay for mobile */
+      .sidebar-overlay {
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+      }
+
+      .sidebar-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      /* Activity bar adjustments for mobile sidebar */
+      .activity-bar {
+        width: 44px;
+      }
+
+      .activity-item {
+        width: 44px;
+        height: 44px;
+      }
+
+      .activity-item .material-icons {
+        font-size: 22px;
+      }
+
+      /* Fix header overlapping status bar in PWA */
+      .header {
+        padding-top: env(safe-area-inset-top);
+        height: auto;
+        min-height: 48px;
+      }
+
+      /* Tabs optimized for mobile touch */
       .tab {
-        min-width: 80px;
-        padding: 8px 8px;
+        min-width: 70px;
+        max-width: 140px;
+        padding: 4px 10px;
+        height: 38px;
+        font-size: 13px;
       }
 
       .tab-close {
         display: flex;
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         margin-left: 2px;
       }
 
       .tab-close .material-icons {
-        font-size: 18px;
+        font-size: 16px;
       }
 
-      .welcome-shortcuts {
-        display: none;
+      /* Tab pane badges smaller on mobile */
+      .tab-pane-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+        margin-left: 4px;
       }
-
-      .CodeMirror {
-        font-size: 13px;
-      }
-
-      .tree-item-actions {
-        display: flex;
-      }
-
-      /* Git panel mobile styles */
-      .git-panel {
-        max-height: 45vh; /* Reduced slightly to account for keyboard */
-      }
-
-      .git-panel-header {
-        padding: 12px;
+      
+      /* Mobile Touch Optimizations */
+      .tree-item {
+        padding: 12px 10px;
         min-height: 48px;
-      }
-
-      .git-panel-btn {
-        min-width: 40px;
-        min-height: 40px;
-      }
-
-      .git-file-group-header {
-        padding: 12px;
-        min-height: 48px;
-        touch-action: manipulation;
-      }
-
-      .git-file-item {
-        padding: 12px 12px 12px 32px;
-        min-height: 48px;
-        touch-action: manipulation;
-      }
-
-      .git-file-checkbox {
-        width: 20px;
-        height: 20px;
-        margin-right: 12px;
-      }
-
-      .git-panel-footer {
-        padding: 12px;
-        gap: 8px;
-        flex-wrap: wrap; /* Allow wrapping on very small screens */
-      }
-
-      .git-panel-footer button {
-        padding: 12px 16px;
         font-size: 14px;
-        min-height: 48px; /* Standard touch target */
+        -webkit-tap-highlight-color: rgba(14, 99, 156, 0.3);
         touch-action: manipulation;
-        flex: 1; /* Distribute space evenly */
-        white-space: nowrap;
+        user-select: none;
+        -webkit-user-select: none;
       }
 
-      /* Git settings modal on mobile */
-      .git-settings-input {
-        padding: 12px 16px;
-        font-size: 16px; /* Prevents iOS zoom */
+      /* Active state for touch feedback */
+      .tree-item:active {
+        background: var(--bg-active);
+      }
+      
+      .tree-item .material-icons {
+        font-size: 20px;
+      }
+
+      .tree-chevron {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Folder navigation bar adjustments */
+      .folder-navigation {
+        min-height: 44px;
+        padding: 6px 8px;
+      }
+
+      .nav-back-btn {
+        min-width: 36px;
+        width: 36px;
+        height: 36px;
+      }
+      
+      /* Improve scrolling on mobile */
+      .sidebar-content, .editor-container {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Search widget mobile optimization */
+      .search-widget {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 12px 12px 0 0;
+        border: none;
+        border-top: 1px solid var(--border-color);
+        padding: 8px 12px;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        max-height: 50vh;
+      }
+
+      .search-widget input {
+        font-size: 16px; /* Prevent zoom on iOS */
+        padding: 8px 12px;
+      }
+
+      .search-row {
+        gap: 8px;
+      }
+
+      .search-actions button {
+        width: 36px;
+        height: 36px;
+      }
+
+      /* AI Sidebar mobile overlay */
+      .ai-sidebar {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 90vw;
+        max-width: 380px;
+        min-width: 280px;
+        transform: translateX(100%);
+        z-index: 2001;
+        border-left: none;
+        box-shadow: -2px 0 15px rgba(0, 0, 0, 0.5);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .ai-sidebar.visible {
+        transform: translateX(0);
+      }
+
+      .ai-sidebar.hidden {
+        display: flex;
+        transform: translateX(100%);
+      }
+
+      /* AI chat input larger for mobile */
+      #ai-chat-input {
+        font-size: 16px;
         min-height: 44px;
       }
 
-      .git-settings-buttons button {
-        padding: 12px 16px;
-        font-size: 14px;
-        min-height: 48px;
-        touch-action: manipulation;
+      #btn-ai-send {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
       }
 
-      .git-settings-info {
-        padding: 12px;
-        font-size: 13px;
+      /* Modal mobile optimizations */
+      .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
       }
 
-      .git-remote-item {
-        padding: 12px;
-        font-size: 12px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-      }
-
-      .git-remote-url {
-        word-break: break-all;
-      }
-
-      /* Modal mobile optimization */
       .modal {
-        width: 95%; /* Use percentage instead of vw for better centering */
-        max-width: 95%;
+        max-width: 100%;
+        width: 100%;
         max-height: 85vh;
-        margin: 0 auto; /* Center horizontally */
+        border-radius: 16px 16px 0 0;
+        animation: modalSlideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes modalSlideUp {
+        from {
+          transform: translateY(100%);
+          opacity: 0.8;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .modal-header {
+        padding: 16px;
+        min-height: 56px;
+      }
+
+      .modal-title {
+        font-size: 18px;
       }
 
       .modal-body {
         padding: 16px;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .modal-header {
-        padding: 12px 16px;
-        min-height: 50px;
+        max-height: 60vh;
       }
 
       .modal-footer {
         padding: 12px 16px;
-        gap: 12px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        flex-direction: column-reverse;
+        gap: 8px;
       }
 
       .modal-btn {
-        padding: 12px 20px; /* Larger touch area */
-        font-size: 15px;
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 16px;
         min-height: 44px;
       }
 
-      .modal-overlay {
-        padding: 10px;
-        align-items: center; /* Ensure vertical centering */
+      /* Context menu mobile adjustments */
+      .context-menu {
+        min-width: 180px;
+        border-radius: 8px;
+        padding: 6px 0;
+      }
+
+      .context-menu-item {
+        padding: 12px 16px;
+        font-size: 15px;
+      }
+
+      .context-menu-item .material-icons {
+        font-size: 20px;
+        margin-right: 12px;
+      }
+
+      /* Toast notifications mobile */
+      .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        min-width: auto;
+        max-width: none;
+        width: auto;
+      }
+
+      .toast {
+        padding: 12px 16px;
+        margin-top: 8px;
+        border-radius: 10px;
+      }
+
+      /* Status bar mobile */
+      .status-bar {
+        min-height: 24px !important;
+        padding: 4px 8px;
+        padding-bottom: calc(2px + env(safe-area-inset-bottom));
+        font-size: 11px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: visible; /* Ensure menus aren't clipped */
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .status-bar::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* Unified theme menu positioning for mobile */
+      .theme-menu {
+          position: fixed !important;
+          bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+          right: 8px !important;
+          left: auto !important;
+          z-index: 10001 !important;
+          transform: none !important;
+          margin: 0 !important;
+      }
+
+      /* Split view - stack vertically on mobile */
+      .split-container {
+        flex-direction: column !important;
+      }
+
+      /* Hide resize handles on mobile */
+      .resize-handle,
+      .split-resize-handle,
+      .sftp-resize-handle {
+        display: none !important;
+      }
+
+      .editor-pane.primary-pane {
+        flex: 2;
+        min-height: 0;
+      }
+
+      .editor-pane.secondary-pane {
+        border-left: none;
+        border-top: 2px solid var(--border-color);
+        min-height: 150px;
+        flex: 1;
+      }
+
+      /* Git panel mobile */
+      .git-panel {
+        max-height: 50vh;
+      }
+
+      .git-panel-footer {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px;
+      }
+
+      .git-panel-footer button {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px 8px;
+        font-size: 12px;
+      }
+
+      /* Quick switcher mobile */
+      .quick-switcher-overlay {
+        padding-top: 20px;
+        align-items: flex-start;
+      }
+
+      .quick-switcher {
+        width: 95%;
+        max-width: 95%;
+        margin: 0 auto;
+      }
+
+      .quick-switcher-input {
+        font-size: 16px;
+        padding: 14px 16px;
+      }
+
+      /* Settings modal mobile */
+      .settings-modal .modal {
+        max-height: 90vh;
+      }
+
+      .settings-tabs {
+        padding: 0 4px;
+      }
+
+      .settings-tab {
+        padding: 10px 14px;
+        font-size: 13px;
+      }
+
+      /* Selection toolbar mobile */
+      .selection-toolbar {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      /* SFTP panel mobile */
+      .sftp-panel {
+        max-height: 45vh;
+      }
+
+      /* Asset preview mobile */
+      .asset-preview {
+        padding: 12px;
+      }
+
+      .asset-preview img {
+        max-width: 100%;
+        border-radius: 8px;
+      }
+
+      .asset-info {
+        margin-top: 16px;
+        padding: 0 12px;
+      }
+
+      /* Ensure tabs don't take too much space */
+      .tabs-container {
+        flex-shrink: 0;
+        min-height: 0; /* Changed from 40px to hide when empty */
+      }
+      .tabs-container:empty {
+        display: none;
+      }
+
+      /* Status bar mobile */
+      .status-bar {
+        flex-shrink: 0;
+      }
+
+      /* Markdown preview mobile */
+      .markdown-body {
+        padding: 20px 16px;
+        font-size: 15px;
+      }
+
+      /* Search results mobile */
+      .search-result-file {
+        padding: 10px 12px;
+      }
+
+      .search-result-match {
+        padding: 8px 12px 8px 36px;
+      }
+
+      /* Global search in sidebar mobile adjustments */
+      #view-search .search-container {
+        padding: 12px;
+      }
+
+      #global-search-input,
+      #global-replace-input {
+        font-size: 16px;
+      }
+
+      /* CodeMirror mobile optimizations */
+      .CodeMirror {
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      /* Prevent text zoom on iOS */
+      input, textarea, select {
+        font-size: 16px;
+      }
+    }
+
+    /* Small Mobile Styles (max-width: 380px) */
+    @media (max-width: 380px) {
+      .toolbar {
+        min-height: 38px;
+        max-height: 40px;
+      }
+
+      .toolbar-btn {
+        min-width: 30px;
+        height: 30px;
+      }
+
+      .toolbar-btn .material-icons {
+        font-size: 16px;
+      }
+
+      /* Hide more items on very small screens */
+      #btn-validate,
+      #btn-show-hidden,
+      #btn-collapse-all-folders,
+      #btn-save-all,
+      #btn-format {
+        display: none;
+      }
+
+      .tab {
+        min-width: 60px;
+        max-width: 120px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      .sidebar {
+        width: 90vw;
+        min-width: 240px;
+      }
+
+      .tree-item {
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+
+      .modal-title {
+        font-size: 16px;
+      }
+
+      .ai-sidebar {
+        width: 95vw;
+      }
+    }
+
+    /* Landscape mode on mobile - optimize for short height */
+    @media (max-width: 768px) and (max-height: 500px) and (orientation: landscape) {
+      .toolbar {
+        min-height: 38px;
+      }
+
+      .toolbar-btn {
+        min-width: 32px;
+        height: 32px;
+      }
+
+      .tab {
+        height: 36px;
+        min-height: 36px;
+      }
+
+      .status-bar {
+        min-height: 22px;
+        font-size: 10px;
+      }
+
+      /* Sidebar takes full height in landscape */
+      .sidebar {
+        max-width: 280px;
+      }
+
+      /* Git panel smaller in landscape */
+      .git-panel {
+        max-height: 40vh;
+      }
+
+      /* Modal smaller in landscape */
+      .modal {
+        max-height: 80vh;
+      }
+
+      .modal-body {
+        max-height: 50vh;
+      }
+
+      /* Reduce padding in landscape */
+      .tree-item {
+        padding: 8px 10px;
+        min-height: 40px;
       }
     }
 
@@ -2742,16 +3383,6 @@
       border: none;
     }
 
-    /* iOS safe areas */
-    @supports (padding: env(safe-area-inset-top)) {
-      .toolbar {
-        padding-top: calc(4px + env(safe-area-inset-top));
-      }
-      .status-bar {
-        padding-bottom: calc(4px + env(safe-area-inset-bottom));
-      }
-    }
-
     /* Resize handle - hidden on mobile */
     .resize-handle {
       width: 4px;
@@ -2764,12 +3395,6 @@
     .resize-handle:hover,
     .resize-handle.active {
       background: var(--accent-color);
-    }
-
-    @media (max-width: 768px) {
-      .resize-handle {
-        display: none;
-      }
     }
 
     /* Loading indicator */
@@ -3200,32 +3825,8 @@
       color: var(--accent-color);
     }
 
-    /* Mobile shortcuts overlay */
+    /* Mobile shortcuts overlay - additional mobile styles */
     @media (max-width: 768px) {
-      /* Prevent status bar from wrapping on mobile */
-      .status-bar {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none; /* Firefox */
-      }
-
-      .status-bar::-webkit-scrollbar {
-        display: none; /* Chrome, Safari */
-      }
-
-      .status-item {
-        flex-shrink: 0;
-        white-space: nowrap;
-        padding: 0 6px; /* Slightly smaller padding on mobile */
-        font-size: 11px; /* Slightly smaller font */
-      }
-
-      .status-spacer {
-        min-width: 8px; /* Ensure spacer doesn't collapse */
-      }
-
       .shortcuts-modal {
         width: 95%;
         max-height: 90vh;
@@ -4058,10 +4659,575 @@
         color: white;
         border-color: var(--accent-color);
     }
+    /* ==========================================================================
+       Glass Theme - Refined Edition
+       Apple-style glassmorphism with depth, layering, and refined interactions
+       ========================================================================== */
+    
+    /* Base Glass Background - Animated mesh gradient */
+    body[data-theme-preset="glass"] {
+        background: 
+            radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+            radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+            radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%), 
+            linear-gradient(180deg, #0f0f11 0%, #1a1a1d 100%);
+        background-attachment: fixed;
+    }
+
+    /* Primary Glass Containers - Sidebar, Header, Panels */
+    body[data-theme-preset="glass"] .sidebar,
+    body[data-theme-preset="glass"] .modal,
+    body[data-theme-preset="glass"] .context-menu,
+    body[data-theme-preset="glass"] .theme-menu,
+    body[data-theme-preset="glass"] .toast,
+    body[data-theme-preset="glass"] .status-bar,
+    body[data-theme-preset="glass"] .terminal-panel,
+    body[data-theme-preset="glass"] .ai-sidebar,
+    body[data-theme-preset="glass"] .quick-switcher,
+    body[data-theme-preset="glass"] .command-palette,
+    body[data-theme-preset="glass"] .search-widget,
+    body[data-theme-preset="glass"] .settings-modal .modal,
+    body[data-theme-preset="glass"] .git-panel,
+    body[data-theme-preset="glass"] .gitea-panel,
+    body[data-theme-preset="glass"] .sftp-panel,
+    body[data-theme-preset="glass"] .selection-toolbar,
+    body[data-theme-preset="glass"] .folder-navigation {
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        background: rgba(30, 30, 35, 0.55);
+        
+        /* 3D Borders - Light top/left, dark bottom/right */
+        border-top: 1px solid rgba(255, 255, 255, 0.18);
+        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        border-right: 1px solid rgba(0, 0, 0, 0.25);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+        
+        /* Refined shadow for depth */
+        box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        
+        /* Smooth transitions */
+        transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+    }
+
+    /* Secondary Glass Elements - Lighter, more transparent */
+    body[data-theme-preset="glass"] .activity-bar,
+    body[data-theme-preset="glass"] .sidebar-content,
+    body[data-theme-preset="glass"] .ai-content,
+    body[data-theme-preset="glass"] .file-tree,
+    body[data-theme-preset="glass"] .tabs-container,
+    body[data-theme-preset="glass"] .welcome-shortcuts,
+    body[data-theme-preset="glass"] .markdown-body {
+        backdrop-filter: blur(12px) saturate(150%);
+        -webkit-backdrop-filter: blur(12px) saturate(150%);
+        background: rgba(40, 40, 45, 0.35);
+        border-radius: 8px;
+    }
+
+    /* Remove double borders from nested containers */
+    body[data-theme-preset="glass"] .sidebar-content,
+    body[data-theme-preset="glass"] .ai-content {
+        border: none;
+        box-shadow: none;
+    }
+
+    /* Activity Bar - Slim glass strip */
+    body[data-theme-preset="glass"] .activity-bar {
+        background: rgba(20, 20, 25, 0.6);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(15px) saturate(140%);
+    }
+
+    /* Glass Input Fields */
+    body[data-theme-preset="glass"] .modal-input,
+    body[data-theme-preset="glass"] .search-input,
+    body[data-theme-preset="glass"] #ai-chat-input,
+    body[data-theme-preset="glass"] .quick-switcher-input,
+    body[data-theme-preset="glass"] .command-palette-input,
+    body[data-theme-preset="glass"] #global-search-input,
+    body[data-theme-preset="glass"] #global-replace-input {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 
+            inset 0 2px 4px rgba(0, 0, 0, 0.2),
+            0 1px 0 rgba(255, 255, 255, 0.05);
+        transition: all 0.25s ease;
+    }
+
+    body[data-theme-preset="glass"] .modal-input:focus,
+    body[data-theme-preset="glass"] .search-input:focus,
+    body[data-theme-preset="glass"] #ai-chat-input:focus,
+    body[data-theme-preset="glass"] .quick-switcher-input:focus,
+    body[data-theme-preset="glass"] .command-palette-input:focus {
+        background: rgba(0, 0, 0, 0.35);
+        border-color: rgba(10, 132, 255, 0.6);
+        box-shadow: 
+            inset 0 2px 4px rgba(0, 0, 0, 0.3),
+            0 0 0 3px rgba(10, 132, 255, 0.15);
+    }
+
+    /* Glass Buttons */
+    body[data-theme-preset="glass"] .modal-btn,
+    body[data-theme-preset="glass"] .sidebar-header-btn,
+    body[data-theme-preset="glass"] .nav-back-btn,
+    body[data-theme-preset="glass"] .selection-btn {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body[data-theme-preset="glass"] .modal-btn:hover,
+    body[data-theme-preset="glass"] .sidebar-header-btn:hover,
+    body[data-theme-preset="glass"] .nav-back-btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    body[data-theme-preset="glass"] .modal-btn:active {
+        transform: translateY(0);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Primary Buttons - Accent color with glass */
+    body[data-theme-preset="glass"] .modal-btn.primary,
+    body[data-theme-preset="glass"] #btn-ai-send {
+        background: rgba(10, 132, 255, 0.25);
+        border: 1px solid rgba(10, 132, 255, 0.4);
+        box-shadow: 
+            0 4px 15px rgba(10, 132, 255, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme-preset="glass"] .modal-btn.primary:hover {
+        background: rgba(10, 132, 255, 0.35);
+        border-color: rgba(10, 132, 255, 0.5);
+        box-shadow: 
+            0 6px 20px rgba(10, 132, 255, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    /* Danger Buttons */
+    body[data-theme-preset="glass"] .modal-btn.danger {
+        background: rgba(255, 69, 58, 0.2);
+        border: 1px solid rgba(255, 69, 58, 0.4);
+    }
+
+    body[data-theme-preset="glass"] .modal-btn.danger:hover {
+        background: rgba(255, 69, 58, 0.3);
+        border-color: rgba(255, 69, 58, 0.5);
+        box-shadow: 0 4px 15px rgba(255, 69, 58, 0.2);
+    }
+
+    /* Tree Items - Glass cards */
+    body[data-theme-preset="glass"] .tree-item {
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        margin: 2px 6px;
+        transition: all 0.2s ease;
+    }
+
+    body[data-theme-preset="glass"] .tree-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Active Tree Item */
+    body[data-theme-preset="glass"] .tree-item.active {
+        background: rgba(10, 132, 255, 0.2) !important;
+        border: 1px solid rgba(10, 132, 255, 0.35);
+        box-shadow: 
+            0 2px 8px rgba(10, 132, 255, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Favorite Items - Slight highlight */
+    body[data-theme-preset="glass"] .favorite-item {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Tabs - Glass pills */
+    body[data-theme-preset="glass"] .tab {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px 10px 0 0;
+        margin: 4px 2px 0 2px;
+        backdrop-filter: blur(8px);
+        transition: all 0.2s ease;
+    }
+
+    body[data-theme-preset="glass"] .tab:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    body[data-theme-preset="glass"] .tab.active {
+        background: rgba(30, 30, 35, 0.7);
+        border-color: rgba(255, 255, 255, 0.15);
+        border-bottom: 2px solid var(--accent-color);
+        box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Tab Position Left - Rounded on left side */
+    body[data-theme-preset="glass"][data-tab-position="left"] .tab {
+        border-radius: 10px 0 0 10px;
+        margin: 2px 0 2px 4px;
+    }
+
+    /* Welcome Screen Buttons - Glass effect */
+    body[data-theme-preset="glass"] .welcome-actions .btn-primary {
+        background: rgba(10, 132, 255, 0.25);
+        border: 1px solid rgba(10, 132, 255, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 
+            0 8px 25px rgba(10, 132, 255, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body[data-theme-preset="glass"] .welcome-actions .btn-primary:hover {
+        background: rgba(10, 132, 255, 0.35);
+        border-color: rgba(10, 132, 255, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 
+            0 12px 35px rgba(10, 132, 255, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    body[data-theme-preset="glass"] .welcome-actions .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 12px;
+        box-shadow: 
+            0 4px 15px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body[data-theme-preset="glass"] .welcome-actions .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.18);
+        transform: translateY(-2px);
+        box-shadow: 
+            0 8px 25px rgba(0, 0, 0, 0.25),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Editor Area - Transparent with glass gutter */
+    body[data-theme-preset="glass"] .editor-area {
+        background: transparent;
+    }
+
+    body[data-theme-preset="glass"] .CodeMirror {
+        background: transparent !important;
+    }
+
+    body[data-theme-preset="glass"] .CodeMirror-gutters {
+        background: rgba(0, 0, 0, 0.25) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    body[data-theme-preset="glass"] .CodeMirror-linenumber {
+        color: rgba(255, 255, 255, 0.35) !important;
+    }
+
+    /* Modal - Enhanced glass */
+    body[data-theme-preset="glass"] .modal {
+        background: rgba(40, 40, 45, 0.7);
+        backdrop-filter: blur(35px) saturate(180%);
+        -webkit-backdrop-filter: blur(35px) saturate(180%);
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 
+            0 25px 50px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme-preset="glass"] .modal-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    body[data-theme-preset="glass"] .modal-footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    body[data-theme-preset="glass"] .modal-close {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+    }
+
+    /* Context Menu - Glass popup */
+    body[data-theme-preset="glass"] .context-menu,
+    body[data-theme-preset="glass"] .theme-menu {
+        background: rgba(45, 45, 50, 0.85);
+        backdrop-filter: blur(25px) saturate(180%);
+        -webkit-backdrop-filter: blur(25px) saturate(180%);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        padding: 6px;
+    }
+
+    body[data-theme-preset="glass"] .context-menu-item,
+    body[data-theme-preset="glass"] .theme-menu-item {
+        border-radius: 6px;
+        margin: 2px 0;
+        transition: all 0.15s ease;
+    }
+
+    body[data-theme-preset="glass"] .context-menu-item:hover,
+    body[data-theme-preset="glass"] .theme-menu-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Toast Notifications - Glass alerts */
+    body[data-theme-preset="glass"] .toast {
+        background: rgba(45, 45, 50, 0.8);
+        backdrop-filter: blur(20px) saturate(160%);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Status Bar - Slim glass bar */
+    body[data-theme-preset="glass"] .status-bar {
+        background: rgba(10, 132, 255, 0.15);
+        backdrop-filter: blur(15px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0 !important;
+    }
+
+    /* Activity Items */
+    body[data-theme-preset="glass"] .activity-item {
+        border-radius: 10px;
+        margin: 2px 4px;
+        transition: all 0.2s ease;
+    }
+
+    body[data-theme-preset="glass"] .activity-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme-preset="glass"] .activity-item.active {
+        background: rgba(10, 132, 255, 0.2);
+        border-left: 3px solid var(--accent-color);
+        box-shadow: inset 0 0 15px rgba(10, 132, 255, 0.1);
+    }
+
+    /* AI Sidebar - Glass panel */
+    body[data-theme-preset="glass"] .ai-sidebar {
+        background: rgba(30, 30, 35, 0.5);
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    body[data-theme-preset="glass"] .ai-message-assistant {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px 12px 12px 4px;
+        backdrop-filter: blur(10px);
+    }
+
+    body[data-theme-preset="glass"] .ai-message-user {
+        background: rgba(10, 132, 255, 0.25);
+        border: 1px solid rgba(10, 132, 255, 0.35);
+        border-radius: 12px 12px 4px 12px;
+        backdrop-filter: blur(10px);
+    }
+
+    body[data-theme-preset="glass"] .ai-code-block {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        backdrop-filter: blur(8px);
+    }
+
+    /* Quick Switcher - Glass overlay */
+    body[data-theme-preset="glass"] .quick-switcher {
+        background: rgba(40, 40, 45, 0.75);
+        backdrop-filter: blur(30px) saturate(160%);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    body[data-theme-preset="glass"] .quick-switcher-result-item {
+        border-radius: 8px;
+        margin: 2px 6px;
+        transition: all 0.15s ease;
+    }
+
+    body[data-theme-preset="glass"] .quick-switcher-result-item:hover,
+    body[data-theme-preset="glass"] .quick-switcher-result-item.selected {
+        background: rgba(10, 132, 255, 0.2);
+        border-left: 3px solid var(--accent-color);
+    }
+
+    /* Search Widget - Glass floating panel */
+    body[data-theme-preset="glass"] .search-widget {
+        background: rgba(45, 45, 50, 0.85);
+        backdrop-filter: blur(25px) saturate(180%);
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    body[data-theme-preset="glass"] .search-result-item {
+        border-radius: 6px;
+        transition: background 0.15s ease;
+    }
+
+    body[data-theme-preset="glass"] .search-result-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Git Panel - Glass sections */
+    body[data-theme-preset="glass"] .git-panel,
+    body[data-theme-preset="glass"] .gitea-panel,
+    body[data-theme-preset="glass"] .sftp-panel {
+        background: rgba(30, 30, 35, 0.5);
+    }
+
+    body[data-theme-preset="glass"] .git-panel-header,
+    body[data-theme-preset="glass"] .gitea-panel-header,
+    body[data-theme-preset="glass"] .sftp-panel-header {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+    }
+
+    body[data-theme-preset="glass"] .git-file-item,
+    body[data-theme-preset="glass"] .gitea-file-item {
+        border-radius: 6px;
+        margin: 2px 6px;
+        transition: all 0.15s ease;
+    }
+
+    body[data-theme-preset="glass"] .git-file-item:hover,
+    body[data-theme-preset="glass"] .gitea-file-item:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* Scrollbars - Glass style */
+    body[data-theme-preset="glass"] ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    body[data-theme-preset="glass"] ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+    }
+
+    body[data-theme-preset="glass"] ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    body[data-theme-preset="glass"] ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    /* Modal Overlay - Darker glass backdrop */
+    body[data-theme-preset="glass"] .modal-overlay {
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(5px);
+    }
+
+    /* Loading Overlay */
+    body[data-theme-preset="glass"] #loading-overlay {
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(10px);
+    }
+
+    /* Selection Toolbar */
+    body[data-theme-preset="glass"] .selection-toolbar {
+        background: rgba(10, 132, 255, 0.2);
+        backdrop-filter: blur(15px);
+    }
+
+    /* Split View Panes */
+    body[data-theme-preset="glass"] .editor-pane.active {
+        box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.5);
+    }
+
+    body[data-theme-preset="glass"] .split-resize-handle {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    body[data-theme-preset="glass"] .split-resize-handle:hover {
+        background: rgba(10, 132, 255, 0.5);
+    }
+
+    /* Mobile Glass Adjustments */
+    @media (max-width: 768px) {
+        body[data-theme-preset="glass"] .sidebar {
+            background: rgba(30, 30, 35, 0.9);
+            backdrop-filter: blur(30px);
+        }
+
+        body[data-theme-preset="glass"] .ai-sidebar {
+            background: rgba(30, 30, 35, 0.9);
+            backdrop-filter: blur(30px);
+        }
+
+        body[data-theme-preset="glass"] .modal {
+            background: rgba(40, 40, 45, 0.95);
+            backdrop-filter: blur(40px);
+            border-radius: 20px 20px 0 0 !important;
+        }
+
+        body[data-theme-preset="glass"] .welcome-screen {
+            margin: 20px;
+            padding: 24px;
+        }
+
+    }
+
+    /* High Contrast Glass for accessibility */
+    @media (prefers-contrast: high) {
+        body[data-theme-preset="glass"] .sidebar,
+        body[data-theme-preset="glass"] .modal,
+        body[data-theme-preset="glass"] .context-menu {
+            background: rgba(30, 30, 35, 0.95);
+            border-width: 2px;
+        }
+    }
+
+    /* Reduced Motion - disable glass animations */
+    @media (prefers-reduced-motion: reduce) {
+        body[data-theme-preset="glass"] *,
+        body[data-theme-preset="glass"] *::before,
+        body[data-theme-preset="glass"] *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
   </style>
 </head>
 <body>
-  <!-- Toolbar -->
+  <!-- ... existing body ... -->
   <div class="toolbar">
     <div class="toolbar-group">
       <button class="toolbar-btn" id="btn-menu" title="Toggle Files">
@@ -4213,8 +5379,10 @@
       <button class="toolbar-btn" id="btn-support" title="Help & Support">
         <span class="material-icons">help_outline</span>
       </button>
-      <button class="toolbar-btn" id="btn-ai-studio" title="AI Studio Copilot" style="display: none;">
-        <span class="material-icons" style="color: #9c27b0;">psychology</span>
+              <button class="toolbar-btn" id="btn-terminal" title="Terminal">
+                <span class="material-icons">terminal</span>
+              </button>
+              <button class="toolbar-btn" id="btn-ai-studio" title="AI Studio Copilot" style="display: none;">        <span class="material-icons" style="color: #9c27b0;">psychology</span>
       </button>
       <button class="toolbar-btn" id="btn-restart-ha" title="Restart Home Assistant">
         <span class="material-icons" style="color: #3ea589;">restart_alt</span>
@@ -4673,6 +5841,14 @@
           <span class="material-icons">nightlight_round</span>
           Dracula
         </div>
+        <div class="theme-menu-item" data-theme="glass">
+          <span class="material-icons">blur_on</span>
+          Glass
+        </div>
+        <div class="theme-menu-item" data-theme="midnightBlue">
+          <span class="material-icons">nightlight_round</span>
+          Midnight Blue
+        </div>
         <div class="theme-menu-item" data-theme="auto">
           <span class="material-icons">brightness_auto</span>
           Auto
@@ -4741,8 +5917,11 @@
       New Folder
     </div>
     <div class="context-menu-divider"></div>
-    <div class="context-menu-item" data-action="rename">
-      <span class="material-icons">edit</span>
+          <div class="context-menu-item" data-action="run_in_terminal">
+            <span class="material-icons">terminal</span> Run in Terminal
+          </div>
+          <div class="context-menu-divider"></div>
+          <div class="context-menu-item" data-action="rename">      <span class="material-icons">edit</span>
       Rename
     </div>
     <div class="context-menu-item" data-action="move">
@@ -4861,7 +6040,7 @@
         </div>
         
         <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 12px;">
-          Blueprint Studio <span id="app-version-display">v2.2.0</span> • Soulripper13
+          Blueprint Studio <span id="app-version-display">v2.3.0</span> • Soulripper13
         </div>
       </div>
     </div>
@@ -5032,6 +6211,6 @@
     </div>
   </div>
 
-      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=3.6.1-sftp"></script>
+      <script type="module" src="/local/blueprint_studio/www/modules/main.js?v=2.3.0"></script></script>
   </body>
   </html>

@@ -63,6 +63,7 @@ let callbacks = {
   renderTabs: null,
   saveSettings: null,
   renderFileTree: null,
+  fitTerminal: null,
 };
 
 export function registerSplitViewCallbacks(cb) {
@@ -152,34 +153,39 @@ export function enableSplitView(orientation = 'vertical', skipInitialization = f
   if (state.secondaryEditor && state.splitView.secondaryActiveTab) {
     const tab = state.splitView.secondaryActiveTab;
 
-    // Set the active pane to secondary temporarily to load content
-    const previousActivePane = state.splitView.activePane;
-    state.splitView.activePane = 'secondary';
-    state.editor = state.secondaryEditor;
+    if (tab.isTerminal && callbacks.activateTab) {
+      // If it's a terminal tab, we must use activateTab to mount the DOM element
+      callbacks.activateTab(tab);
+    } else {
+      // Set the active pane to secondary temporarily to load content
+      const previousActivePane = state.splitView.activePane;
+      state.splitView.activePane = 'secondary';
+      state.editor = state.secondaryEditor;
 
-    // Load content with proper mode and settings
-    const mode = getEditorMode(tab.path);
+      // Load content with proper mode and settings
+      const mode = getEditorMode(tab.path);
 
-    if (mode) {
-      state.secondaryEditor.setOption('mode', mode);
+      if (mode) {
+        state.secondaryEditor.setOption('mode', mode);
+      }
+
+      // Set content
+      state.secondaryEditor.setValue(tab.content || tab.originalContent || "");
+
+      // Restore cursor and scroll if available
+      if (tab.cursor) {
+        state.secondaryEditor.setCursor(tab.cursor);
+      }
+      if (tab.scroll) {
+        state.secondaryEditor.scrollTo(tab.scroll.left, tab.scroll.top);
+      }
+
+      state.secondaryEditor.refresh();
+
+      // Restore active pane to primary
+      state.splitView.activePane = previousActivePane;
+      state.editor = state.primaryEditor;
     }
-
-    // Set content
-    state.secondaryEditor.setValue(tab.content || tab.originalContent || "");
-
-    // Restore cursor and scroll if available
-    if (tab.cursor) {
-      state.secondaryEditor.setCursor(tab.cursor);
-    }
-    if (tab.scroll) {
-      state.secondaryEditor.scrollTo(tab.scroll.left, tab.scroll.top);
-    }
-
-    state.secondaryEditor.refresh();
-
-    // Restore active pane to primary
-    state.splitView.activePane = previousActivePane;
-    state.editor = state.primaryEditor;
   }
 
   // Save state
@@ -197,12 +203,14 @@ export function disableSplitView() {
   // Save secondary editor state before destroying
   if (state.splitView.secondaryActiveTab && state.secondaryEditor) {
     const tab = state.splitView.secondaryActiveTab;
-    tab.cursor = state.secondaryEditor.getCursor();
-    tab.scroll = state.secondaryEditor.getScrollInfo();
-    const content = state.secondaryEditor.getValue();
-    if (content !== tab.originalContent) {
-      tab.content = content;
-      tab.modified = true;
+    if (!tab.isTerminal) {
+      tab.cursor = state.secondaryEditor.getCursor();
+      tab.scroll = state.secondaryEditor.getScrollInfo();
+      const content = state.secondaryEditor.getValue();
+      if (content !== tab.originalContent) {
+        tab.content = content;
+        tab.modified = true;
+      }
     }
   }
 
@@ -307,16 +315,18 @@ export function moveToPrimaryPane(tabIndex) {
       // Load the auto-moved tab's content into secondary editor
       if (state.secondaryEditor) {
         const movedTab = state.openTabs[tabToMoveBack];
-        state.secondaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
+        if (!movedTab.isTerminal) {
+          state.secondaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
-        // Set correct mode
-        const mode = getEditorMode(movedTab.path);
-        if (mode) state.secondaryEditor.setOption('mode', mode);
+          // Set correct mode
+          const mode = getEditorMode(movedTab.path);
+          if (mode) state.secondaryEditor.setOption('mode', mode);
 
-        // Restore cursor and scroll
-        if (movedTab.cursor) state.secondaryEditor.setCursor(movedTab.cursor);
-        if (movedTab.scroll) state.secondaryEditor.scrollTo(movedTab.scroll.left, movedTab.scroll.top);
-        state.secondaryEditor.refresh();
+          // Restore cursor and scroll
+          if (movedTab.cursor) state.secondaryEditor.setCursor(movedTab.cursor);
+          if (movedTab.scroll) state.secondaryEditor.scrollTo(movedTab.scroll.left, movedTab.scroll.top);
+          state.secondaryEditor.refresh();
+        }
       }
     }
   }
@@ -326,9 +336,11 @@ export function moveToPrimaryPane(tabIndex) {
   state.splitView.activePane = 'primary';
   state.editor = state.primaryEditor;
 
-  // Load the moved tab's content into primary editor
-  if (state.primaryEditor) {
-    const movedTab = state.openTabs[tabIndex];
+  const movedTab = state.openTabs[tabIndex];
+  if (movedTab.isTerminal && callbacks.activateTab) {
+    callbacks.activateTab(movedTab);
+  } else if (state.primaryEditor) {
+    // Load the moved tab's content into primary editor
     state.primaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
     // Set correct mode
@@ -388,16 +400,18 @@ export function moveToSecondaryPane(tabIndex) {
       // Load the auto-moved tab's content into primary editor
       if (state.primaryEditor) {
         const movedTab = state.openTabs[tabToMoveBack];
-        state.primaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
+        if (!movedTab.isTerminal) {
+          state.primaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
-        // Set correct mode
-        const mode = getEditorMode(movedTab.path);
-        if (mode) state.primaryEditor.setOption('mode', mode);
+          // Set correct mode
+          const mode = getEditorMode(movedTab.path);
+          if (mode) state.primaryEditor.setOption('mode', mode);
 
-        // Restore cursor and scroll
-        if (movedTab.cursor) state.primaryEditor.setCursor(movedTab.cursor);
-        if (movedTab.scroll) state.primaryEditor.scrollTo(movedTab.scroll.left, movedTab.scroll.top);
-        state.primaryEditor.refresh();
+          // Restore cursor and scroll
+          if (movedTab.cursor) state.primaryEditor.setCursor(movedTab.cursor);
+          if (movedTab.scroll) state.primaryEditor.scrollTo(movedTab.scroll.left, movedTab.scroll.top);
+          state.primaryEditor.refresh();
+        }
       }
     }
   }
@@ -407,9 +421,11 @@ export function moveToSecondaryPane(tabIndex) {
   state.splitView.activePane = 'secondary';
   state.editor = state.secondaryEditor;
 
-  // Load the moved tab's content into secondary editor
-  if (state.secondaryEditor) {
-    const movedTab = state.openTabs[tabIndex];
+  const movedTab = state.openTabs[tabIndex];
+  if (movedTab.isTerminal && callbacks.activateTab) {
+    callbacks.activateTab(movedTab);
+  } else if (state.secondaryEditor) {
+    // Load the moved tab's content into secondary editor
     state.secondaryEditor.setValue(movedTab.content || movedTab.originalContent || "");
 
     // Set correct mode
@@ -477,6 +493,11 @@ export function updatePaneSizes(primaryPercent) {
   }
   if (secondaryPane) {
     secondaryPane.style.flex = `0 0 ${secondaryPercent}%`;
+  }
+
+  // Refit terminal if it's open
+  if (callbacks.fitTerminal) {
+    callbacks.fitTerminal();
   }
 }
 

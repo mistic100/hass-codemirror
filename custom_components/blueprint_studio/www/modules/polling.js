@@ -49,6 +49,9 @@ export async function checkFileUpdates() {
 
   if (!state.activeTab || !state.activeTab.path) return;
 
+  // Skip polling for virtual paths (SFTP, Terminal, etc.)
+  if (state.activeTab.path.includes("://")) return;
+
   try {
     const response = await fetchWithAuth(`${API_BASE}?action=get_file_stat&path=${encodeURIComponent(state.activeTab.path)}&_t=${Date.now()}`);
     if (response.success && response.mtime) {

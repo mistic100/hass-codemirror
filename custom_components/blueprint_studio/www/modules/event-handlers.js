@@ -151,6 +151,8 @@ let callbacks = {
     restartHomeAssistant: null, // If we decide to keep it in app.js, otherwise we export it
     debouncedContentSearch: null,
     debouncedFilenameSearch: null,
+    toggleTerminal: null,
+    runCommand: null,
     // Split view callbacks
     enableSplitView: null,
     disableSplitView: null,
@@ -629,6 +631,14 @@ export function initEventListeners() {
           callbacks.disableSplitView();
           updateSplitViewButtons();
         }
+      });
+    }
+
+    // Terminal button
+    const btnTerminal = document.getElementById("btn-terminal");
+    if (btnTerminal) {
+      btnTerminal.addEventListener("click", () => {
+        if (callbacks.toggleTerminal) callbacks.toggleTerminal();
       });
     }
 
@@ -1287,17 +1297,16 @@ export function initEventListeners() {
 
     // Theme menu items
     document.querySelectorAll(".theme-menu-item").forEach(item => {
-      item.addEventListener("click", (e) => {
+      const handleThemeSelect = (e) => {
+        e.preventDefault(); // Prevent ghost clicks on touch
         e.stopPropagation();
         const theme = item.dataset.theme;
-        if (theme === 'auto') {
-            setTheme('auto');
-        } else {
-            // Use preset setter to ensure correct preset + theme mode sync
-            setThemePreset(theme);
-        }
+        setThemePreset(theme);
         elements.themeMenu.classList.remove("visible");
-      });
+      };
+
+      item.addEventListener("click", handleThemeSelect);
+      item.addEventListener("touchend", handleThemeSelect);
     });
 
     // Close theme menu on outside click
@@ -1359,6 +1368,22 @@ export function initEventListeners() {
               state.currentFolderPath = targetPath;
               document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
               if (callbacks.promptNewFolder) await callbacks.promptNewFolder(targetPath);
+            }
+            break;
+          case "run_in_terminal":
+            if (callbacks.runCommand) {
+              let cmd = "";
+              if (target.isFolder) {
+                cmd = `ls -la "${target.path}"`;
+              } else {
+                const ext = target.path.split('.').pop().toLowerCase();
+                if (ext === 'py') {
+                  cmd = `python3 "${target.path}"`;
+                } else {
+                  cmd = `cat "${target.path}"`;
+                }
+              }
+              await callbacks.runCommand(cmd);
             }
             break;
           case "rename":
@@ -1566,6 +1591,12 @@ export function initEventListeners() {
         }
       }
 
+      // Ctrl/Cmd + Shift + T - Toggle Terminal
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key.toLowerCase() === "t" || e.code === "KeyT")) {
+        e.preventDefault();
+        if (callbacks.toggleTerminal) callbacks.toggleTerminal();
+      }
+
       // Ctrl/Cmd + K - Command Palette
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -1728,6 +1759,38 @@ export function initEventListeners() {
           }
       });
 
+      // Background context menu - attached to viewExplorer to catch clicks in empty space below the tree
+      if (elements.viewExplorer) {
+          elements.viewExplorer.addEventListener("contextmenu", (e) => {
+              // Ignore clicks inside other specific panels
+              if (e.target.closest('#favorites-panel') || 
+                  e.target.closest('#recent-files-panel') || 
+                  e.target.closest('#sftp-panel') || 
+                  e.target.closest('#git-panel') || 
+                  e.target.closest('#gitea-panel')) {
+                  return;
+              }
+              
+              // Ignore if clicking a tree item (it has its own handler)
+              if (e.target.closest('.tree-item')) return;
+
+              // Don't show if file tree is explicitly collapsed
+              if (state.fileTreeCollapsed) return;
+
+              e.preventDefault();
+              e.stopPropagation();
+              
+              const currentPath = state.currentNavigationPath || "";
+              
+              if (callbacks.showContextMenu) {
+                  callbacks.showContextMenu(e.clientX, e.clientY, { 
+                      path: currentPath, 
+                      isFolder: true 
+                  });
+              }
+          });
+      }
+
       elements.fileTree.addEventListener("dragover", (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
@@ -1819,4 +1882,39 @@ export function initEventListeners() {
         setTimeout(() => state.editor.refresh(), 150);
       }
     });
+
+    // Touch Gestures for Mobile Sidebar
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+    
+    document.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+        
+        // Ignore vertical scrolls
+        if (Math.abs(diffY) > Math.abs(diffX)) return;
+        
+        // Threshold for horizontal swipe (100px)
+        if (Math.abs(diffX) > 100) {
+            if (diffX > 0) {
+                // Swipe Right -> Open Sidebar
+                // Only if starting from left edge (first 50px)
+                if (touchStartX < 50 && !state.sidebarVisible) {
+                    showSidebar();
+                }
+            } else {
+                // Swipe Left -> Close Sidebar
+                if (state.sidebarVisible) {
+                    hideSidebar();
+                }
+            }
+        }
+    }, { passive: true });
 }

@@ -27,7 +27,7 @@
  */
 
 import { state } from './state.js';
-import { getFileIcon, formatBytes } from './utils.js';
+import { getFileIcon, formatBytes, isTextFile } from './utils.js';
 
 // Callbacks registered by app.js
 let callbacks = {
@@ -36,6 +36,8 @@ let callbacks = {
   showToast: null,
   openTab: null,
   saveSettings: null,
+  showInputModal: null,
+  showConfirmDialog: null,
 };
 
 export function registerSftpCallbacks(cb) {
@@ -116,6 +118,7 @@ async function callSftpApi(action, conn, extra = {}) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action,
+      show_hidden: state.showHidden,
       connection: {
         host: conn.host,
         port: conn.port || 22,
@@ -193,7 +196,30 @@ export function renderSftpPanel() {
     return;
   }
 
-  // Breadcrumb
+  // TREE MODE
+  if (state.treeCollapsableMode) {
+    if (breadcrumbEl) breadcrumbEl.style.display = 'none';
+    if (!treeEl) return;
+    treeEl.style.display = '';
+    
+    // If loading root
+    if (loading && state.activeSftp.loadedDirectories.size === 0) {
+      treeEl.innerHTML = '<div class="tree-item" style="--depth:0;color:var(--text-secondary)"><div class="tree-icon default"><span class="material-icons loading-spinner">sync</span></div><span class="tree-name">Loading...</span></div>';
+      return;
+    }
+    
+    treeEl.innerHTML = '';
+    
+    // Render from root. If root isn't loaded yet (but we are connected), show loading or empty
+    if (state.activeSftp.loadedDirectories.has('/')) {
+      _renderSftpTreeLevel(treeEl, connectionId, '/', 0);
+    } else if (state.activeSftp.loading) {
+       treeEl.innerHTML = '<div class="tree-item" style="--depth:0;color:var(--text-secondary)"><div class="tree-icon default"><span class="material-icons loading-spinner">sync</span></div><span class="tree-name">Loading...</span></div>';
+    }
+    return;
+  }
+
+  // NAVIGATION MODE (Standard)
   if (breadcrumbEl) {
     breadcrumbEl.style.display = 'flex';
     _renderBreadcrumb(breadcrumbEl, connectionId, currentPath);
@@ -208,14 +234,6 @@ export function renderSftpPanel() {
   }
 
   treeEl.innerHTML = '';
-
-  // Right-click on the empty tree area → context menu for current directory
-  treeEl.addEventListener('contextmenu', e => {
-    if (e.target === treeEl || e.target.closest('.sftp-tree-item') === null) {
-      e.preventDefault();
-      _showDirContextMenu(e.clientX, e.clientY, connectionId, currentPath);
-    }
-  });
 
   // Back row (if not at root)
   if (currentPath && currentPath !== '/') {
@@ -233,6 +251,7 @@ export function renderSftpPanel() {
   }
 
   folders.forEach(folder => {
+    if (!state.showHidden && folder.name.startsWith('.')) return;
     const el = document.createElement('div');
     el.className = 'tree-item';
     el.style.setProperty('--depth', 0);
@@ -250,18 +269,23 @@ export function renderSftpPanel() {
   });
 
   files.forEach(file => {
+    if (!state.showHidden && file.name.startsWith('.')) return;
     const el = document.createElement('div');
     el.className = 'tree-item';
     el.style.setProperty('--depth', 0);
     el.dataset.path = file.path;
-    const canOpen = file.is_text !== false;
+    
+    // We allow opening files that are either text or supported binary types (images, pdf, etc.)
+    const canOpen = file.is_text !== false || file.is_binary || isTextFile(file.name);
     if (!canOpen) el.style.opacity = '0.55';
-    el.title = canOpen ? '' : 'Binary file – cannot open in editor';
+    el.title = canOpen ? '' : 'Binary file – cannot open';
+    
     const fileIcon = getFileIcon(file.name);
     el.innerHTML = `
       <div class="tree-icon ${fileIcon.class}"><span class="material-icons">${fileIcon.icon}</span></div>
       <span class="tree-name">${_escapeHtml(file.name)}</span>
       ${typeof file.size === 'number' ? `<span class="tree-file-size" style="font-size:11px;color:var(--text-muted);margin-left:8px;flex-shrink:0">${formatBytes(file.size, 0)}</span>` : ''}`;
+    
     if (canOpen) {
       el.addEventListener('click', () => openSftpFile(connectionId, file.path));
     }
@@ -300,6 +324,137 @@ function _renderBreadcrumb(el, connId, remotePath) {
   });
 }
 
+async function _toggleSftpFolder(connId, path) {
+  const { expandedFolders, loadedDirectories } = state.activeSftp;
+  
+  if (expandedFolders.has(path)) {
+    expandedFolders.delete(path);
+    renderSftpPanel();
+  } else {
+    expandedFolders.add(path);
+    
+    if (!loadedDirectories.has(path)) {
+      // Load data
+      state.activeSftp.loading = true;
+      renderSftpPanel(); // Show loading spinner
+      
+      const conn = findConnection(connId);
+      if (conn) {
+        try {
+          const result = await callSftpApi('sftp_list', conn, { path });
+          if (result.success) {
+            loadedDirectories.set(path, {
+              folders: result.folders || [],
+              files: result.files || []
+            });
+          }
+        } catch (e) {
+          console.error("SFTP load error", e);
+          callbacks.showToast(`Failed to load ${path}`, 'error');
+        }
+      }
+      state.activeSftp.loading = false;
+    }
+    renderSftpPanel();
+  }
+}
+
+function _renderSftpTreeLevel(container, connId, path, depth) {
+  const { expandedFolders, loadedDirectories, loading } = state.activeSftp;
+  const data = loadedDirectories.get(path);
+  
+  if (!data) return;
+
+  // Folders
+  data.folders.forEach(folder => {
+    if (!state.showHidden && folder.name.startsWith('.')) return;
+    
+    const isExpanded = expandedFolders.has(folder.path);
+    // If we are currently loading THIS folder (and it's expanded but has no data yet? No, data is null if loading)
+    // Actually loading is global for SFTP currently.
+    
+    const el = document.createElement('div');
+    el.className = 'tree-item';
+    el.style.setProperty('--depth', depth);
+    el.dataset.path = folder.path;
+    
+    el.innerHTML = `
+      <div class="tree-chevron ${isExpanded ? "expanded" : ""}"><span class="material-icons">chevron_right</span></div>
+      <div class="tree-icon folder"><span class="material-icons">${isExpanded ? "folder_open" : "folder"}</span></div>
+      <span class="tree-name">${_escapeHtml(folder.name)}</span>`;
+      
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _toggleSftpFolder(connId, folder.path);
+    });
+    
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      _showItemContextMenu(e.clientX, e.clientY, connId, folder.path, true);
+    });
+    
+    container.appendChild(el);
+    
+    if (isExpanded) {
+      if (loadedDirectories.has(folder.path)) {
+        _renderSftpTreeLevel(container, connId, folder.path, depth + 1);
+      } else {
+        // Loading state for this specific folder
+        const loadingItem = document.createElement('div');
+        loadingItem.className = 'tree-item loading-item';
+        loadingItem.style.setProperty('--depth', depth + 1);
+        loadingItem.innerHTML = `<div class="tree-icon default"><span class="material-icons loading-spinner">sync</span></div><span class="tree-name">Loading...</span>`;
+        container.appendChild(loadingItem);
+      }
+    }
+  });
+
+  // Files
+  data.files.forEach(file => {
+    if (!state.showHidden && file.name.startsWith('.')) return;
+    
+    const el = document.createElement('div');
+    el.className = 'tree-item';
+    el.style.setProperty('--depth', depth);
+    el.dataset.path = file.path;
+    
+    const canOpen = file.is_text !== false || file.is_binary || isTextFile(file.name);
+    if (!canOpen) el.style.opacity = '0.55';
+    el.title = canOpen ? '' : 'Binary file – cannot open';
+    
+    const fileIcon = getFileIcon(file.name);
+    el.innerHTML = `
+      <div class="tree-chevron hidden"></div>
+      <div class="tree-icon ${fileIcon.class}"><span class="material-icons">${fileIcon.icon}</span></div>
+      <span class="tree-name">${_escapeHtml(file.name)}</span>
+      ${typeof file.size === 'number' ? `<span class="tree-file-size" style="font-size:11px;color:var(--text-muted);margin-left:8px;flex-shrink:0">${formatBytes(file.size, 0)}</span>` : ''}`;
+    
+    if (canOpen) {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSftpFile(connId, file.path);
+      });
+    }
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      _showItemContextMenu(e.clientX, e.clientY, connId, file.path, false);
+    });
+    
+    container.appendChild(el);
+  });
+  
+  if (data.folders.length === 0 && data.files.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'tree-item';
+    empty.style.setProperty('--depth', depth);
+    empty.style.color = 'var(--text-secondary)';
+    empty.innerHTML = '<div class="tree-chevron hidden"></div><span class="tree-name" style="font-style:italic">(empty)</span>';
+    container.appendChild(empty);
+  }
+}
+
 // ─── Connection Actions ───────────────────────────────────────────────────────
 
 export async function connectToServer(connId) {
@@ -324,6 +479,13 @@ export async function connectToServer(connId) {
     if (result.success) {
       state.activeSftp.folders = result.folders || [];
       state.activeSftp.files   = result.files   || [];
+      // Cache root for tree mode
+      if (state.activeSftp.loadedDirectories) {
+        state.activeSftp.loadedDirectories.set('/', {
+          folders: result.folders || [],
+          files: result.files || []
+        });
+      }
     } else {
       callbacks.showToast(`SFTP: ${result.message}`, 'error');
       state.activeSftp.connectionId = null;
@@ -364,7 +526,7 @@ export async function navigateSftp(connId, path) {
   }
 }
 
-export async function openSftpFile(connId, remotePath) {
+export async function openSftpFile(connId, remotePath, noActivate = false) {
   const conn = findConnection(connId);
   if (!conn) return;
 
@@ -373,7 +535,7 @@ export async function openSftpFile(connId, remotePath) {
 
   const existingTab = state.openTabs.find(t => t.path === virtualPath);
   if (existingTab) {
-    if (callbacks.openTab) callbacks.openTab(existingTab);
+    if (callbacks.openTab) callbacks.openTab(existingTab, noActivate);
     return;
   }
 
@@ -385,6 +547,12 @@ export async function openSftpFile(connId, remotePath) {
       return;
     }
     const content = result.content || '';
+    const ext = fileName.split('.').pop().toLowerCase();
+    const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
+    const isPdf = ext === "pdf";
+    const isVideo = ["mp4", "webm", "mov", "avi", "mkv", "flv", "wmv", "m4v"].includes(ext);
+    const isText = isTextFile(fileName);
+
     const tab = {
       path: virtualPath,
       name: fileName,
@@ -393,8 +561,14 @@ export async function openSftpFile(connId, remotePath) {
       modified: false,
       cursor: null,
       scroll: null,
+      isBinary: result.is_base64 && !isText,
+      isImage: isImage,
+      isPdf: isPdf,
+      isVideo: isVideo,
+      mimeType: result.mime_type,
+      mtime: result.mtime
     };
-    if (callbacks.openTab) callbacks.openTab(tab);
+    if (callbacks.openTab) callbacks.openTab(tab, noActivate);
   } catch (err) {
     callbacks.showToast(`SFTP: ${err.message}`, 'error');
   }
@@ -474,6 +648,7 @@ function _makeMenu(items) {
 /** Context menu when right-clicking a file or folder. */
 function _showItemContextMenu(x, y, connId, remotePath, isFolder) {
   const name = remotePath.split('/').pop();
+  const parentDir = remotePath.replace(/\/[^/]+$/, '') || '/';
   const items = [];
 
   if (isFolder) {
@@ -481,11 +656,17 @@ function _showItemContextMenu(x, y, connId, remotePath, isFolder) {
     items.push({ icon: 'create_new_folder',  label: 'New Folder', action: () => _promptNewFolder(connId, remotePath) });
     items.push('divider');
   } else {
+    // Allow creating new items in the same folder when clicking a file
+    items.push({ icon: 'note_add',           label: 'New File',   action: () => _promptNewFile(connId, parentDir) });
+    items.push({ icon: 'create_new_folder',  label: 'New Folder', action: () => _promptNewFolder(connId, parentDir) });
+    items.push('divider');
     items.push({ icon: 'download', label: 'Download', action: () => _downloadFile(connId, remotePath) });
     items.push('divider');
   }
 
   items.push({ icon: 'drive_file_rename_outline', label: 'Rename', action: () => _promptRename(connId, remotePath, name) });
+  items.push({ icon: 'content_copy', label: 'Duplicate', action: () => _duplicateItem(connId, remotePath, isFolder) });
+  items.push({ icon: 'drive_file_move', label: 'Move', action: () => _promptMove(connId, remotePath, isFolder) });
   items.push('divider');
   items.push({ icon: 'delete',  label: 'Delete', danger: true, action: () => _promptDelete(connId, remotePath, isFolder) });
 
@@ -507,18 +688,32 @@ async function _promptNewFile(connId, dirPath) {
   const conn = findConnection(connId);
   if (!conn) return;
 
-  const name = window.prompt('New file name:', 'new_file.yaml');
-  if (!name || !name.trim()) return;
-  const remotePath = joinRemotePath(dirPath, name.trim());
+  const defaultValue = dirPath === '/' ? '/' : dirPath + '/';
 
-  const result = await callSftpApi('sftp_create', conn, { path: remotePath, content: '' });
-  if (result.success) {
-    callbacks.showToast(`Created ${name}`, 'success');
+  const result = await callbacks.showInputModal({
+    title: "New Remote File",
+    placeholder: "filename.yaml",
+    value: defaultValue,
+    hint: "Enter the full remote path (e.g., /config/my_file.yaml)"
+  });
+
+  if (!result || !result.trim() || result === defaultValue) return;
+  let remotePath = result.trim();
+
+  // Auto-append .yaml if no extension is present
+  const fileName = remotePath.split('/').pop();
+  if (fileName && !fileName.includes('.')) {
+    remotePath += ".yaml";
+  }
+
+  const res = await callSftpApi('sftp_create', conn, { path: remotePath, content: '' });
+  if (res.success) {
+    callbacks.showToast(`Created ${remotePath.split('/').pop()}`, 'success');
     await _refreshCurrentDir(connId);
     // Open the new file in the editor
     await openSftpFile(connId, remotePath);
   } else {
-    callbacks.showToast(`Create failed: ${result.message}`, 'error');
+    callbacks.showToast(`Create failed: ${res.message}`, 'error');
   }
 }
 
@@ -526,16 +721,24 @@ async function _promptNewFolder(connId, dirPath) {
   const conn = findConnection(connId);
   if (!conn) return;
 
-  const name = window.prompt('New folder name:');
-  if (!name || !name.trim()) return;
-  const remotePath = joinRemotePath(dirPath, name.trim());
+  const defaultValue = dirPath === '/' ? '/' : dirPath + '/';
 
-  const result = await callSftpApi('sftp_mkdir', conn, { path: remotePath });
-  if (result.success) {
-    callbacks.showToast(`Created folder ${name}`, 'success');
+  const result = await callbacks.showInputModal({
+    title: "New Remote Folder",
+    placeholder: "folder_name",
+    value: defaultValue,
+    hint: "Enter the full remote path (e.g., /config/my_folder)"
+  });
+
+  if (!result || !result.trim() || result === defaultValue) return;
+  const remotePath = result.trim();
+
+  const res = await callSftpApi('sftp_mkdir', conn, { path: remotePath });
+  if (res.success) {
+    callbacks.showToast(`Created folder ${remotePath.split('/').pop()}`, 'success');
     await _refreshCurrentDir(connId);
   } else {
-    callbacks.showToast(`Mkdir failed: ${result.message}`, 'error');
+    callbacks.showToast(`Mkdir failed: ${res.message}`, 'error');
   }
 }
 
@@ -543,32 +746,115 @@ async function _promptRename(connId, remotePath, oldName) {
   const conn = findConnection(connId);
   if (!conn) return;
 
-  const newName = window.prompt('Rename to:', oldName);
-  if (!newName || !newName.trim() || newName.trim() === oldName) return;
+  const result = await callbacks.showInputModal({
+    title: "Rename Remote Item",
+    placeholder: "New name",
+    value: oldName,
+    hint: `Renaming ${oldName}`
+  });
+
+  if (!result || !result.trim() || result.trim() === oldName) return;
+  const newName = result.trim();
 
   const dir  = remotePath.replace(/\/[^/]+$/, '') || '/';
-  const dest = joinRemotePath(dir, newName.trim());
+  const dest = joinRemotePath(dir, newName);
 
-  const result = await callSftpApi('sftp_rename', conn, { source: remotePath, destination: dest });
-  if (result.success) {
+  const res = await callSftpApi('sftp_rename', conn, { source: remotePath, destination: dest });
+  if (res.success) {
     callbacks.showToast(`Renamed to ${newName}`, 'success');
-    // If open in editor, close old tab (path changed) — user can reopen
+    // If open in editor, update tab path
     const virtualOld = buildSftpPath(connId, remotePath);
     const oldTab = state.openTabs.find(t => t.path === virtualOld);
     if (oldTab) {
-      // Update the tab's path and name in-place
       oldTab.path = buildSftpPath(connId, dest);
-      oldTab.name = newName.trim();
+      oldTab.name = newName;
     }
     await _refreshCurrentDir(connId);
   } else {
-    callbacks.showToast(`Rename failed: ${result.message}`, 'error');
+    callbacks.showToast(`Rename failed: ${res.message}`, 'error');
+  }
+}
+
+async function _promptMove(connId, remotePath, isFolder) {
+  const conn = findConnection(connId);
+  if (!conn) return;
+
+  const result = await callbacks.showInputModal({
+    title: "Move Remote Item",
+    placeholder: "Full remote path",
+    value: remotePath,
+    hint: `Enter the full destination path for ${remotePath.split('/').pop()}`
+  });
+
+  if (!result || !result.trim() || result.trim() === remotePath) return;
+  const newPath = result.trim();
+
+  const res = await callSftpApi('sftp_rename', conn, { source: remotePath, destination: newPath });
+  if (res.success) {
+    callbacks.showToast(`Moved to ${newPath}`, 'success');
+    // If open in editor, update tab path
+    const virtualOld = buildSftpPath(connId, remotePath);
+    const oldTab = state.openTabs.find(t => t.path === virtualOld);
+    if (oldTab) {
+      oldTab.path = buildSftpPath(connId, newPath);
+      oldTab.name = newPath.split('/').pop();
+    }
+    await _refreshCurrentDir(connId);
+  } else {
+    callbacks.showToast(`Move failed: ${res.message}`, 'error');
+  }
+}
+
+async function _duplicateItem(connId, remotePath, isFolder) {
+  const conn = findConnection(connId);
+  if (!conn) return;
+
+  const fileName = remotePath.split('/').pop();
+  const dir = remotePath.replace(/\/[^/]+$/, '') || '/';
+  
+  let baseName = fileName;
+  let ext = "";
+  if (!isFolder && fileName.includes(".")) {
+    const parts = fileName.split(".");
+    ext = "." + parts.pop();
+    baseName = parts.join(".");
+  }
+
+  const result = await callbacks.showInputModal({
+    title: "Duplicate Remote Item",
+    placeholder: "New name",
+    value: `${baseName}_copy${ext}`,
+    hint: `Creating a copy of ${fileName}`
+  });
+
+  if (!result || !result.trim()) return;
+  const newName = result.trim();
+
+  const dest = joinRemotePath(dir, newName);
+
+  // For SFTP, we don't have a built-in 'copy' action in the backend yet?
+  // Let's check sftp_manager.py
+  const res = await callSftpApi('sftp_copy', conn, { source: remotePath, destination: dest });
+  if (res.success) {
+    callbacks.showToast(`Duplicated as ${newName}`, 'success');
+    await _refreshCurrentDir(connId);
+  } else {
+    callbacks.showToast(`Duplicate failed: ${res.message}`, 'error');
   }
 }
 
 async function _promptDelete(connId, remotePath, isFolder) {
   const name = remotePath.split('/').pop();
-  if (!confirm(`Delete "${name}"?${isFolder ? '\n\nFolder must be empty.' : ''}`)) return;
+  
+  const confirmed = await callbacks.showConfirmDialog({
+    title: isFolder ? "Delete Remote Folder?" : "Delete Remote File?",
+    message: `Are you sure you want to delete <b>${name}</b>?${isFolder ? "<br><br>This will recursively delete the folder and all its contents." : ""}`,
+    confirmText: "Delete",
+    cancelText: "Cancel",
+    isDanger: true,
+  });
+
+  if (!confirmed) return;
 
   const conn = findConnection(connId);
   if (!conn) return;
@@ -787,6 +1073,12 @@ export function showEditConnectionDialog(connId) {
 
 // ─── Panel Button Wiring ──────────────────────────────────────────────────────
 
+export async function refreshSftp() {
+  if (state.activeSftp.connectionId) {
+    await _refreshCurrentDir(state.activeSftp.connectionId);
+  }
+}
+
 export function initSftpPanelButtons() {
   const addBtn      = document.getElementById('btn-sftp-add');
   const collapseBtn = document.getElementById('btn-sftp-collapse');
@@ -799,6 +1091,23 @@ export function initSftpPanelButtons() {
     callbacks.saveSettings();
     renderSftpPanel();
   });
+
+  // Background context menu for SFTP
+  if (panelBody) {
+    panelBody.addEventListener('contextmenu', e => {
+      // Only if a connection is active
+      if (!state.activeSftp.connectionId) return;
+      
+      // If target is within list or breadcrumb, ignore
+      if (e.target.closest('#sftp-connections-list') || e.target.closest('#sftp-breadcrumb')) return;
+      
+      // If target is a tree item (file/folder), ignore (it has its own handler)
+      if (e.target.closest('.tree-item')) return;
+
+      e.preventDefault();
+      _showDirContextMenu(e.clientX, e.clientY, state.activeSftp.connectionId, state.activeSftp.currentPath);
+    });
+  }
 
   // Vertical resize
   if (resizeHandle && panelBody) {

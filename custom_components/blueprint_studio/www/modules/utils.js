@@ -259,6 +259,10 @@ export function isMobile() {
   return window.innerWidth <= MOBILE_BREAKPOINT;
 }
 
+export function isTouchDevice() {
+  return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+}
+
 export function formatBytes(bytes, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -280,14 +284,32 @@ export function lightenColor(hex, percent) {
 
 export async function loadScript(url) {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${url}"]`)) {
-        resolve();
+    const existingScript = document.querySelector(`script[src="${url}"]`);
+    if (existingScript) {
+        // Script tag exists, but check if it's loaded successfully
+        if (existingScript.hasAttribute('data-loaded')) {
+            resolve();
+            return;
+        }
+        // If script exists but not marked as loaded, wait for it or reload
+        existingScript.addEventListener('load', () => {
+            existingScript.setAttribute('data-loaded', 'true');
+            resolve();
+        });
+        existingScript.addEventListener('error', () => {
+            // Remove failed script and try again
+            existingScript.remove();
+            loadScript(url).then(resolve).catch(reject);
+        });
         return;
     }
     const script = document.createElement("script");
     script.src = url;
     script.async = true;
-    script.onload = resolve;
+    script.onload = () => {
+        script.setAttribute('data-loaded', 'true');
+        resolve();
+    };
     script.onerror = reject;
     document.head.appendChild(script);
   });

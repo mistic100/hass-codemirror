@@ -98,6 +98,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
+import { isSftpPath, parseSftpPath } from './sftp.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
@@ -141,18 +142,44 @@ export function renderAssetPreview(tab, container = null) {
  * Renders image preview with navigation
  */
 function renderImagePreview(tab, filename) {
-  // Calculate neighbors
-  const currentDir = tab.path.substring(0, tab.path.lastIndexOf("/"));
   const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"];
+  let imageFiles = [];
 
-  // Filter files in the same directory that are images
-  const imageFiles = state.files
-    .filter(f => {
-      const fDir = f.path.substring(0, f.path.lastIndexOf("/"));
-      const ext = "." + f.name.split(".").pop().toLowerCase();
-      return fDir === currentDir && imageExtensions.includes(ext);
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+  if (isSftpPath(tab.path)) {
+    // SFTP Logic
+    const { connId } = parseSftpPath(tab.path);
+    // Only works if we are still browsing the same connection/folder in the SFTP panel
+    // Or we could try to look at openTabs, but usually "next/prev" implies directory browsing.
+    // If the SFTP panel is active and showing the same folder, we can use state.activeSftp.files
+    // Ideally, we should check if state.activeSftp.currentPath matches the file's directory.
+    
+    // We'll rely on state.activeSftp which holds the current directory listing.
+    // If the user navigated away in the SFTP panel, next/prev might not work or might show different files.
+    // This is a reasonable limitation for now.
+    
+    if (state.activeSftp.connectionId === connId) {
+      imageFiles = state.activeSftp.files
+        .filter(f => {
+          const ext = "." + f.name.split(".").pop().toLowerCase();
+          return imageExtensions.includes(ext);
+        })
+        .map(f => ({
+          name: f.name,
+          path: `sftp://${connId}${f.path}` // Reconstruct virtual path
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+    }
+  } else {
+    // Local Files Logic
+    const currentDir = tab.path.substring(0, tab.path.lastIndexOf("/"));
+    imageFiles = state.files
+      .filter(f => {
+        const fDir = f.path.substring(0, f.path.lastIndexOf("/"));
+        const ext = "." + f.name.split(".").pop().toLowerCase();
+        return fDir === currentDir && imageExtensions.includes(ext);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+  }
 
   const currentIndex = imageFiles.findIndex(f => f.path === tab.path);
   const prevImage = currentIndex > 0 ? imageFiles[currentIndex - 1] : null;

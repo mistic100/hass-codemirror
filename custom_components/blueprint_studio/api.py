@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import os
+import asyncio
+import signal
 from typing import Any
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from .git_manager import GitManager
 from .ai_manager import AIManager
 from .file_manager import FileManager
 from .sftp_manager import SftpManager
+from .terminal_manager import TerminalManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +28,7 @@ class BlueprintStudioApiView(HomeAssistantView):
 
     url = "/api/blueprint_studio"
     name = "api:blueprint_studio"
-    requires_auth = True
+    requires_auth = False # We handle auth manually to support WebSockets via query param
 
     def __init__(self, config_dir: Path, store: Store, data: dict) -> None:
         """Initialize the view."""
@@ -37,21 +40,148 @@ class BlueprintStudioApiView(HomeAssistantView):
         self.ai = AIManager(None, data)
         self.file = FileManager(None, config_dir)
         self.sftp = SftpManager()
+        self.terminal = None # Initialized in _update_hass
+
+    async def _authenticate(self, request):
+        """Authenticate request via header or token query param."""
+        # 1. Header auth (handled by HA middleware)
+        if request.get("hass_user"):
+            return request["hass_user"]
+        
+        # 2. Query param auth (for WebSockets)
+        token = request.query.get("token")
+        if token:
+            refresh_token = request.app["hass"].auth.async_validate_access_token(token)
+            if refresh_token:
+                return refresh_token.user
+            else:
+                _LOGGER.warning("Blueprint Studio: Invalid access token provided in query param")
+        else:
+            _LOGGER.warning("Blueprint Studio: No auth header or token provided")
+        
+        return None
 
     def _update_hass(self, hass: HomeAssistant) -> None:
         """Update hass instance in managers."""
         self.git.hass = hass
         self.ai.hass = hass
         self.file.hass = hass
+        if not self.terminal:
+            self.terminal = TerminalManager(hass)
+        else:
+            self.terminal.hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
         """Handle GET requests."""
+        user = await self._authenticate(request)
+        if not user:
+            return web.Response(status=401, text="Unauthorized")
+
         params = request.query
         action = params.get("action")
         if not action: return json_message("Missing action", status_code=400)
         
         hass = request.app["hass"]
         self._update_hass(hass)
+
+        if action == "terminal_ws":
+            # Only allow admins
+            if not user.is_admin:
+                _LOGGER.warning("Blueprint Studio: Non-admin user %s attempted terminal access", user.name)
+                return web.Response(status=403, text="Unauthorized: Admin access required")
+
+            _LOGGER.debug("Blueprint Studio: Starting Terminal WebSocket for %s", user.name)
+
+            # Upgrade to WebSocket
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+            
+            # Spawn PTY
+            try:
+                master_fd, pid = await hass.async_add_executor_job(self.terminal.spawn)
+                _LOGGER.debug("Blueprint Studio: PTY spawned (pid %s)", pid)
+            except Exception as e:
+                _LOGGER.error("Failed to spawn terminal: %s", e)
+                await ws.close()
+                return ws
+
+            # Reader callback (runs in event loop thread, reads from fd)
+            def forward_output():
+                try:
+                    data = os.read(master_fd, 1024)
+                    if data:
+                        # Schedule sending data to WS
+                        try:
+                            hass.async_create_task(ws.send_bytes(data))
+                        except Exception as e:
+                            _LOGGER.warning("Failed to send terminal data to WS: %s", e)
+                            hass.loop.remove_reader(master_fd)
+                            hass.async_create_task(ws.close())
+                    else:
+                        # EOF (Process exited)
+                        _LOGGER.info("Terminal PTY EOF - shell process has exited (this is normal when closing terminal or when remote SSH session ends)")
+                        hass.loop.remove_reader(master_fd)
+                        hass.async_create_task(ws.close())
+                except OSError as e:
+                    # Input/Output error (PTY closed)
+                    if e.errno != 5: # Ignore EIO (standard PTY close error on Linux)
+                        _LOGGER.warning("Terminal PTY Read Error (errno %s): %s - This may indicate the remote SSH session closed unexpectedly", e.errno, e)
+                    hass.loop.remove_reader(master_fd)
+                    hass.async_create_task(ws.close())
+                except Exception as e:
+                    _LOGGER.error("Unexpected error in terminal reader: %s", e)
+                    hass.loop.remove_reader(master_fd)
+                    hass.async_create_task(ws.close())
+
+            # Register reader
+            hass.loop.add_reader(master_fd, forward_output)
+
+            # Writer loop (from WS to PTY)
+            try:
+                async for msg in ws:
+                    try:
+                        if msg.type == web.WSMsgType.BINARY:
+                            os.write(master_fd, msg.data)
+                        elif msg.type == web.WSMsgType.TEXT:
+                            try:
+                                data = msg.json()
+                                # Ensure data is a dict before calling .get()
+                                if isinstance(data, dict):
+                                    if data.get('type') == 'resize':
+                                        await hass.async_add_executor_job(
+                                            self.terminal.resize, master_fd, data['rows'], data['cols']
+                                        )
+                                    elif data.get('type') == 'input':
+                                        os.write(master_fd, data['data'].encode())
+                                    else:
+                                        os.write(master_fd, msg.data.encode())
+                                else:
+                                    # If JSON is not a dict, treat as raw text
+                                    os.write(master_fd, msg.data.encode())
+                            except ValueError:
+                                # Not valid JSON, treat as raw text
+                                os.write(master_fd, msg.data.encode())
+                    except OSError as e:
+                        _LOGGER.warning("Terminal PTY Write Error: %s", e)
+                        # If we can't write, the PTY might be dead. Break loop to close.
+                        break
+                    except Exception as e:
+                        _LOGGER.error("Unexpected error in terminal writer: %s", e)
+                        break
+                    
+                    if msg.type == web.WSMsgType.ERROR:
+                        _LOGGER.error('Terminal WS error: %s', ws.exception())
+            finally:
+                hass.loop.remove_reader(master_fd)
+                os.close(master_fd)
+                # Cleanup process
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                    os.waitpid(pid, os.WNOHANG)
+                except OSError:
+                    pass
+            
+            return ws
 
         if action == "list_files":
             show_hidden = params.get("show_hidden", "false").lower() == "true"
@@ -123,6 +253,10 @@ class BlueprintStudioApiView(HomeAssistantView):
 
     async def post(self, request: web.Request) -> web.Response:
         """Handle POST requests."""
+        user = await self._authenticate(request)
+        if not user:
+            return web.Response(status=401, text="Unauthorized")
+
         try: data = await request.json()
         except: return json_message("Invalid JSON", status_code=400)
         
@@ -173,6 +307,20 @@ class BlueprintStudioApiView(HomeAssistantView):
         if action == "check_jinja":
             result = await hass.async_add_executor_job(self.ai.check_jinja, data.get("content", ""))
             return result
+
+        # Terminal
+        if action == "terminal_exec":
+            if not self.terminal: return json_message("Terminal not initialized", status_code=500)
+            # Only allow admins
+            if not user.is_admin:
+                return json_message("Unauthorized: Admin access required", status_code=403)
+            
+            result = await self.terminal.execute_command(
+                data.get("command", ""),
+                user=user.name or "Unknown",
+                cwd=data.get("cwd")
+            )
+            return json_response(result)
 
         # Git
         if action == "git_status": return await self.git.get_status(data.get("fetch", False))
@@ -299,7 +447,7 @@ class BlueprintStudioApiView(HomeAssistantView):
 
         # SFTP
         if action in ("sftp_test", "sftp_list", "sftp_read", "sftp_write",
-                       "sftp_create", "sftp_delete", "sftp_rename", "sftp_mkdir"):
+                       "sftp_create", "sftp_delete", "sftp_rename", "sftp_mkdir", "sftp_copy"):
             return await self._sftp_action(action, data, hass)
 
         return json_message("Unknown action", status_code=400)
@@ -322,8 +470,9 @@ class BlueprintStudioApiView(HomeAssistantView):
                 )
             elif action == "sftp_list":
                 path = data.get("path", "/")
+                show_hidden = data.get("show_hidden", False)
                 result = await hass.async_add_executor_job(
-                    self.sftp.list_directory, host, port, username, auth, path
+                    self.sftp.list_directory, host, port, username, auth, path, show_hidden
                 )
             elif action == "sftp_read":
                 path = data.get("path")
@@ -362,6 +511,14 @@ class BlueprintStudioApiView(HomeAssistantView):
                     return json_message("Missing source or destination", status_code=400)
                 result = await hass.async_add_executor_job(
                     self.sftp.rename_path, host, port, username, auth, src, dest
+                )
+            elif action == "sftp_copy":
+                src = data.get("source")
+                dest = data.get("destination")
+                if not src or not dest:
+                    return json_message("Missing source or destination", status_code=400)
+                result = await hass.async_add_executor_job(
+                    self.sftp.copy_path, host, port, username, auth, src, dest
                 )
             elif action == "sftp_mkdir":
                 path = data.get("path")

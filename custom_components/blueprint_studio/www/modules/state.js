@@ -197,6 +197,7 @@ export const state = {
   contentSearchResults: null,
   isMobile: window.innerWidth <= MOBILE_BREAKPOINT,
   sidebarVisible: window.innerWidth > MOBILE_BREAKPOINT,
+  terminalVisible: false, // Terminal panel state
   theme: "dark",
   showHidden: false,
   showRecentFiles: true,
@@ -317,6 +318,8 @@ export const state = {
     folders: [],
     files: [],
     loading: false,
+    expandedFolders: new Set(),
+    loadedDirectories: new Map(), // path -> {folders: [], files: []}
   },
 };
 

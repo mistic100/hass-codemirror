@@ -99,7 +99,7 @@
  * 7. App ready for user interaction
  *
  * ============================================================================
- * Blueprint Studio v2.2.0
+ * Blueprint Studio v2.3.0
  * A modern, feature-rich file editor for Home Assistant
  * https://github.com/katoaroosultan/blueprint-studio
  * ============================================================================
@@ -315,7 +315,8 @@ import {
   openSftpFile as openSftpFileImpl,
   showAddConnectionDialog as showAddConnectionDialogImpl,
   showEditConnectionDialog as showEditConnectionDialogImpl,
-  deleteConnection as deleteConnectionImpl
+  deleteConnection as deleteConnectionImpl,
+  refreshSftp as refreshSftpImpl
 } from './sftp.js';
 
 import {
@@ -518,6 +519,16 @@ import {
   promptDelete as promptDeleteImpl
 } from './file-operations-ui.js';
 
+import {
+  toggleTerminal as toggleTerminalImpl,
+  runCommand as runCommandImpl,
+  setTerminalMode,
+  getTerminalContainer,
+  fitTerminal,
+  registerTerminalCallbacks,
+  initTerminal
+} from './terminal.js';
+
   // ============================================
   // State Management
   // ============================================
@@ -639,6 +650,9 @@ export async function loadFiles(force = false) {
         }
 
         renderFileTree();
+        if (state.activeSftp.connectionId) {
+          refreshSftp();
+        }
         setFileTreeLoading(false);
         setButtonLoading(elements.btnRefresh, false);
         return;
@@ -655,6 +669,9 @@ export async function loadFiles(force = false) {
       state.allItems = items;
       state.fileTree = buildFileTree(items);
       renderFileTree();
+      if (state.activeSftp.connectionId) {
+        refreshSftp();
+      }
 
       setFileTreeLoading(false);
       setButtonLoading(elements.btnRefresh, false);
@@ -1000,6 +1017,10 @@ export async function promptDelete(path, isFolder) {
   return await promptDeleteImpl(path, isFolder);
 }
 
+// Re-export terminal module functions
+export const toggleTerminal = toggleTerminalImpl;
+export const runCommand = runCommandImpl;
+
   // ============================================
   // File Tree Rendering
   // ============================================
@@ -1013,7 +1034,50 @@ export const performContentSearch = performContentSearchImpl;
   // Tab Management
   // ============================================
 
+// Terminal Management
+function openTerminalTab() {
+  let tab = state.openTabs.find(t => t.isTerminal);
+  
+  if (!tab) {
+    tab = {
+      path: "terminal://local",
+      name: "Terminal",
+      isTerminal: true,
+      modified: false,
+      isBinary: false
+    };
+    state.openTabs.push(tab);
+  }
+  
+  // Hide bottom panel if open
+  toggleTerminalImpl(false);
+  
+  activateTab(tab);
+  renderTabs();
+}
+
+function closeTerminalTab() {
+  const tab = state.openTabs.find(t => t.isTerminal);
+  if (tab) {
+    closeTab(tab, true);
+    // Re-open as panel
+    toggleTerminalImpl(true);
+  }
+}
+
+// Register terminal callbacks
+registerTerminalCallbacks({
+  openTerminalTab,
+  closeTerminalTab,
+  getAuthToken
+});
+
 export async function openFile(path, forceReload = false, noActivate = false) {
+    if (isSftpPathImpl(path)) {
+      const { connId, remotePath } = parseSftpPathImpl(path);
+      return await openSftpFileImpl(connId, remotePath, noActivate);
+    }
+
     const filename = path.split("/").pop();
     const ext = filename.split(".").pop().toLowerCase();
     const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
@@ -1118,10 +1182,29 @@ export function activateTab(tab, skipSave = false) {
       elements.welcomeScreen.style.display = "none";
     }
 
+    // Detach terminal if leaving terminal tab
+    if (state.activeTab && state.activeTab.isTerminal && tab !== state.activeTab) {
+        setTerminalMode('panel'); // Moves back to body, fixed
+        toggleTerminalImpl(false); // Ensure hidden
+    }
+
     // Determine which pane this tab should be in
     const tabIndex = state.openTabs.indexOf(tab);
     let pane = null;
-    let targetEditor = state.editor;
+    
+    // Robustly determine the editor for the CURRENT active tab (before switch)
+    // We cannot rely on state.editor because setActivePaneFromPosition might have updated it already on click
+    let currentEditor = state.editor; 
+    if (state.splitView && state.splitView.enabled && state.activeTab) {
+        const activeIdx = state.openTabs.indexOf(state.activeTab);
+        if (activeIdx !== -1) {
+            const activePane = getPaneForTab(activeIdx);
+            if (activePane === 'primary') currentEditor = state.primaryEditor;
+            else if (activePane === 'secondary') currentEditor = state.secondaryEditor;
+        }
+    }
+
+    let targetEditor = state.editor;  // Editor for the NEW tab (will be updated below)
 
     if (state.splitView && state.splitView.enabled && tabIndex !== -1) {
       pane = getPaneForTab(tabIndex);
@@ -1156,11 +1239,12 @@ export function activateTab(tab, skipSave = false) {
     }
 
     // Save current tab state before switching (only for text files)
-    if (!skipSave && state.activeTab && targetEditor && !state.activeTab.isBinary) {
-      state.activeTab.content = targetEditor.getValue();
-      state.activeTab.history = targetEditor.getHistory();
-      state.activeTab.cursor = targetEditor.getCursor();
-      state.activeTab.scroll = targetEditor.getScrollInfo();
+    // CRITICAL FIX: Use currentEditor (the editor of the OLD tab) to save state
+    if (!skipSave && state.activeTab && currentEditor && !state.activeTab.isBinary && !state.activeTab.isTerminal) {
+      state.activeTab.content = currentEditor.getValue();
+      state.activeTab.history = currentEditor.getHistory();
+      state.activeTab.cursor = currentEditor.getCursor();
+      state.activeTab.scroll = currentEditor.getScrollInfo();
     }
 
     state.activeTab = tab;
@@ -1178,6 +1262,39 @@ export function activateTab(tab, skipSave = false) {
             previewContainer.classList.add("visible");
             renderAssetPreview(tab, previewContainer);
         }
+    } else if (tab.isTerminal) {
+        // Handle Terminal Tab
+        if (targetEditor) {
+            targetEditor.getWrapperElement().style.display = "none";
+        }
+        // Use preview container for terminal
+        const previewContainer = (pane === 'secondary') ?
+          document.getElementById('secondary-asset-preview') :
+          elements.assetPreview;
+          
+        if (previewContainer) {
+            if (!getTerminalContainer()) {
+                // Initialize if missing
+                previewContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary)"><span class="material-icons loading-spinner" style="font-size:24px;margin-right:8px">sync</span> Loading Terminal...</div>';
+                previewContainer.classList.add("visible");
+                
+                initTerminal().then(() => {
+                    // Check if tab is still active
+                    if (state.activeTab === tab) {
+                        previewContainer.innerHTML = '';
+                        previewContainer.appendChild(getTerminalContainer());
+                        setTerminalMode('tab');
+                        fitTerminal();
+                    }
+                });
+            } else {
+                previewContainer.innerHTML = ''; // Clear anything else
+                previewContainer.classList.add("visible");
+                previewContainer.appendChild(getTerminalContainer());
+                setTerminalMode('tab');
+                fitTerminal();
+            }
+        }
     } else {
         // Handle Text Editor
         // Hide preview in appropriate pane
@@ -1186,7 +1303,13 @@ export function activateTab(tab, skipSave = false) {
           elements.assetPreview;
         if (previewContainer) {
             previewContainer.classList.remove("visible");
-            previewContainer.innerHTML = "";
+            // Only clear if NOT terminal (terminal handles its own detach)
+            // But we already detached above if switching AWAY.
+            // If switching TO text from terminal, terminal is already detached.
+            // If switching TO text from binary, we need to clear.
+            if (!previewContainer.contains(getTerminalContainer())) {
+                 previewContainer.innerHTML = "";
+            }
         }
 
         // Create editor if it doesn't exist
@@ -1297,6 +1420,22 @@ export function activateTab(tab, skipSave = false) {
     // Save state after switching
     saveSettingsImpl();
   }
+
+export async function restoreSftpSession() {
+  if (state.activeSftp.connectionId) {
+    const connId = state.activeSftp.connectionId;
+    const path = state.activeSftp.currentPath || '/';
+    
+    // We call connectToServer if path is root, otherwise navigateSftp
+    // We use the implementation from sftp.js
+    if (path === '/') {
+      await connectToServerImpl(connId);
+    } else {
+      // navigateSftp handles the list fetch
+      await navigateSftpImpl(connId, path);
+    }
+  }
+}
 
 // Wrapper for asset preview module function
 function renderAssetPreview(tab, container = null) {
@@ -1442,6 +1581,12 @@ export function closeTab(tab, force = false) {
       if (!confirm(`${tab.path.split("/").pop()} has unsaved changes. Close anyway?`)) {
         return;
       }
+    }
+
+    // Detach terminal if closing terminal tab
+    if (tab.isTerminal) {
+        setTerminalMode('panel');
+        toggleTerminalImpl(false);
     }
 
     const index = state.openTabs.indexOf(tab);
@@ -1641,6 +1786,7 @@ export const openSftpFile = openSftpFileImpl;
 export const showAddConnectionDialog = showAddConnectionDialogImpl;
 export const showEditConnectionDialog = showEditConnectionDialogImpl;
 export const deleteConnection = deleteConnectionImpl;
+export const refreshSftp = refreshSftpImpl;
 export const updateShowHiddenButton = updateShowHiddenButtonImpl;
 
 // Re-export selection module functions
@@ -1783,6 +1929,8 @@ registerEventHandlerCallbacks({
   showCommandPalette,
   debouncedContentSearch,
   debouncedFilenameSearch,
+  toggleTerminal,
+  runCommand,
   // Split view callbacks
   enableSplitView,
   disableSplitView,
@@ -1830,7 +1978,7 @@ export async function restoreOpenTabs() {
         const connExists = state.sftpConnections.some(c => c.id === connId);
         if (connExists) {
           try {
-            await openSftpFileImpl(connId, remotePath);
+            await openSftpFileImpl(connId, remotePath, true);
             const tab = state.openTabs.find(t => t.path === tabState.path);
             if (tab) {
               tab.cursor = tabState.cursor || null;
@@ -1850,6 +1998,18 @@ export async function restoreOpenTabs() {
             console.warn(`Failed to restore SFTP tab ${tabState.path}:`, err);
           }
         }
+      } else if (tabState.path.startsWith("terminal://")) {
+        // Restore terminal tab
+        const tab = {
+          path: tabState.path,
+          name: "Terminal",
+          isTerminal: true,
+          modified: false,
+          isBinary: false
+        };
+        state.openTabs.push(tab);
+        // Ensure bottom panel is hidden if terminal is in tab
+        toggleTerminalImpl(false);
       } else {
         // Local file - check if it exists
         const fileExists = state.files.some(f => f.path === tabState.path);
@@ -2073,6 +2233,8 @@ registerInitializationCallbacks({
   gitUnstage,
   setButtonLoading,
   restoreOpenTabs,
+  restoreSftpSession,
+  toggleTerminal,
   copyToClipboard,
   applyVersionControlVisibility,
   updateAIVisibility,
@@ -2133,7 +2295,8 @@ registerSplitViewCallbacks({
   activateTab,
   renderTabs,
   saveSettings: saveSettingsImpl,
-  renderFileTree
+  renderFileTree,
+  fitTerminal
 });
 
 // Register editor module callbacks
@@ -2243,12 +2406,20 @@ registerSftpCallbacks({
   fetchWithAuth,
   API_BASE,
   showToast,
-  openTab: (tab) => {
-    state.openTabs.push(tab);
-    activateTab(tab);
-    renderTabs();
+  openTab: (tab, noActivate = false) => {
+    // SFTP module creates a tab object but doesn't add it to state.openTabs
+    // We need to ensure it's added before activating
+    if (!state.openTabs.includes(tab)) {
+      state.openTabs.push(tab);
+    }
+    if (!noActivate) {
+      activateTab(tab);
+      renderTabsImpl();
+    }
   },
-  saveSettings: saveSettingsImpl,
+  saveSettings,
+  showInputModal,
+  showConfirmDialog
 });
 
 // Wire up SFTP panel static buttons

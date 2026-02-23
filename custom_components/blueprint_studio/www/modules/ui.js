@@ -125,6 +125,68 @@ import { state, elements } from './state.js';
 import { THEME_PRESETS, ACCENT_COLORS, SYNTAX_THEMES } from './constants.js';
 import { lightenColor } from './utils.js';
 
+const HA_VAR_MAPPING = {
+    '--bg-primary': '--primary-background-color',
+    '--bg-secondary': '--card-background-color',
+    '--bg-tertiary': '--secondary-background-color',
+    '--bg-hover': '--secondary-background-color', // often used for hover
+    '--text-primary': '--primary-text-color',
+    '--text-secondary': '--secondary-text-color',
+    '--text-muted': '--disabled-text-color',
+    '--border-color': '--divider-color',
+    '--accent-color': '--accent-color',
+    '--accent-hover': '--primary-color', // Fallback
+    '--error-color': '--error-color',
+    '--success-color': '--success-color',
+    '--warning-color': '--warning-color',
+    '--modal-bg': '--card-background-color',
+    '--input-bg': '--primary-background-color'
+};
+
+let themeObserver = null;
+
+function syncHaTheme() {
+    try {
+        const parentRoot = window.parent.document.documentElement;
+        const localRoot = document.documentElement;
+        const computed = getComputedStyle(parentRoot);
+
+        for (const [localVar, haVar] of Object.entries(HA_VAR_MAPPING)) {
+            const val = computed.getPropertyValue(haVar).trim();
+            if (val) localRoot.style.setProperty(localVar, val);
+        }
+        
+        // Try to detect dark mode from HA
+        // If HA has 'dark' attribute on html tag
+        const isHaDark = parentRoot.hasAttribute('dark');
+        if (state.themePreset === 'auto') {
+             state.theme = isHaDark ? 'dark' : 'light';
+             document.body.setAttribute("data-theme", state.theme);
+             // Update CodeMirror theme based on dark/light
+             if (state.editor) {
+                 const cmTheme = isHaDark ? "material-darker" : "default";
+                 state.editor.setOption("theme", cmTheme);
+                 localRoot.style.setProperty('--cm-theme', cmTheme);
+             }
+        }
+    } catch (e) {
+        // Fallback for standalone mode
+    }
+}
+
+function startThemeObserver() {
+    if (themeObserver) return;
+    try {
+        const parentRoot = window.parent.document.documentElement;
+        themeObserver = new MutationObserver(() => syncHaTheme());
+        themeObserver.observe(parentRoot, { attributes: true, attributeFilter: ['style', 'class', 'dark'] });
+        // Initial sync
+        syncHaTheme();
+    } catch (e) {
+        console.log("Theme Sync: Running in standalone mode (no parent access)");
+    }
+}
+
 let callbacks = {
     saveSettings: null
 };
@@ -186,8 +248,26 @@ export function applyCustomSyntaxColors() {
 }
 
 export function applyTheme() {
+  const isAuto = state.themePreset === 'auto';
+  
+  if (isAuto) {
+      startThemeObserver();
+  } else if (themeObserver) {
+      try {
+        themeObserver.disconnect();
+        themeObserver = null;
+      } catch(e) {}
+  }
+
   const effectiveTheme = getEffectiveTheme();
-  const preset = THEME_PRESETS[state.themePreset] || THEME_PRESETS.dark;
+  // If auto, pick base based on effective theme (dark/light)
+  // If not auto, use the preset's definitions
+  let preset;
+  if (isAuto) {
+      preset = effectiveTheme === 'dark' ? THEME_PRESETS.dark : THEME_PRESETS.light;
+  } else {
+      preset = THEME_PRESETS[state.themePreset] || THEME_PRESETS.dark;
+  }
   
   const root = document.documentElement;
   const colors = preset.colors;
@@ -199,6 +279,7 @@ export function applyTheme() {
     accentHover = lightenColor(accentColor, 20);
   }
   
+  // Apply base variables
   root.style.setProperty('--bg-primary', colors.bgPrimary);
   root.style.setProperty('--bg-secondary', colors.bgSecondary);
   root.style.setProperty('--bg-tertiary', colors.bgTertiary);
@@ -232,9 +313,17 @@ export function applyTheme() {
   document.body.setAttribute("data-theme", effectiveTheme);
   document.body.setAttribute("data-theme-preset", state.themePreset);
 
+  // Apply Overrides if Auto
+  if (isAuto) {
+      syncHaTheme();
+  }
+
   // Update CodeMirror theme
   if (state.editor) {
-    state.editor.setOption("theme", colors.cmTheme);
+    // syncHaTheme might have updated this for auto, but for non-auto:
+    if (!isAuto) {
+        state.editor.setOption("theme", colors.cmTheme);
+    }
   }
 
   updateThemeToggleDisplay();
@@ -244,23 +333,23 @@ function updateThemeToggleDisplay() {
     const themeIcons = { 
         light: "light_mode", dark: "dark_mode", auto: "brightness_auto",
         highContrast: "contrast", solarizedDark: "palette", solarizedLight: "palette",
-        ocean: "water", dracula: "nightlight_round"
+        ocean: "water", dracula: "nightlight_round", glass: "blur_on", midnightBlue: "nightlight_round"
     };
     const themeLabels = { 
         light: "Light", dark: "Dark", auto: "Auto",
         highContrast: "Contrast", solarizedDark: "Solar Dark", solarizedLight: "Solar Light",
-        ocean: "Ocean", dracula: "Dracula"
+        ocean: "Ocean", dracula: "Dracula", glass: "Glass", midnightBlue: "Midnight Blue"
     };
 
-    const displayKey = state.theme === 'auto' ? 'auto' : state.themePreset;
+    const displayKey = state.themePreset === 'auto' ? 'auto' : state.themePreset;
 
     if (elements.themeIcon) elements.themeIcon.textContent = themeIcons[displayKey] || "dark_mode";
     if (elements.themeLabel) elements.themeLabel.textContent = themeLabels[displayKey] || "Dark";
 
     document.querySelectorAll(".theme-menu-item").forEach(item => {
       const itemTheme = item.dataset.theme;
-      const isActive = (state.theme === 'auto' && itemTheme === 'auto') || 
-                       (state.theme !== 'auto' && itemTheme === state.themePreset);
+      const isActive = (state.themePreset === 'auto' && itemTheme === 'auto') || 
+                       (state.themePreset !== 'auto' && itemTheme === state.themePreset);
       item.classList.toggle("active", isActive);
     });
 }
@@ -573,6 +662,7 @@ export function initElements() {
     elements.groupMarkdown = document.getElementById("group-markdown");
     elements.btnMarkdownPreview = document.getElementById("btn-markdown-preview");
 
+    elements.btnTerminal = document.getElementById("btn-terminal");
     elements.btnAiStudio = document.getElementById("btn-ai-studio");
     elements.btnRestartHa = document.getElementById("btn-restart-ha");
     elements.btnAppSettings = document.getElementById("btn-app-settings");
@@ -745,10 +835,15 @@ export function applyLayoutSettings() {
 
 export function setThemePreset(preset) {
     state.themePreset = preset;
-    if (preset === 'light') {
+    if (preset === 'auto') {
+        state.theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? 'dark' : 'light';
+    } else if (preset === 'light' || preset === 'solarizedLight') {
       state.theme = 'light';
-    } else if (['dark', 'highContrast', 'solarizedDark', 'solarizedLight', 'ocean', 'dracula'].includes(preset)) {
+    } else if (['dark', 'highContrast', 'solarizedDark', 'ocean', 'dracula', 'glass', 'midnightBlue'].includes(preset)) {
       state.theme = 'dark';
+    } else {
+        // Fallback for new themes or custom
+        state.theme = 'dark';
     }
     applyTheme();
     if (callbacks.saveSettings) callbacks.saveSettings();

@@ -132,7 +132,7 @@ import {
   hideGlobalLoading,
   showConfirmDialog
 } from './ui.js';
-import { getFileIcon, formatBytes, isMobile } from './utils.js';
+import { getFileIcon, formatBytes, isMobile, isTouchDevice } from './utils.js';
 
 // Timer for debounced rendering
 export let fileTreeRenderTimer = null;
@@ -425,12 +425,23 @@ export function renderFileTree() {
     const item = createTreeItem(folder.name, 0, true, false, folder.path, false,
       folder.isSymlink ? (folder.symlinkTarget || "") : null);
 
-    // Double-click to navigate into folder
-    item.addEventListener("dblclick", (e) => {
-      if (e.target.closest(".tree-action-btn")) return;
-      e.stopPropagation();
-      navigateToFolder(folder.path);
-    });
+    // Double-click to navigate into folder (desktop)
+    // Single tap to navigate (touch devices)
+    if (isTouchDevice()) {
+      // On touch devices, use single click to navigate into folders
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".tree-action-btn")) return;
+        e.stopPropagation();
+        navigateToFolder(folder.path);
+      });
+    } else {
+      // On desktop, use double-click
+      item.addEventListener("dblclick", (e) => {
+        if (e.target.closest(".tree-action-btn")) return;
+        e.stopPropagation();
+        navigateToFolder(folder.path);
+      });
+    }
 
     // Context menu
     item.addEventListener("contextmenu", (e) => {

@@ -192,27 +192,37 @@ export function showInputModal({ title, placeholder, value, hint, confirmText })
 export async function promptNewFile(initialPath = null) {
   // Use provided path or fall back to state
   const basePath = initialPath !== null ? initialPath : (state.currentFolderPath || "");
-  const defaultValue = basePath ? `${basePath}/` : "";
+  const visualPrefix = "/config/";
+  // Construct display value: /config/ + relative_path + /
+  const defaultValue = basePath ? `${visualPrefix}${basePath}/` : visualPrefix;
 
   const result = await showInputModal({
     title: "New File",
     placeholder: "filename.yaml",
     value: defaultValue,
-    hint: "Enter the full path (e.g., automations/my_light.yaml)",
+    hint: "Enter the full path (e.g., /config/automations/my_light.yaml)",
   });
 
   if (result) {
-    if (result === basePath || result.endsWith("/")) {
+    if (result === defaultValue || result.endsWith("/")) {
         callbacks.showToast("Please enter a file name", "warning");
         return;
     }
 
     let fullPath = result;
+    
+    // Strip the visual /config/ prefix for the backend
+    if (fullPath.startsWith(visualPrefix)) {
+      fullPath = fullPath.substring(visualPrefix.length);
+    } else if (fullPath.startsWith("/")) {
+      // Handle case where user deleted 'config' but kept leading slash
+      fullPath = fullPath.substring(1);
+    }
 
     // Auto-append .yaml if no extension is present
     const parts = fullPath.split('/');
     const fileName = parts[parts.length - 1];
-    if (fileName.indexOf('.') === -1) {
+    if (fileName && fileName.indexOf('.') === -1) {
       fullPath += ".yaml";
     }
 
@@ -227,22 +237,33 @@ export async function promptNewFile(initialPath = null) {
 export async function promptNewFolder(initialPath = null) {
   // Use provided path or fall back to state
   const basePath = initialPath !== null ? initialPath : (state.currentFolderPath || "");
-  const defaultValue = basePath ? `${basePath}/` : "";
+  const visualPrefix = "/config/";
+  const defaultValue = basePath ? `${visualPrefix}${basePath}/` : visualPrefix;
 
   const result = await showInputModal({
     title: "New Folder",
     placeholder: "folder_name",
     value: defaultValue,
-    hint: "Enter the full path (e.g., config/my_folder)",
+    hint: "Enter the full path (e.g., /config/my_folder)",
   });
 
   if (result) {
-    if (result === basePath || result.endsWith("/")) {
+    if (result === defaultValue || result.endsWith("/")) {
         callbacks.showToast("Please enter a folder name", "warning");
         return;
     }
+    
+    let fullPath = result;
+    
+    // Strip the visual /config/ prefix for the backend
+    if (fullPath.startsWith(visualPrefix)) {
+      fullPath = fullPath.substring(visualPrefix.length);
+    } else if (fullPath.startsWith("/")) {
+      fullPath = fullPath.substring(1);
+    }
+    
     // Result is the full path since we pre-filled it
-    await callbacks.createFolder(result);
+    await callbacks.createFolder(fullPath);
   }
 }
 

@@ -195,6 +195,8 @@ export async function loadSettings() {
     // 4. Apply to State
     state.theme = settings.theme || localSettings.theme || "dark";
     state.showHidden = settings.showHidden || false;
+    state.terminalVisible = settings.terminalVisible || false;
+    state.sshHosts = settings.sshHosts || [];
     state.showRecentFiles = settings.showRecentFiles !== false;
     state.favoriteFiles = settings.favoriteFiles || [];
     state.recentFiles = settings.recentFiles || [];
@@ -262,6 +264,8 @@ export async function loadSettings() {
     state.sftpConnections = settings.sftpConnections || [];
     state.sftpPanelCollapsed = settings.sftpPanelCollapsed || false;
     state.sftpPanelHeight = settings.sftpPanelHeight || 300;
+    state.activeSftp.connectionId = settings.activeSftpConnectionId || null;
+    state.activeSftp.currentPath = settings.activeSftpPath || "/";
 
     // Split view settings
     if (settings.splitView) {
@@ -369,6 +373,8 @@ export async function saveSettings() {
     const settings = {
       theme: state.theme,
       showHidden: state.showHidden,
+      terminalVisible: state.terminalVisible,
+      sshHosts: state.sshHosts,
       showRecentFiles: state.showRecentFiles,
       favoriteFiles: state.favoriteFiles,
       recentFiles: state.recentFiles,
@@ -435,6 +441,8 @@ export async function saveSettings() {
       sftpConnections: state.sftpConnections,
       sftpPanelCollapsed: state.sftpPanelCollapsed,
       sftpPanelHeight: state.sftpPanelHeight,
+      activeSftpConnectionId: state.activeSftp.connectionId,
+      activeSftpPath: state.activeSftp.currentPath,
       // Split view settings
       splitView: state.splitView ? {
         enabled: state.splitView.enabled,

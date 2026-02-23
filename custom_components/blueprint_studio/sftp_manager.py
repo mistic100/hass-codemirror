@@ -5,19 +5,29 @@ import io
 import logging
 import os
 import stat
+import base64
+import mimetypes
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 # Allowed text file extensions (mirrors frontend TEXT_FILE_EXTENSIONS)
 _ALLOWED_EXTENSIONS = {
-    ".yaml", ".yml", ".json", ".txt", ".conf", ".cfg", ".ini", ".toml",
+    ".yaml", ".yml", ".json", ".txt", ".csv", ".conf", ".cfg", ".ini", ".toml",
     ".sh", ".bash", ".zsh", ".py", ".js", ".ts", ".jsx", ".tsx", ".css",
     ".html", ".htm", ".xml", ".md", ".rst", ".log", ".env", ".gitignore",
     ".dockerignore", ".lua", ".sql", ".rb", ".php", ".go", ".rs",
     ".c", ".cpp", ".h", ".java", ".kt", ".swift", ".cs", ".r",
     ".properties", ".gradle", ".plist", ".service", ".rules", ".conf",
     ".list", ".sources", ".repo", ".htaccess", ".nginx", ".vhost",
+}
+
+# Binary file extensions (mirrors const.py BINARY_EXTENSIONS)
+_BINARY_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip",
+    ".db", ".sqlite",
+    ".der", ".bin", ".ota", ".tar", ".gz",
+    ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v",
 }
 
 
@@ -38,7 +48,7 @@ class SftpManager:
         """
         import paramiko  # lazy import – installed by HA requirements
 
-        _LOGGER.warning(
+        _LOGGER.info(
             "Blueprint Studio SFTP: connecting to %s:%s as %s. "
             "Host keys are auto-accepted (AutoAddPolicy). "
             "Credentials are NOT logged.",
@@ -91,7 +101,7 @@ class SftpManager:
             if transport:
                 transport.close()
 
-    def list_directory(self, host: str, port: int, username: str, auth: dict, path: str) -> dict:
+    def list_directory(self, host: str, port: int, username: str, auth: dict, path: str, show_hidden: bool = False) -> dict:
         """List a remote directory. Returns {success, folders, files}."""
         transport = None
         try:
@@ -100,8 +110,8 @@ class SftpManager:
             folders = []
             files = []
             for entry in sorted(entries, key=lambda e: e.filename.lower()):
-                if entry.filename.startswith("."):
-                    continue  # skip hidden by default
+                if not show_hidden and entry.filename.startswith("."):
+                    continue
                 is_dir = stat.S_ISDIR(entry.st_mode)
                 item = {
                     "name": entry.filename,
@@ -111,7 +121,9 @@ class SftpManager:
                 if is_dir:
                     folders.append(item)
                 else:
+                    ext = os.path.splitext(entry.filename)[1].lower()
                     item["is_text"] = _is_text_file(entry.filename)
+                    item["is_binary"] = ext in _BINARY_EXTENSIONS
                     files.append(item)
             sftp.close()
             return {"success": True, "folders": folders, "files": files, "path": path}
@@ -122,16 +134,41 @@ class SftpManager:
                 transport.close()
 
     def read_file(self, host: str, port: int, username: str, auth: dict, path: str) -> dict:
-        """Read a remote text file. Returns {success, content}."""
+        """Read a remote file. Returns {success, content, is_base64, mime_type}."""
         transport = None
         try:
             transport, sftp = self._make_client(host, port, username, auth)
-            with sftp.open(path, "r") as fh:
+            ext = os.path.splitext(path)[1].lower()
+            is_binary = ext in _BINARY_EXTENSIONS
+            
+            mode = "rb" if is_binary else "r"
+            with sftp.open(path, mode) as fh:
                 content = fh.read()
+            
+            attr = sftp.stat(path)
             sftp.close()
+            
+            mime_type = mimetypes.guess_type(path)[0]
+            
+            if is_binary:
+                return {
+                    "success": True, 
+                    "content": base64.b64encode(content).decode(), 
+                    "is_base64": True, 
+                    "mime_type": mime_type or "application/octet-stream",
+                    "mtime": attr.st_mtime
+                }
+            
             if isinstance(content, bytes):
                 content = content.decode("utf-8", errors="replace")
-            return {"success": True, "content": content}
+                
+            return {
+                "success": True, 
+                "content": content, 
+                "is_base64": False, 
+                "mime_type": mime_type or "text/plain;charset=utf-8",
+                "mtime": attr.st_mtime
+            }
         except Exception as exc:
             return {"success": False, "message": str(exc)}
         finally:
@@ -178,13 +215,13 @@ class SftpManager:
                 transport.close()
 
     def delete_path(self, host: str, port: int, username: str, auth: dict, path: str) -> dict:
-        """Delete a remote file or (empty) directory. Returns {success}."""
+        """Delete a remote file or directory (recursively). Returns {success}."""
         transport = None
         try:
             transport, sftp = self._make_client(host, port, username, auth)
             attr = sftp.stat(path)
             if stat.S_ISDIR(attr.st_mode):
-                sftp.rmdir(path)
+                self._rmtree(sftp, path)
             else:
                 sftp.remove(path)
             sftp.close()
@@ -194,6 +231,16 @@ class SftpManager:
         finally:
             if transport:
                 transport.close()
+
+    def _rmtree(self, sftp, path):
+        """Recursively delete a remote directory."""
+        for entry in sftp.listdir_attr(path):
+            full_path = os.path.join(path, entry.filename).replace("\\", "/")
+            if stat.S_ISDIR(entry.st_mode):
+                self._rmtree(sftp, full_path)
+            else:
+                sftp.remove(full_path)
+        sftp.rmdir(path)
 
     def rename_path(self, host: str, port: int, username: str, auth: dict, src: str, dest: str) -> dict:
         """Rename/move a remote path. Returns {success}."""
@@ -208,6 +255,44 @@ class SftpManager:
         finally:
             if transport:
                 transport.close()
+
+    def copy_path(self, host: str, port: int, username: str, auth: dict, src: str, dest: str) -> dict:
+        """Copy a remote path (file or directory). Returns {success}."""
+        transport = None
+        try:
+            transport, sftp = self._make_client(host, port, username, auth)
+            attr = sftp.stat(src)
+            if stat.S_ISDIR(attr.st_mode):
+                self._copytree(sftp, src, dest)
+            else:
+                self._copyfile(sftp, src, dest)
+            sftp.close()
+            return {"success": True}
+        except Exception as exc:
+            return {"success": False, "message": str(exc)}
+        finally:
+            if transport:
+                transport.close()
+
+    def _copyfile(self, sftp, src, dest):
+        """Copy a remote file."""
+        with sftp.open(src, "rb") as fsrc:
+            with sftp.open(dest, "wb") as fdest:
+                shutil.copyfileobj(fsrc, fdest)
+
+    def _copytree(self, sftp, src, dest):
+        """Recursively copy a remote directory."""
+        try:
+            sftp.mkdir(dest)
+        except OSError:
+            pass # Already exists
+        for entry in sftp.listdir_attr(src):
+            s_path = os.path.join(src, entry.filename).replace("\\", "/")
+            d_path = os.path.join(dest, entry.filename).replace("\\", "/")
+            if stat.S_ISDIR(entry.st_mode):
+                self._copytree(sftp, s_path, d_path)
+            else:
+                self._copyfile(sftp, s_path, d_path)
 
     def make_directory(self, host: str, port: int, username: str, auth: dict, path: str) -> dict:
         """Create a remote directory (including parents). Returns {success}."""

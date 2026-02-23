@@ -91,6 +91,36 @@ export const TEXT_FILE_EXTENSIONS = new Set([
 ]);
 
 export const THEME_PRESETS = {
+  auto: {
+    name: "Auto (Match HA)",
+    colors: {
+      bgPrimary: "#1e1e1e",
+      bgSecondary: "#252526",
+      bgTertiary: "#2d2d30",
+      bgHover: "#3c3c3c",
+      bgActive: "#094771",
+      textPrimary: "#cccccc",
+      textSecondary: "#858585",
+      textMuted: "#6e6e6e",
+      borderColor: "#3c3c3c",
+      accentColor: "#0e639c",
+      accentHover: "#1177bb",
+      successColor: "#4ec9b0",
+      warningColor: "#dcdcaa",
+      errorColor: "#f14c4c",
+      iconFolder: "#dcb67a",
+      iconYaml: "#cb4b16",
+      iconJson: "#cbcb41",
+      iconPython: "#3572a5",
+      iconJs: "#f1e05a",
+      iconDefault: "#858585",
+      modalBg: "#2d2d30",
+      inputBg: "#3c3c3c",
+      shadowColor: "rgba(0, 0, 0, 0.5)",
+      cmTheme: "material-darker",
+      bgGutter: "#2d2d30"
+    }
+  },
   dark: {
     name: "Dark (Default)",
     colors: {
@@ -295,6 +325,36 @@ export const THEME_PRESETS = {
       shadowColor: "rgba(0, 0, 0, 0.5)",
       cmTheme: "material-darker",
       bgGutter: "#6272a4"
+    }
+  },
+  glass: {
+    name: "Glass",
+    colors: {
+      bgPrimary: "rgba(30, 30, 35, 0.65)",
+      bgSecondary: "rgba(40, 40, 45, 0.65)",
+      bgTertiary: "rgba(50, 50, 55, 0.65)",
+      bgHover: "rgba(255, 255, 255, 0.1)",
+      bgActive: "rgba(10, 132, 255, 0.3)",
+      textPrimary: "#ffffff",
+      textSecondary: "rgba(255, 255, 255, 0.75)",
+      textMuted: "rgba(255, 255, 255, 0.45)",
+      borderColor: "rgba(255, 255, 255, 0.1)",
+      accentColor: "#0a84ff",
+      accentHover: "#409cff",
+      successColor: "#30d158",
+      warningColor: "#ffd60a",
+      errorColor: "#ff453a",
+      iconFolder: "#0a84ff",
+      iconYaml: "#ff453a",
+      iconJson: "#ffd60a",
+      iconPython: "#30d158",
+      iconJs: "#ffd60a",
+      iconDefault: "rgba(255, 255, 255, 0.5)",
+      modalBg: "rgba(40, 40, 45, 0.85)",
+      inputBg: "rgba(0, 0, 0, 0.2)",
+      shadowColor: "rgba(0, 0, 0, 0.4)",
+      cmTheme: "material-darker",
+      bgGutter: "transparent"
     }
   },
 
