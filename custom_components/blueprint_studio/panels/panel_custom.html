@@ -2932,8 +2932,7 @@
 
       /* Hide resize handles on mobile */
       .resize-handle,
-      .split-resize-handle,
-      .sftp-resize-handle {
+      .split-resize-handle {
         display: none !important;
       }
 
@@ -3003,11 +3002,6 @@
         padding: 10px 12px;
         flex-wrap: wrap;
         gap: 8px;
-      }
-
-      /* SFTP panel mobile */
-      .sftp-panel {
-        max-height: 45vh;
       }
 
       /* Asset preview mobile */
@@ -4167,62 +4161,6 @@
       font-size: 13px;
     }
 
-    /* ─── SFTP Panel ─────────────────────────────────────────────────────── */
-    .sftp-panel {
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-      min-height: 0;
-      max-height: none;
-    }
-    .sftp-panel-body {
-      overflow-y: auto;
-      overflow-x: hidden;
-      height: 300px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .sftp-resize-handle {
-      height: 5px;
-      cursor: row-resize;
-      background: var(--border-color);
-      flex-shrink: 0;
-      transition: background 0.15s;
-    }
-    .sftp-resize-handle:hover {
-      background: var(--accent-color);
-    }
-    .sftp-connection-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      user-select: none;
-    }
-    .sftp-connection-item:hover { background: var(--bg-hover); }
-    .sftp-connection-item.active { color: var(--accent-color); }
-    .sftp-conn-label { font-weight: 500; }
-    .sftp-connection-actions {
-      margin-left: auto;
-      display: flex;
-      gap: 2px;
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-    .sftp-connection-item:hover .sftp-connection-actions { opacity: 1; }
-    .sftp-breadcrumb {
-      font-size: 11px;
-      color: var(--text-secondary);
-      padding: 4px 10px;
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--border-color);
-    }
-    .sftp-crumb:hover { color: var(--accent-color); text-decoration: underline; }
-    /* #sftp-file-tree reuses .tree-item / .tree-icon / .tree-name from the local tree */
     /* Connection / Edit dialog — reuses standard .modal-overlay / .modal classes */
     /* ─────────────────────────────────────────────────────────────────────── */
     .git-settings-content {
@@ -4688,7 +4626,6 @@
     body[data-theme-preset="glass"] .settings-modal .modal,
     body[data-theme-preset="glass"] .git-panel,
     body[data-theme-preset="glass"] .gitea-panel,
-    body[data-theme-preset="glass"] .sftp-panel,
     body[data-theme-preset="glass"] .selection-toolbar,
     body[data-theme-preset="glass"] .folder-navigation {
         backdrop-filter: blur(20px) saturate(180%);
@@ -5097,14 +5034,12 @@
 
     /* Git Panel - Glass sections */
     body[data-theme-preset="glass"] .git-panel,
-    body[data-theme-preset="glass"] .gitea-panel,
-    body[data-theme-preset="glass"] .sftp-panel {
+    body[data-theme-preset="glass"] .gitea-panel {
         background: rgba(30, 30, 35, 0.5);
     }
 
     body[data-theme-preset="glass"] .git-panel-header,
-    body[data-theme-preset="glass"] .gitea-panel-header,
-    body[data-theme-preset="glass"] .sftp-panel-header {
+    body[data-theme-preset="glass"] .gitea-panel-header {
         background: rgba(255, 255, 255, 0.05);
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         backdrop-filter: blur(10px);
@@ -5546,32 +5481,6 @@
       </div>
 
       <div class="file-tree" id="file-tree"></div>
-
-      <!-- Resize handle between local tree and SFTP panel -->
-      <div class="sftp-resize-handle" id="sftp-resize-handle" title="Drag to resize SFTP panel"></div>
-
-      <!-- SFTP Panel -->
-      <div class="git-panel sftp-panel" id="sftp-panel">
-        <div class="git-panel-header">
-          <div class="git-panel-title">
-            <span class="material-icons" style="font-size:16px;margin-right:6px;color:var(--accent-color)">folder_shared</span>
-            <span>SFTP</span>
-          </div>
-          <div class="git-panel-actions">
-            <button class="git-panel-btn" id="btn-sftp-add" title="Add SFTP Connection">
-              <span class="material-icons" style="font-size:18px">add</span>
-            </button>
-            <button class="git-panel-btn" id="btn-sftp-collapse" title="Collapse SFTP Panel">
-              <span class="material-icons">expand_less</span>
-            </button>
-          </div>
-        </div>
-        <div class="sftp-panel-body" id="sftp-panel-body">
-          <div id="sftp-connections-list"></div>
-          <div id="sftp-breadcrumb" class="sftp-breadcrumb" style="display:none"></div>
-          <div id="sftp-file-tree" style="display:none"></div>
-        </div>
-      </div>
 
       </div> <!-- End View Explorer -->
 

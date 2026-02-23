@@ -18,7 +18,6 @@ from .util import json_message, json_response
 from .git_manager import GitManager
 from .ai_manager import AIManager
 from .file_manager import FileManager
-from .sftp_manager import SftpManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +37,6 @@ class BlueprintStudioApiView(HomeAssistantView):
         self.git = GitManager(None, config_dir, data, store)
         self.ai = AIManager(None, data)
         self.file = FileManager(None, config_dir)
-        self.sftp = SftpManager()
 
     async def _authenticate(self, request):
         """Authenticate request via header or token query param."""
@@ -326,92 +324,4 @@ class BlueprintStudioApiView(HomeAssistantView):
             )
             return json_response(results)
 
-        # SFTP
-        if action in ("sftp_test", "sftp_list", "sftp_read", "sftp_write",
-                       "sftp_create", "sftp_delete", "sftp_rename", "sftp_mkdir", "sftp_copy"):
-            return await self._sftp_action(action, data, hass)
-
         return json_message("Unknown action", status_code=400)
-
-    async def _sftp_action(self, action: str, data: dict, hass) -> web.Response:
-        """Dispatch an SFTP action to SftpManager via executor."""
-        conn = data.get("connection", {})
-        host = conn.get("host", "")
-        port = int(conn.get("port", 22))
-        username = conn.get("username", "")
-        auth = conn.get("auth", {})
-
-        if not host or not username:
-            return json_message("Missing connection parameters", status_code=400)
-
-        try:
-            if action == "sftp_test":
-                result = await hass.async_add_executor_job(
-                    self.sftp.test_connection, host, port, username, auth
-                )
-            elif action == "sftp_list":
-                path = data.get("path", "/")
-                show_hidden = data.get("show_hidden", False)
-                result = await hass.async_add_executor_job(
-                    self.sftp.list_directory, host, port, username, auth, path, show_hidden
-                )
-            elif action == "sftp_read":
-                path = data.get("path")
-                if not path:
-                    return json_message("Missing path", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.read_file, host, port, username, auth, path
-                )
-            elif action == "sftp_write":
-                path = data.get("path")
-                content = data.get("content", "")
-                if not path:
-                    return json_message("Missing path", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.write_file, host, port, username, auth, path, content
-                )
-            elif action == "sftp_create":
-                path = data.get("path")
-                content = data.get("content", "")
-                if not path:
-                    return json_message("Missing path", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.create_file, host, port, username, auth, path, content
-                )
-            elif action == "sftp_delete":
-                path = data.get("path")
-                if not path:
-                    return json_message("Missing path", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.delete_path, host, port, username, auth, path
-                )
-            elif action == "sftp_rename":
-                src = data.get("source")
-                dest = data.get("destination")
-                if not src or not dest:
-                    return json_message("Missing source or destination", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.rename_path, host, port, username, auth, src, dest
-                )
-            elif action == "sftp_copy":
-                src = data.get("source")
-                dest = data.get("destination")
-                if not src or not dest:
-                    return json_message("Missing source or destination", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.copy_path, host, port, username, auth, src, dest
-                )
-            elif action == "sftp_mkdir":
-                path = data.get("path")
-                if not path:
-                    return json_message("Missing path", status_code=400)
-                result = await hass.async_add_executor_job(
-                    self.sftp.make_directory, host, port, username, auth, path
-                )
-            else:
-                return json_message("Unknown SFTP action", status_code=400)
-
-            return json_response(result)
-        except Exception as exc:
-            _LOGGER.error("SFTP action %s failed: %s", action, exc)
-            return json_response({"success": False, "message": str(exc)})

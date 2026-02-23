@@ -843,31 +843,14 @@ export function initEventListeners() {
     if (elements.btnFileTreeCollapse) {
       elements.btnFileTreeCollapse.addEventListener("click", () => {
         const fileTree = document.getElementById("file-tree");
-        const resizeHandle = document.getElementById("sftp-resize-handle");
-        const sftpPanel = document.getElementById("sftp-panel");
-        const sftpPanelBody = document.getElementById("sftp-panel-body");
         state.fileTreeCollapsed = !state.fileTreeCollapsed;
         const icon = elements.btnFileTreeCollapse.querySelector(".material-icons");
         if (state.fileTreeCollapsed) {
           if (fileTree) fileTree.style.display = "none";
-          if (resizeHandle) resizeHandle.style.display = "none";
-          // SFTP panel fills remaining space
-          if (sftpPanel) sftpPanel.style.flex = "1";
-          if (sftpPanelBody && !state.sftpPanelCollapsed) {
-            sftpPanelBody.style.height = "auto";
-            sftpPanelBody.style.flex = "1";
-          }
           if (icon) icon.textContent = "expand_more";
           elements.btnFileTreeCollapse.title = "Expand file tree";
         } else {
           if (fileTree) fileTree.style.display = "";
-          if (resizeHandle && !state.sftpPanelCollapsed) resizeHandle.style.display = "";
-          // Restore SFTP panel fixed height
-          if (sftpPanel) sftpPanel.style.flex = "";
-          if (sftpPanelBody) {
-            sftpPanelBody.style.flex = "";
-            sftpPanelBody.style.height = `${state.sftpPanelHeight || 300}px`;
-          }
           if (icon) icon.textContent = "expand_less";
           elements.btnFileTreeCollapse.title = "Collapse file tree";
         }
@@ -1733,7 +1716,6 @@ export function initEventListeners() {
               // Ignore clicks inside other specific panels
               if (e.target.closest('#favorites-panel') || 
                   e.target.closest('#recent-files-panel') || 
-                  e.target.closest('#sftp-panel') || 
                   e.target.closest('#git-panel') || 
                   e.target.closest('#gitea-panel')) {
                   return;

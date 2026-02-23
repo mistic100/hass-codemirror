@@ -228,7 +228,7 @@ import {
 // These will need to be imported from app.js when we refactor
 let loadFiles, openFile, saveFile, saveCurrentFile, renderTabs, renderFileTree;
 let closeTab, loadFile, gitStage, gitUnstage, setButtonLoading;
-let restoreOpenTabs, restoreSftpSession, copyToClipboard, applyVersionControlVisibility, updateAIVisibility, applySftpVisibility, renderSftpPanel;
+let restoreOpenTabs, copyToClipboard, applyVersionControlVisibility, updateAIVisibility;
 let updateGitPanel, updateToolbarState, updateStatusBar, updateSplitViewButtons;
 let isTextFile, toggleSelectionMode, processUploads;
 let renderRecentFilesPanel, renderFavoritesPanel, handleSelectionChange;
@@ -250,12 +250,9 @@ export function registerInitializationCallbacks(callbacks) {
   gitUnstage = callbacks.gitUnstage;
   setButtonLoading = callbacks.setButtonLoading;
   restoreOpenTabs = callbacks.restoreOpenTabs;
-  restoreSftpSession = callbacks.restoreSftpSession;
   copyToClipboard = callbacks.copyToClipboard;
   applyVersionControlVisibility = callbacks.applyVersionControlVisibility;
   updateAIVisibility = callbacks.updateAIVisibility;
-  applySftpVisibility = callbacks.applySftpVisibility;
-  renderSftpPanel = callbacks.renderSftpPanel;
   updateGitPanel = callbacks.updateGitPanel;
   updateToolbarState = callbacks.updateToolbarState;
   updateStatusBar = callbacks.updateStatusBar;
@@ -297,8 +294,6 @@ export async function init() {
     applyEditorSettings();
     applyVersionControlVisibility(); // Apply version control visibility setting
     updateAIVisibility(); // Apply AI integration visibility setting
-    if (applySftpVisibility) applySftpVisibility(); // Apply SFTP integration visibility setting
-    if (renderSftpPanel) renderSftpPanel(); // Re-render with loaded connections
 
     // We wrap non-critical initializations in their own try-catches
     try { gitStatus(true, true); } catch(e) {}
@@ -380,7 +375,6 @@ export async function init() {
       applyEditorSettings,
       updateAIVisibility,
       applyVersionControlVisibility,
-      applySftpVisibility,
       renderFileTree,
       showGitExclusions,
       resetModalToDefault,
@@ -506,17 +500,8 @@ export async function init() {
     // Restore file tree collapsed state
     if (state.fileTreeCollapsed) {
       const fileTree = document.getElementById("file-tree");
-      const resizeHandle = document.getElementById("sftp-resize-handle");
-      const sftpPanel = document.getElementById("sftp-panel");
-      const sftpPanelBody = document.getElementById("sftp-panel-body");
       const btn = document.getElementById("btn-file-tree-collapse");
       if (fileTree) fileTree.style.display = "none";
-      if (resizeHandle) resizeHandle.style.display = "none";
-      if (sftpPanel) sftpPanel.style.flex = "1";
-      if (sftpPanelBody && !state.sftpPanelCollapsed) {
-        sftpPanelBody.style.height = "auto";
-        sftpPanelBody.style.flex = "1";
-      }
       if (btn) {
         const icon = btn.querySelector(".material-icons");
         if (icon) icon.textContent = "expand_more";
@@ -528,9 +513,6 @@ export async function init() {
     await Promise.all([
       // Restore open tabs (depends on files being loaded, which is done above)
       restoreOpenTabs(),
-
-      // Restore SFTP session (connection and path)
-      restoreSftpSession(),
 
       // Load git status silently
       (async () => {

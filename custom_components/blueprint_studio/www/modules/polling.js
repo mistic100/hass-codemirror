@@ -49,7 +49,7 @@ export async function checkFileUpdates() {
 
   if (!state.activeTab || !state.activeTab.path) return;
 
-  // Skip polling for virtual paths (SFTP, Terminal, etc.)
+  // Skip polling for virtual paths
   if (state.activeTab.path.includes("://")) return;
 
   try {

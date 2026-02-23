@@ -46,7 +46,6 @@ let callbacks = {
   applyEditorSettings: null,
   updateAIVisibility: null,
   applyVersionControlVisibility: null,
-  applySftpVisibility: null,
   renderFileTree: null,
   showGitExclusions: null,
   resetModalToDefault: null,
@@ -405,17 +404,6 @@ export async function showAppSettings() {
               </div>
               <label class="toggle-switch" style="margin-left: 16px;">
                 <input type="checkbox" id="gitea-integration-toggle" ${state.giteaIntegrationEnabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">SFTP Integration</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Browse and edit files on remote servers via SSH/SFTP</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="sftp-integration-toggle" ${state.sftpIntegrationEnabled ? 'checked' : ''}>
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -869,19 +857,6 @@ export async function showAppSettings() {
         // Reload to update file tree
         if (callbacks.loadFiles) {
           await callbacks.loadFiles();
-        }
-      });
-    }
-
-    // Handle SFTP Integration toggle
-    const sftpToggle = document.getElementById("sftp-integration-toggle");
-    if (sftpToggle) {
-      sftpToggle.addEventListener("change", async (e) => {
-        state.sftpIntegrationEnabled = e.target.checked;
-        await saveSettingsImpl();
-        showToast(state.sftpIntegrationEnabled ? "SFTP integration enabled" : "SFTP integration disabled", "success");
-        if (callbacks.applySftpVisibility) {
-          callbacks.applySftpVisibility();
         }
       });
     }

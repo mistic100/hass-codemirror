@@ -238,7 +238,6 @@ export async function loadSettings() {
     state.onboardingCompleted = settings.onboardingCompleted ?? (localStorage.getItem("onboardingCompleted") === "true");
     state.gitIntegrationEnabled = settings.gitIntegrationEnabled ?? (localStorage.getItem("gitIntegrationEnabled") !== "false");
     state.giteaIntegrationEnabled = settings.giteaIntegrationEnabled ?? (localStorage.getItem("giteaIntegrationEnabled") === "true");
-    state.sftpIntegrationEnabled = settings.sftpIntegrationEnabled ?? true; // Default enabled
 
     // Restore collapsed groups
     if (settings.gitCollapsedGroups && Array.isArray(settings.gitCollapsedGroups)) {
@@ -258,13 +257,6 @@ export async function loadSettings() {
     state.remoteFetchInterval = parseInt(settings.remoteFetchInterval) || 30000;
     state.fileCacheSize = parseInt(settings.fileCacheSize) || 10;
     state.enableVirtualScroll = settings.enableVirtualScroll || false;
-
-    // SFTP settings
-    state.sftpConnections = settings.sftpConnections || [];
-    state.sftpPanelCollapsed = settings.sftpPanelCollapsed || false;
-    state.sftpPanelHeight = settings.sftpPanelHeight || 300;
-    state.activeSftp.connectionId = settings.activeSftpConnectionId || null;
-    state.activeSftp.currentPath = settings.activeSftpPath || "/";
 
     // Split view settings
     if (settings.splitView) {
@@ -384,7 +376,6 @@ export async function saveSettings() {
       onboardingCompleted: state.onboardingCompleted,
       gitIntegrationEnabled: state.gitIntegrationEnabled,
       giteaIntegrationEnabled: state.giteaIntegrationEnabled,
-      sftpIntegrationEnabled: state.sftpIntegrationEnabled,
       gitCollapsedGroups: Array.from(gitState.collapsedGroups),
       giteaCollapsedGroups: Array.from(giteaState.collapsedGroups),
       aiIntegrationEnabled: state.aiIntegrationEnabled,
@@ -435,12 +426,6 @@ export async function saveSettings() {
       remoteFetchInterval: state.remoteFetchInterval,
       fileCacheSize: state.fileCacheSize,
       enableVirtualScroll: state.enableVirtualScroll,
-      // SFTP settings
-      sftpConnections: state.sftpConnections,
-      sftpPanelCollapsed: state.sftpPanelCollapsed,
-      sftpPanelHeight: state.sftpPanelHeight,
-      activeSftpConnectionId: state.activeSftp.connectionId,
-      activeSftpPath: state.activeSftp.currentPath,
       // Split view settings
       splitView: state.splitView ? {
         enabled: state.splitView.enabled,

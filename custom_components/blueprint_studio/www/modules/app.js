@@ -303,23 +303,6 @@ import {
 } from './settings.js';
 
 import {
-  isSftpPath as isSftpPathImpl,
-  parseSftpPath as parseSftpPathImpl,
-  saveSftpFile as saveSftpFileImpl,
-  renderSftpPanel as renderSftpPanelImpl,
-  applySftpVisibility as applySftpVisibilityImpl,
-  registerSftpCallbacks,
-  initSftpPanelButtons,
-  connectToServer as connectToServerImpl,
-  navigateSftp as navigateSftpImpl,
-  openSftpFile as openSftpFileImpl,
-  showAddConnectionDialog as showAddConnectionDialogImpl,
-  showEditConnectionDialog as showEditConnectionDialogImpl,
-  deleteConnection as deleteConnectionImpl,
-  refreshSftp as refreshSftpImpl
-} from './sftp.js';
-
-import {
   showAppSettings as showAppSettingsImpl,
   registerSettingsUICallbacks
 } from './settings-ui.js';
@@ -640,9 +623,6 @@ export async function loadFiles(force = false) {
         }
 
         renderFileTree();
-        if (state.activeSftp.connectionId) {
-          refreshSftp();
-        }
         setFileTreeLoading(false);
         setButtonLoading(elements.btnRefresh, false);
         return;
@@ -659,9 +639,6 @@ export async function loadFiles(force = false) {
       state.allItems = items;
       state.fileTree = buildFileTree(items);
       renderFileTree();
-      if (state.activeSftp.connectionId) {
-        refreshSftp();
-      }
 
       setFileTreeLoading(false);
       setButtonLoading(elements.btnRefresh, false);
@@ -763,13 +740,6 @@ export async function loadFile(path) {
   }
 
 export async function saveFile(path, content) {
-    // SFTP files are saved via the SFTP module
-    if (isSftpPathImpl(path)) {
-      const tab = state.openTabs.find(t => t.path === path);
-      if (tab) return await saveSftpFileImpl(tab, content);
-      return false;
-    }
-
     try {
       const response = await fetchWithAuth(API_BASE, {
         method: "POST",
@@ -1021,11 +991,6 @@ export const performContentSearch = performContentSearchImpl;
   // ============================================
 
 export async function openFile(path, forceReload = false, noActivate = false) {
-    if (isSftpPathImpl(path)) {
-      const { connId, remotePath } = parseSftpPathImpl(path);
-      return await openSftpFileImpl(connId, remotePath, noActivate);
-    }
-
     const filename = path.split("/").pop();
     const ext = filename.split(".").pop().toLowerCase();
     const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
@@ -1323,22 +1288,6 @@ export function activateTab(tab, skipSave = false) {
     // Save state after switching
     saveSettingsImpl();
   }
-
-export async function restoreSftpSession() {
-  if (state.activeSftp.connectionId) {
-    const connId = state.activeSftp.connectionId;
-    const path = state.activeSftp.currentPath || '/';
-    
-    // We call connectToServer if path is root, otherwise navigateSftp
-    // We use the implementation from sftp.js
-    if (path === '/') {
-      await connectToServerImpl(connId);
-    } else {
-      // navigateSftp handles the list fetch
-      await navigateSftpImpl(connId, path);
-    }
-  }
-}
 
 // Wrapper for asset preview module function
 function renderAssetPreview(tab, container = null) {
@@ -1671,19 +1620,6 @@ export const handleFolderUpload = handleFolderUploadImpl;
 export const loadSettings = loadSettingsImpl;
 export const saveSettings = saveSettingsImpl;
 
-// Re-export SFTP module functions
-export const isSftpPath = isSftpPathImpl;
-export const parseSftpPath = parseSftpPathImpl;
-export const saveSftpFile = saveSftpFileImpl;
-export const renderSftpPanel = renderSftpPanelImpl;
-export const applySftpVisibility = applySftpVisibilityImpl;
-export const connectToServer = connectToServerImpl;
-export const navigateSftp = navigateSftpImpl;
-export const openSftpFile = openSftpFileImpl;
-export const showAddConnectionDialog = showAddConnectionDialogImpl;
-export const showEditConnectionDialog = showEditConnectionDialogImpl;
-export const deleteConnection = deleteConnectionImpl;
-export const refreshSftp = refreshSftpImpl;
 export const updateShowHiddenButton = updateShowHiddenButtonImpl;
 
 // Re-export selection module functions
@@ -1866,54 +1802,25 @@ export async function restoreOpenTabs() {
 
     // Restore tabs
     for (const tabState of state._savedOpenTabs) {
-      // Handle SFTP paths differently (they're not in state.files)
-      if (isSftpPathImpl(tabState.path)) {
-        const { connId, remotePath } = parseSftpPathImpl(tabState.path);
-        // Only restore if the connection still exists
-        const connExists = state.sftpConnections.some(c => c.id === connId);
-        if (connExists) {
-          try {
-            await openSftpFileImpl(connId, remotePath, true);
-            const tab = state.openTabs.find(t => t.path === tabState.path);
-            if (tab) {
-              tab.cursor = tabState.cursor || null;
-              tab.scroll = tabState.scroll || null;
-              if (tabState.modified && tabState.content) {
-                tab.modified = true;
-                tab.content = tabState.content;
-                if (tabState.originalContent) {
-                  tab.originalContent = tabState.originalContent;
-                }
-                if (state.editor && state.activeTab === tab) {
-                  state.editor.setValue(tab.content);
-                }
-              }
+      // Local file - check if it exists
+      const fileExists = state.files.some(f => f.path === tabState.path);
+      if (fileExists) {
+        const tab = await openFile(tabState.path, false, true);
+        if (tab) {
+          tab.cursor = tabState.cursor || null;
+          tab.scroll = tabState.scroll || null;
+
+          // Restore modified state and content if it was modified before
+          if (tabState.modified && tabState.content) {
+            tab.modified = true;
+            tab.content = tabState.content;
+            if (tabState.originalContent) {
+              tab.originalContent = tabState.originalContent;
             }
-          } catch (err) {
-            console.warn(`Failed to restore SFTP tab ${tabState.path}:`, err);
-          }
-        }
-      } else {
-        // Local file - check if it exists
-        const fileExists = state.files.some(f => f.path === tabState.path);
-        if (fileExists) {
-          const tab = await openFile(tabState.path, false, true);
-          if (tab) {
-            tab.cursor = tabState.cursor || null;
-            tab.scroll = tabState.scroll || null;
 
-            // Restore modified state and content if it was modified before
-            if (tabState.modified && tabState.content) {
-              tab.modified = true;
-              tab.content = tabState.content;
-              if (tabState.originalContent) {
-                tab.originalContent = tabState.originalContent;
-              }
-
-              // Update editor if this is the active tab
-              if (state.editor && state.activeTab === tab) {
-                state.editor.setValue(tab.content);
-              }
+            // Update editor if this is the active tab
+            if (state.editor && state.activeTab === tab) {
+              state.editor.setValue(tab.content);
             }
           }
         }
@@ -2116,12 +2023,9 @@ registerInitializationCallbacks({
   gitUnstage,
   setButtonLoading,
   restoreOpenTabs,
-  restoreSftpSession,
   copyToClipboard,
   applyVersionControlVisibility,
   updateAIVisibility,
-  applySftpVisibility,
-  renderSftpPanel,
   updateGitPanel,
   updateToolbarState,
   updateStatusBar,
@@ -2281,30 +2185,3 @@ registerGitOperationsCallbacks({
   setButtonLoading,
   gitStatus
 });
-
-// Register SFTP module callbacks
-registerSftpCallbacks({
-  fetchWithAuth,
-  API_BASE,
-  showToast,
-  openTab: (tab, noActivate = false) => {
-    // SFTP module creates a tab object but doesn't add it to state.openTabs
-    // We need to ensure it's added before activating
-    if (!state.openTabs.includes(tab)) {
-      state.openTabs.push(tab);
-    }
-    if (!noActivate) {
-      activateTab(tab);
-      renderTabsImpl();
-    }
-  },
-  saveSettings,
-  showInputModal,
-  showConfirmDialog
-});
-
-// Wire up SFTP panel static buttons
-initSftpPanelButtons();
-
-// Initial render of SFTP panel (visibility applied later after settings load)
-renderSftpPanelImpl();

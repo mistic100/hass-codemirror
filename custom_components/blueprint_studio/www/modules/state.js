@@ -259,7 +259,6 @@ export const state = {
   recentFilesLimit: 10,
   breadcrumbStyle: "path",
   giteaIntegrationEnabled: false,
-  sftpIntegrationEnabled: true,
   gitPanelCollapsed: false,
   giteaPanelCollapsed: false,
   fileTreeCollapsed: false,
@@ -305,21 +304,6 @@ export const state = {
   // Secondary editor instance (for split view)
   primaryEditor: null,
   secondaryEditor: null,
-
-  // SFTP
-  sftpConnections: [],       // Saved connection profiles
-  sftpPanelCollapsed: false, // Panel UI state
-  sftpPanelHeight: 300,      // Panel body height in px
-  activeSftp: {              // Ephemeral browsing session
-    connectionId: null,
-    currentPath: "/",
-    navigationHistory: [],
-    folders: [],
-    files: [],
-    loading: false,
-    expandedFolders: new Set(),
-    loadedDirectories: new Map(), // path -> {folders: [], files: []}
-  },
 };
 
 export const elements = {};
