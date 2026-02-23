@@ -4,7 +4,7 @@
  * ============================================================================
  *
  * PURPOSE:
- * Manages sidebar visibility, view switching (files/git/gitea/search/settings),
+ * Manages sidebar visibility, view switching (files/search/settings),
  * and responsive behavior. Controls the main navigation panel on the left.
  *
  * EXPORTED FUNCTIONS:
@@ -37,17 +37,15 @@
  * - state.js: state.sidebarVisible, state.isMobile
  * - elements: Sidebar DOM elements
  * - event-handlers.js: Keyboard shortcuts
- * - All sidebar views (files, git, search, etc.)
+ * - All sidebar views (files, search, etc.)
  *
  * VIEWS:
  * - files: File tree view (default)
- * - git: Git integration panel
- * - gitea: Gitea integration panel
  * - search: Global search panel
  * - settings: Settings panel
  *
  * COMMON PATTERNS:
- * - Switch view: switchSidebarView('git')
+ * - Switch view: switchSidebarView('files')
  * - Toggle: toggleSidebar()
  * - Mobile auto-hide: if (isMobile()) hideSidebar()
  *

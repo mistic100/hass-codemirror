@@ -34,11 +34,6 @@
  * - openSearchWidget: Open find/replace
  * - performGlobalSearch: Open global search
  *
- * Git Operations:
- * - gitCommit: Commit changes
- * - gitPush: Push to remote
- * - gitPull: Pull from remote
- *
  * Other:
  * - restartHomeAssistant: Restart HA server
  *
@@ -122,10 +117,6 @@ let callbacks = {
   promptNewFile: null,
   promptNewFolder: null,
   insertUUID: null,
-  gitStatus: null,
-  gitPush: null,
-  gitPull: null,
-  showGitHistory: null,
   validateYaml: null,
   restartHomeAssistant: null,
   toggleSidebar: null,
@@ -164,10 +155,6 @@ export function showCommandPalette() {
       { id: "new_file", label: "New File", icon: "note_add", action: callbacks.promptNewFile },
       { id: "new_folder", label: "New Folder", icon: "create_new_folder", action: callbacks.promptNewFolder },
       { id: "generate_uuid", label: "Generate UUID", icon: "fingerprint", shortcut: "Ctrl+Shift+U", action: callbacks.insertUUID },
-      { id: "git_status", label: "Git Status", icon: "sync", action: () => callbacks.gitStatus && callbacks.gitStatus(true) },
-      { id: "git_push", label: "Git Push", icon: "cloud_upload", action: callbacks.gitPush },
-      { id: "git_pull", label: "Git Pull", icon: "cloud_download", action: callbacks.gitPull },
-      { id: "git_history", label: "Git History", icon: "history", action: callbacks.showGitHistory },
       { id: "validate_yaml", label: "Validate YAML", icon: "check_circle", action: () => { if (state.activeTab && callbacks.validateYaml) callbacks.validateYaml(state.activeTab.content); } },
       { id: "restart_ha", label: "Restart Home Assistant", icon: "restart_alt", action: callbacks.restartHomeAssistant },
       { id: "toggle_sidebar", label: "Toggle Sidebar", icon: "menu", shortcut: "Ctrl+B", action: callbacks.toggleSidebar },
@@ -175,14 +162,6 @@ export function showCommandPalette() {
       { id: "settings", label: "Settings", icon: "settings", action: callbacks.showAppSettings },
       { id: "report_issue", label: "Report Issue", icon: "bug_report", action: callbacks.reportIssue },
       { id: "request_feature", label: "Request Feature", icon: "lightbulb", action: callbacks.requestFeature },
-      { id: "clean_git_locks", label: "Clean Git Lock Files", icon: "delete_sweep", action: async () => {
-          if (!confirm("Are you sure you want to clean Git lock files? This can fix stuck operations.")) return;
-          try {
-              const API_BASE = callbacks.getApiBase ? callbacks.getApiBase() : "";
-              const res = await callbacks.fetchWithAuth(API_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "git_clean_locks" }) });
-              if (res.success) callbacks.showToast(res.message, "success"); else callbacks.showToast("Failed to clean locks: " + res.message, "error");
-          } catch (e) { callbacks.showToast("Error: " + e.message, "error"); }
-      }},
       { id: "copy_path", label: "Copy Current File Path", icon: "content_copy", action: () => {
           if (state.activeTab && callbacks.copyToClipboard && callbacks.showToast) {
               callbacks.copyToClipboard(state.activeTab.path);

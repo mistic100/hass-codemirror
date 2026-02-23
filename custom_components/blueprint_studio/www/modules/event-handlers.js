@@ -51,11 +51,11 @@
  * - sidebar.js: Sidebar navigation
  * - search.js: In-editor search widget
  * - file-operations.js: YAML validation
- * - app.js: Provides most callbacks for file/tab/git operations
+ * - app.js: Provides most callbacks for file/tab operations
  *
  * ARCHITECTURE NOTES:
  * - This module is "passive" - it only sets up listeners, doesn't perform operations
- * - All complex logic should be in other modules (git-operations, file-operations, etc.)
+ * - All complex logic should be in other modules (file-operations, etc.)
  * - Event handlers should be lightweight and delegate to callbacks
  * - Keyboard shortcuts are platform-aware (Cmd on Mac, Ctrl on Windows/Linux)
  *
@@ -100,20 +100,6 @@ import {
     processUploads, downloadFileByPath,
     downloadSelectedItems
 } from './downloads-uploads.js';
-import {
-    gitStatus, isGitEnabled, gitInit
-} from './git-operations.js';
-import {
-    gitPull, gitPush
-} from './git.js';
-import { 
-    giteaStatus, giteaPull, giteaPush, showGiteaSettings, 
-    giteaCommit, stageSelectedGiteaFiles, stageAllGiteaFiles, 
-    unstageAllGiteaFiles, giteaAbort, giteaForcePush, giteaHardReset, 
-    toggleGiteaFileSelection 
-} from './gitea-integration.js';
-import { showDiffModal, showGitHistory } from './git-diff.js';
-import { showGitSettings } from './github-integration.js';
 import { renderFileTree, debouncedRenderFileTree, handleFileDrop, cancelPendingSearch, collapseAllFolders } from './file-tree.js';
 import { showAppSettings } from './settings-ui.js';
 import { saveSettings, updateShowHiddenButton } from './settings.js';
@@ -130,7 +116,6 @@ let callbacks = {
     toggleMarkdownPreview: null,
     promptNewFile: null,
     promptNewFolder: null,
-    toggleGitGroup: null,
     stageSelectedFiles: null,
     stageAllFiles: null,
     unstageAllFiles: null,
@@ -494,42 +479,6 @@ export function initEventListeners() {
       });
     }
 
-    if (elements.btnGithubStar) {
-        elements.btnGithubStar.addEventListener("click", async (e) => {
-            if (isGitEnabled()) {
-                e.preventDefault();
-                try {
-                    const res = await fetchWithAuth(API_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "github_star" }) });
-                    if (res.success) {
-                        showToast("Successfully starred the repository! Thank you!", "success");
-                        elements.modalSupportOverlay.classList.remove("visible");
-                    } else {
-                        // Fallback to link if API fails
-                        window.open(elements.btnGithubStar.href, '_blank');
-                    }
-                } catch (err) { window.open(elements.btnGithubStar.href, '_blank'); }
-            }
-        });
-    }
-
-    if (elements.btnGithubFollow) {
-        elements.btnGithubFollow.addEventListener("click", async (e) => {
-            if (isGitEnabled()) {
-                e.preventDefault();
-                try {
-                    const res = await fetchWithAuth(API_BASE, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "github_follow" }) });
-                    if (res.success) {
-                        showToast("Now following soulripper13! Thank you!", "success");
-                        elements.modalSupportOverlay.classList.remove("visible");
-                    } else {
-                        // Fallback to link if API fails
-                        window.open(elements.btnGithubFollow.href, '_blank');
-                    }
-                } catch (err) { window.open(elements.btnGithubFollow.href, '_blank'); }
-            }
-        });
-    }
-
     // Close support modal on outside click
     if (elements.modalSupportOverlay) {
         elements.modalSupportOverlay.addEventListener("click", (e) => {
@@ -747,66 +696,6 @@ export function initEventListeners() {
       elements.folderUploadInput.addEventListener("change", handleFolderUpload);
     }
 
-    // Git buttons
-    if (elements.btnGitStatus) {
-      elements.btnGitStatus.addEventListener("click", () => gitStatus(true));
-    }
-    if (elements.btnGitHistory) {
-      elements.btnGitHistory.addEventListener("click", () => showGitHistory());
-    }
-    if (elements.btnGitPull) {
-      elements.btnGitPull.addEventListener("click", gitPull);
-    }
-    if (elements.btnGitPush) {
-      elements.btnGitPush.addEventListener("click", gitPush);
-    }
-
-    // Git Settings button
-    if (elements.btnGitSettings) {
-      elements.btnGitSettings.addEventListener("click", showGitSettings);
-    }
-
-    // Git panel buttons
-    if (elements.btnGitRefresh) {
-      elements.btnGitRefresh.addEventListener("click", () => gitStatus(true));
-    }
-    if (elements.btnGitHelp) {
-      elements.btnGitHelp.addEventListener("click", () => {
-        showModal({
-          title: "Git for Beginners",
-          message: `
-            <div style="line-height: 1.6;">
-              <p>Git helps you track changes and sync them with GitHub. Here is the typical workflow:</p>
-              <br>
-              <p><b>1. Stage (Prepare):</b> Select the files you've changed and click "Stage". This is like putting items into a box before shipping.</p>
-              <br>
-              <p><b>2. Commit (Save Checkpoint):</b> Give your prepared changes a name (message) and click "Commit". This saves a "checkpoint" of your work on your local device.</p>
-              <br>
-              <p><b>3. Push (Upload):</b> Click the "↑" arrow or "Git Push" to upload your saved checkpoints to GitHub.</p>
-              <br>
-              <p><b>4. Pull (Download):</b> Click the "↓" arrow or "Git Pull" to download any new changes from GitHub to your device.</p>
-            </div>
-          `,
-          confirmText: "Got it!"
-        });
-      });
-    }
-    if (elements.btnGitCollapse) {
-      elements.btnGitCollapse.addEventListener("click", () => {
-        const panel = document.getElementById("git-panel");
-        if (panel) {
-          panel.classList.toggle("collapsed");
-          const isCollapsed = panel.classList.contains("collapsed");
-          state.gitPanelCollapsed = isCollapsed;
-          saveSettings();
-          const icon = elements.btnGitCollapse.querySelector(".material-icons");
-          if (icon) {
-            icon.textContent = isCollapsed ? "expand_more" : "expand_less";
-            elements.btnGitCollapse.title = isCollapsed ? "Expand Git Panel" : "Collapse Git Panel";
-          }
-        }
-      });
-    }
     if (elements.btnFileTreeCollapse) {
       elements.btnFileTreeCollapse.addEventListener("click", () => {
         const fileTree = document.getElementById("file-tree");
@@ -842,267 +731,6 @@ export function initEventListeners() {
     if (elements.btnCommitStaged) {
       elements.btnCommitStaged.addEventListener("click", () => {
         if (callbacks.commitStagedFiles) callbacks.commitStagedFiles();
-      });
-    }
-
-    // Gitea buttons
-    if (elements.btnGiteaStatus) {
-      elements.btnGiteaStatus.addEventListener("click", () => giteaStatus(true));
-    }
-    if (elements.btnGiteaHistory) {
-      elements.btnGiteaHistory.addEventListener("click", () => showGitHistory());
-    }
-    if (elements.btnGiteaPull) {
-      elements.btnGiteaPull.addEventListener("click", giteaPull);
-    }
-    if (elements.btnGiteaPush) {
-      elements.btnGiteaPush.addEventListener("click", giteaPush);
-    }
-    if (elements.btnGiteaSettings) {
-      elements.btnGiteaSettings.addEventListener("click", showGiteaSettings);
-    }
-    if (elements.btnGiteaRefresh) {
-      elements.btnGiteaRefresh.addEventListener("click", () => giteaStatus(true));
-    }
-    if (elements.btnGiteaHelp) {
-      elements.btnGiteaHelp.addEventListener("click", () => {
-        showModal({
-          title: "Gitea Integration",
-          message: "Manage your Gitea repository directly from Blueprint Studio. Push, pull, and commit changes just like with GitHub.",
-          confirmText: "Close"
-        });
-      });
-    }
-    if (elements.btnGiteaCollapse) {
-      elements.btnGiteaCollapse.addEventListener("click", () => {
-        const panel = document.getElementById("gitea-panel");
-        if (panel) {
-          panel.classList.toggle("collapsed");
-          const isCollapsed = panel.classList.contains("collapsed");
-          state.giteaPanelCollapsed = isCollapsed;
-          saveSettings();
-          const icon = elements.btnGiteaCollapse.querySelector(".material-icons");
-          if (icon) {
-            icon.textContent = isCollapsed ? "expand_more" : "expand_less";
-            elements.btnGiteaCollapse.title = isCollapsed ? "Expand Gitea Panel" : "Collapse Gitea Panel";
-          }
-        }
-      });
-    }
-    if (elements.btnGiteaStageSelected) {
-      elements.btnGiteaStageSelected.addEventListener("click", stageSelectedGiteaFiles);
-    }
-    if (elements.btnGiteaStageAll) {
-      elements.btnGiteaStageAll.addEventListener("click", stageAllGiteaFiles);
-    }
-    if (elements.btnGiteaUnstageAll) {
-      elements.btnGiteaUnstageAll.addEventListener("click", unstageAllGiteaFiles);
-    }
-    if (elements.btnGiteaCommitStaged) {
-      elements.btnGiteaCommitStaged.addEventListener("click", giteaCommit);
-    }
-
-    // Git panel header sync indicators (delegation)
-    const gitPanelActions = document.getElementById("git-panel-actions");
-    if (gitPanelActions) {
-      gitPanelActions.addEventListener("click", (e) => {
-        const target = e.target.closest(".git-sync-indicator");
-        if (target) {
-          if (target.id === "btn-git-push-sync") {
-            gitPush();
-          } else if (target.id === "btn-git-pull-sync") {
-            gitPull();
-          }
-        }
-      });
-    }
-
-    // Gitea panel header sync indicators (delegation)
-    const giteaPanelActions = document.getElementById("gitea-panel-actions");
-    if (giteaPanelActions) {
-      giteaPanelActions.addEventListener("click", (e) => {
-        const target = e.target.closest(".git-sync-indicator");
-        if (target) {
-          if (target.id === "btn-gitea-push-sync") {
-            giteaPush();
-          } else if (target.id === "btn-gitea-pull-sync") {
-            giteaPull();
-          }
-        }
-      });
-    }
-
-    // Git panel event delegation for dynamically created elements
-    const gitFilesContainer = document.getElementById("git-files-container");
-    if (gitFilesContainer) {
-      // Touch event tracking for mobile gestures
-      let touchStartY = 0;
-      let touchStartTime = 0;
-      let isTouchScroll = false;
-
-      // Click event delegation for group headers AND new empty state buttons
-      gitFilesContainer.addEventListener("click", (e) => {
-        // Handle git file group header clicks (toggle collapse)
-        const groupHeader = e.target.closest(".git-file-group-header");
-        if (groupHeader && !isTouchScroll) {
-          const groupElement = groupHeader.closest(".git-file-group");
-          if (groupElement) {
-            const groupKey = groupElement.getAttribute("data-group");
-            if (callbacks.toggleGitGroup) callbacks.toggleGitGroup(groupKey, 'git');
-          }
-        }
-
-        // Handle Diff Button
-        const diffBtn = e.target.closest(".btn-git-diff");
-        if (diffBtn) {
-            const path = diffBtn.dataset.path;
-            showDiffModal(path);
-            return;
-        }
-
-        // Handle empty state buttons
-        const target = e.target.closest('button'); // Get the button itself if clicked on icon/span inside
-        if (target) {
-          if (target.id === "btn-git-pull-empty-state") {
-            gitPull();
-          } else if (target.id === "btn-git-refresh-empty-state") {
-            gitStatus(true);
-          } else if (target.id === "btn-git-init-panel") {
-            gitInit();
-          } else if (target.id === "btn-git-connect-panel") {
-            showGitSettings();
-          }
-          return;
-        }
-
-        // Handle file row click (toggle checkbox)
-        const fileItem = e.target.closest(".git-file-item");
-        if (fileItem && !e.target.classList.contains("git-file-checkbox")) {
-            const checkbox = fileItem.querySelector(".git-file-checkbox");
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-                const path = checkbox.getAttribute("data-file-path");
-                if (path) {
-                    if (callbacks.toggleFileSelection) callbacks.toggleFileSelection(path);
-                }
-            }
-        }
-      });
-
-      // Touch start event for detecting scroll vs tap
-      gitFilesContainer.addEventListener("touchstart", (e) => {
-        touchStartY = e.touches[0].clientY;
-        touchStartTime = Date.now();
-        isTouchScroll = false;
-      }, { passive: true });
-
-      // Touch move event for detecting scroll
-      gitFilesContainer.addEventListener("touchmove", (e) => {
-        const touchY = e.touches[0].clientY;
-        const deltaY = Math.abs(touchY - touchStartY);
-
-        // If user moved more than 10px, consider it a scroll
-        if (deltaY > 10) {
-          isTouchScroll = true;
-        }
-      }, { passive: true });
-
-      // Touch end event for tap gestures
-      gitFilesContainer.addEventListener("touchend", (e) => {
-        const touchDuration = Date.now() - touchStartTime;
-
-        // If it was a quick tap (not a scroll), handle as click
-        if (!isTouchScroll && touchDuration < 300) {
-          const groupHeader = e.target.closest(".git-file-group-header");
-          if (groupHeader) {
-            e.preventDefault(); // Prevent double-firing with click event
-            const groupElement = groupHeader.closest(".git-file-group");
-            if (groupElement) {
-              const groupKey = groupElement.getAttribute("data-group");
-              if (callbacks.toggleGitGroup) callbacks.toggleGitGroup(groupKey, 'git');
-            }
-          }
-        }
-      });
-
-      // Change event delegation for checkboxes
-      gitFilesContainer.addEventListener("change", (e) => {
-        // Handle checkbox changes for file selection
-        if (e.target.classList.contains("git-file-checkbox")) {
-          const filePath = e.target.getAttribute("data-file-path");
-          if (filePath) {
-            if (callbacks.toggleFileSelection) callbacks.toggleFileSelection(filePath);
-          }
-        }
-      });
-    }
-
-    // Gitea panel event delegation
-    const giteaFilesContainer = document.getElementById("gitea-files-container");
-    if (giteaFilesContainer) {
-      giteaFilesContainer.addEventListener("click", (e) => {
-        // Handle gitea file group header clicks (toggle collapse)
-        const groupHeader = e.target.closest(".git-file-group-header");
-        if (groupHeader) {
-          const groupElement = groupHeader.closest(".git-file-group");
-          if (groupElement) {
-            const groupKey = groupElement.getAttribute("data-group");
-            if (callbacks.toggleGitGroup) callbacks.toggleGitGroup(groupKey, 'gitea');
-          }
-          return;
-        }
-
-        // Handle Diff Button
-        const diffBtn = e.target.closest(".btn-git-diff");
-        if (diffBtn) {
-            const path = diffBtn.dataset.path;
-            showDiffModal(path);
-            return;
-        }
-
-        // Handle empty state buttons
-        const target = e.target.closest('button');
-        if (target) {
-          if (target.id === "btn-gitea-pull-empty-state") {
-            giteaPull();
-          } else if (target.id === "btn-gitea-refresh-empty-state") {
-            giteaStatus(true);
-          } else if (target.id === "btn-gitea-init-panel") {
-            gitInit();
-          } else if (target.id === "btn-gitea-connect-panel") {
-            showGiteaSettings();
-          } else if (target.id === "btn-gitea-abort") {
-            giteaAbort();
-          } else if (target.id === "btn-gitea-force-push") {
-            giteaForcePush();
-          } else if (target.id === "btn-gitea-hard-reset") {
-            giteaHardReset();
-          }
-          return;
-        }
-
-        // Handle file row click (toggle checkbox)
-        const fileItem = e.target.closest(".git-file-item");
-        if (fileItem && !e.target.classList.contains("gitea-file-checkbox")) {
-            const checkbox = fileItem.querySelector(".gitea-file-checkbox");
-            if (checkbox) {
-                checkbox.checked = !checkbox.checked;
-                const path = checkbox.getAttribute("data-file-path");
-                if (path) {
-                    toggleGiteaFileSelection(path);
-                }
-            }
-        }
-      });
-
-      // Change event delegation for checkboxes
-      giteaFilesContainer.addEventListener("change", (e) => {
-        if (e.target.classList.contains("gitea-file-checkbox")) {
-          const path = e.target.getAttribute("data-file-path");
-          if (path) {
-            toggleGiteaFileSelection(path);
-          }
-        }
       });
     }
 
@@ -1682,9 +1310,7 @@ export function initEventListeners() {
           elements.viewExplorer.addEventListener("contextmenu", (e) => {
               // Ignore clicks inside other specific panels
               if (e.target.closest('#favorites-panel') || 
-                  e.target.closest('#recent-files-panel') || 
-                  e.target.closest('#git-panel') || 
-                  e.target.closest('#gitea-panel')) {
+                  e.target.closest('#recent-files-panel')) {
                   return;
               }
               

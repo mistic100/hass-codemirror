@@ -5,7 +5,7 @@
  *
  * PURPOSE:
  * Provides the settings panel UI for configuring all Blueprint Studio options.
- * Handles UI customization, editor settings, git config, and more.
+ * Handles UI customization, editor settings, and more.
  *
  * EXPORTED FUNCTIONS:
  * - showSettings() - Open settings panel
@@ -25,7 +25,6 @@
  * SETTING CATEGORIES:
  * - UI: Theme, font, sidebar, tabs
  * - Editor: Font size, tab size, word wrap, line numbers
- * - Git: Integration toggle, credentials
  * - Performance: Polling, caching, virtual scroll
  *
  * ============================================================================
@@ -43,9 +42,7 @@ let callbacks = {
   applyCustomSyntaxColors: null,
   applyLayoutSettings: null,
   applyEditorSettings: null,
-  applyVersionControlVisibility: null,
   renderFileTree: null,
-  showGitExclusions: null,
   resetModalToDefault: null,
   hideModal: null
 };
@@ -65,7 +62,6 @@ export async function showAppSettings() {
     const modalFooter = document.querySelector(".modal-footer");
 
     // Get current setting from localStorage
-    const gitEnabled = localStorage.getItem("gitIntegrationEnabled") !== "false"; // Default to true;
     const showRecentFiles = state.showRecentFiles;
     const customColors = state.customColors || {};
 
@@ -97,7 +93,6 @@ export async function showAppSettings() {
         <button class="settings-tab active" data-tab="general" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-primary); cursor: pointer; border-bottom: 2px solid var(--accent-color); font-size: 13px;">General</button>
         <button class="settings-tab" data-tab="appearance" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Appearance</button>
         <button class="settings-tab" data-tab="editor" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Editor</button>
-        <button class="settings-tab" data-tab="integrations" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Integrations</button>
         <button class="settings-tab" data-tab="advanced" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Advanced</button>
       </div>
 
@@ -379,73 +374,12 @@ export async function showAppSettings() {
           </div>
         </div>
 
-        <!-- Integrations Tab -->
-        <div id="settings-tab-integrations" class="settings-panel" style="display: none;">
-          <div class="git-settings-section">
-            <div class="git-settings-label">Version Control</div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">GitHub Integration</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Push/pull configs to GitHub, stage changes, and manage commits</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="git-integration-toggle" ${gitEnabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">Gitea Integration</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Push/pull configs to a Gitea server</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="gitea-integration-toggle" ${state.giteaIntegrationEnabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">Git Exclusions (.gitignore)</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Select which files and folders to include in your repository</div>
-              </div>
-              <button class="btn-secondary" id="btn-manage-exclusions" style="padding: 6px 12px; font-size: 12px;">
-                Manage Exclusions
-              </button>
-            </div>
-          </div>
-        </div>
-
         <!-- Advanced Tab -->
         <div id="settings-tab-advanced" class="settings-panel" style="display: none;">
           <div class="git-settings-section">
             <div class="git-settings-label">Performance Settings</div>
             <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
               Fine-tune polling intervals and caching for optimal performance
-            </div>
-
-            <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-weight: 500;">Git Status Polling Interval</div>
-                <span id="polling-interval-value" style="font-family: monospace; color: var(--text-secondary);">${(state.pollingInterval / 1000).toFixed(0)}s</span>
-              </div>
-              <input type="range" id="polling-interval-slider" min="10000" max="60000" step="5000" value="${state.pollingInterval}" style="width: 100%;">
-              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                How often to check for local git changes (10-60 seconds). Lower values increase responsiveness but use more resources.
-              </div>
-            </div>
-
-            <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-weight: 500;">Remote Fetch Interval</div>
-                <span id="remote-fetch-interval-value" style="font-family: monospace; color: var(--text-secondary);">${(state.remoteFetchInterval / 1000).toFixed(0)}s</span>
-              </div>
-              <input type="range" id="remote-fetch-interval-slider" min="15000" max="300000" step="15000" value="${state.remoteFetchInterval}" style="width: 100%;">
-              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                How often to fetch from remote repository (15-300 seconds). Longer intervals reduce network usage.
-              </div>
             </div>
 
             <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
@@ -631,49 +565,6 @@ export async function showAppSettings() {
           await callbacks.loadFiles();
         }
         showToast(state.showHidden ? "Hidden files shown" : "Hidden files hidden", "success");
-      });
-    }
-
-    // Handle Git Integration toggle
-    const gitToggle = document.getElementById("git-integration-toggle");
-    if (gitToggle) {
-      gitToggle.addEventListener("change", async (e) => {
-        state.gitIntegrationEnabled = e.target.checked;
-        localStorage.setItem("gitIntegrationEnabled", state.gitIntegrationEnabled);
-        await saveSettingsImpl();
-
-        showToast(state.gitIntegrationEnabled ? "GitHub integration enabled" : "GitHub integration disabled", "success");
-
-        // Update UI visibility immediately
-        if (callbacks.applyVersionControlVisibility) {
-          callbacks.applyVersionControlVisibility();
-        }
-
-        // Reload to update file tree
-        if (callbacks.loadFiles) {
-          await callbacks.loadFiles();
-        }
-      });
-    }
-
-    // Handle Gitea Integration toggle
-    const giteaToggle = document.getElementById("gitea-integration-toggle");
-    if (giteaToggle) {
-      giteaToggle.addEventListener("change", async (e) => {
-        state.giteaIntegrationEnabled = e.target.checked;
-        await saveSettingsImpl();
-
-        showToast(state.giteaIntegrationEnabled ? "Gitea integration enabled" : "Gitea integration disabled", "success");
-
-        // Update UI visibility immediately
-        if (callbacks.applyVersionControlVisibility) {
-          callbacks.applyVersionControlVisibility();
-        }
-
-        // Reload to update file tree
-        if (callbacks.loadFiles) {
-          await callbacks.loadFiles();
-        }
       });
     }
 
@@ -943,17 +834,6 @@ export async function showAppSettings() {
       });
     }
 
-    // Handle Manage Exclusions button
-    const btnManageExclusions = document.getElementById("btn-manage-exclusions");
-    if (btnManageExclusions) {
-      btnManageExclusions.addEventListener("click", () => {
-        closeSettings();
-        if (callbacks.showGitExclusions) {
-          callbacks.showGitExclusions();
-        }
-      });
-    }
-
     // Handle Syntax Color Toggles (Checkbox)
     const colorToggles = modalBody.querySelectorAll(".syntax-color-toggle");
     colorToggles.forEach(toggle => {
@@ -1069,10 +949,7 @@ export async function showAppSettings() {
             [
                 "Clear all settings and preferences",
                 "Reset theme to default",
-                "Clear recent files and favorites",
-                "Remove onboarding completion flag",
-                "Clear Git/Gitea credentials (optional)",
-                "Delete local repository (optional)"
+                "Clear recent files and favorites"
             ],
             "This action cannot be undone, but your files will remain safe.",
             true
@@ -1088,18 +965,6 @@ export async function showAppSettings() {
         advancedModalTitle.textContent = "Reset Options";
         advancedModalBody.innerHTML = `
           <div style="padding: 16px 0;">
-            <div style="margin-bottom: 16px;">
-              <label style="display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" id="clear-credentials-check" style="margin-right: 8px;">
-                <span>Clear Git/Gitea credentials</span>
-              </label>
-            </div>
-            <div style="margin-bottom: 16px;">
-              <label style="display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" id="delete-repo-check" style="margin-right: 8px;">
-                <span>Delete local repository (.git folder)</span>
-              </label>
-            </div>
             <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-size: 12px; color: var(--text-secondary);">
               <strong>Note:</strong> Your configuration files will not be deleted. Only application settings will be reset.
             </div>
@@ -1107,33 +972,6 @@ export async function showAppSettings() {
         `;
 
         const handleConfirm = async () => {
-            const clearCredentials = document.getElementById("clear-credentials-check")?.checked;
-            const deleteRepo = document.getElementById("delete-repo-check")?.checked;
-
-            if (clearCredentials) {
-                try {
-                    await fetchWithAuth(API_BASE, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "git_clear_credentials" }),
-                    });
-                } catch (e) {
-                    console.error("Failed to clear credentials:", e);
-                }
-            }
-
-            if (deleteRepo) {
-                try {
-                    await fetchWithAuth(API_BASE, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ action: "git_delete_repo" }),
-                    });
-                } catch (e) {
-                    console.error("Failed to delete repo:", e);
-                }
-            }
-
             // Reset server-side settings
             try {
                 await fetchWithAuth(API_BASE, {
@@ -1141,9 +979,7 @@ export async function showAppSettings() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         action: "save_settings",
-                        settings: {
-                            onboardingCompleted: false
-                        }
+                        settings: {}
                     }),
                 });
             } catch (e) {
@@ -1163,38 +999,6 @@ export async function showAppSettings() {
         };
 
         elements.modalConfirm.addEventListener("click", handleConfirm, { once: true });
-      });
-    }
-
-    // Handle Polling Interval slider
-    const pollingIntervalSlider = document.getElementById("polling-interval-slider");
-    const pollingIntervalValue = document.getElementById("polling-interval-value");
-    if (pollingIntervalSlider && pollingIntervalValue) {
-      pollingIntervalSlider.addEventListener("input", (e) => {
-        const seconds = (parseInt(e.target.value) / 1000).toFixed(0);
-        pollingIntervalValue.textContent = `${seconds}s`;
-      });
-
-      pollingIntervalSlider.addEventListener("change", async (e) => {
-        state.pollingInterval = parseInt(e.target.value);
-        await saveSettingsImpl();
-        showToast(`Polling interval set to ${(state.pollingInterval / 1000).toFixed(0)} seconds`, "success");
-      });
-    }
-
-    // Handle Remote Fetch Interval slider
-    const remoteFetchIntervalSlider = document.getElementById("remote-fetch-interval-slider");
-    const remoteFetchIntervalValue = document.getElementById("remote-fetch-interval-value");
-    if (remoteFetchIntervalSlider && remoteFetchIntervalValue) {
-      remoteFetchIntervalSlider.addEventListener("input", (e) => {
-        const seconds = (parseInt(e.target.value) / 1000).toFixed(0);
-        remoteFetchIntervalValue.textContent = `${seconds}s`;
-      });
-
-      remoteFetchIntervalSlider.addEventListener("change", async (e) => {
-        state.remoteFetchInterval = parseInt(e.target.value);
-        await saveSettingsImpl();
-        showToast(`Remote fetch interval set to ${(state.remoteFetchInterval / 1000).toFixed(0)} seconds`, "success");
       });
     }
 

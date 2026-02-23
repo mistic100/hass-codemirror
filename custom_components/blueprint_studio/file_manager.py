@@ -403,30 +403,6 @@ class FileManager:
             _LOGGER.error("list_directory() failed for path '%s': %s", path, e)
             return {"path": path, "folders": [], "files": [], "error": str(e)}
 
-    def list_git_files(self) -> list[dict]:
-        """List all files for git management."""
-        try:
-            res = []
-            for root, dirs, files in os.walk(self.config_dir):
-                if ".git" in dirs: dirs.remove(".git")
-                rel_root = Path(root).relative_to(self.config_dir)
-                for name in sorted(dirs):
-                    try:
-                        size = self._get_dir_size(Path(root) / name)
-                    except Exception as e:
-                        _LOGGER.debug("Failed to get size for directory %s: %s", name, e)
-                        size = 0
-                    res.append({"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "folder", "size": size})
-                for name in sorted(files):
-                    file_path = Path(root) / name
-                    try: size = file_path.stat().st_size
-                    except: size = 0
-                    res.append({"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "file", "size": size})
-            return sorted(res, key=lambda x: x["path"])
-        except Exception as e:
-            _LOGGER.error("list_git_files() failed with filesystem error: %s", e)
-            return []  # Return empty list instead of crashing
-
     def global_search(self, query: str, case_sensitive: bool = False, use_regex: bool = False, match_word: bool = False, include: str = "", exclude: str = "") -> list[dict]:
         """Perform global search across allowed config files."""
         import re

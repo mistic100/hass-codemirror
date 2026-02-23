@@ -29,7 +29,6 @@
  *    - Handle success/error responses
  *    - Show toast notification
  *    - Refresh file list: await callbacks.loadFiles()
- *    - Update git status: await callbacks.checkGitStatusIfEnabled()
  *
  * 2. Adding file validation:
  *    - Create validate* function
@@ -54,7 +53,6 @@
  * INTEGRATION POINTS:
  * - file-operations-ui.js: UI dialogs (prompts user, then calls these functions)
  * - file-tree.js: Updates after operations
- * - git-operations.js: Git status refresh
  * - api.js: Server communication
  * - app.js: Coordination layer
  *
@@ -69,7 +67,6 @@
  * - This module does actual operations (file-operations-ui.js shows dialogs)
  * - All operations are async (server-side execution)
  * - Operations auto-refresh file list
- * - Operations auto-update git status
  * - Error handling with toast notifications
  * - Validation happens client-side for performance
  *
@@ -90,7 +87,7 @@
  * 2. Dialog calls function here with parameters
  * 3. Function calls server API via fetchWithAuth()
  * 4. Server performs operation
- * 5. Success: Refresh file list + git status + show toast
+ * 5. Success: Refresh file list + show toast
  * 6. Error: Show error toast
  *
  * ============================================================================
@@ -105,7 +102,6 @@ import { loadScript } from './utils.js';
 let callbacks = {
   loadFiles: null,
   openFile: null,
-  checkGitStatusIfEnabled: null,
   closeTab: null,
   renderFileTree: null,
   renderTabs: null,
@@ -130,9 +126,6 @@ export async function createFile(path, content = "", is_base64 = false) {
     if (callbacks.loadFiles) await callbacks.loadFiles();
     if (callbacks.openFile) callbacks.openFile(path);
 
-    // Auto-refresh git status after creating file
-    if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
-
     return true;
   } catch (error) {
     showToast("Failed to create file: " + error.message, "error");
@@ -154,9 +147,6 @@ export async function createFolder(path) {
     if (callbacks.loadFiles) await callbacks.loadFiles();
     state.expandedFolders.add(path);
     if (callbacks.renderFileTree) callbacks.renderFileTree();
-
-    // Auto-refresh git status after creating folder
-    if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
 
     return true;
   } catch (error) {
@@ -185,9 +175,6 @@ export async function deleteItem(path) {
 
     if (callbacks.loadFiles) await callbacks.loadFiles();
 
-    // Auto-refresh git status after deleting file
-    if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
-
     return true;
   } catch (error) {
     showToast("Failed to delete: " + error.message, "error");
@@ -207,9 +194,6 @@ export async function copyItem(source, destination) {
     });
     showToast(`Copied to ${destination.split("/").pop()}`, "success");
     if (callbacks.loadFiles) await callbacks.loadFiles();
-
-    // Auto-refresh git status after copying file
-    if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
 
     return true;
   } catch (error) {
@@ -238,9 +222,6 @@ export async function renameItem(source, destination) {
     }
 
     if (callbacks.loadFiles) await callbacks.loadFiles();
-
-    // Auto-refresh git status after renaming file
-    if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
 
     return true;
   } catch (error) {

@@ -315,26 +315,6 @@ export async function loadScript(url) {
   });
 }
 
-// Lazy-load Diff/Merge libraries
-export async function ensureDiffLibrariesLoaded(showGlobalLoading, hideGlobalLoading) {
-  if (window.diff_match_patch && CodeMirror.MergeView) return;
-  
-  if (showGlobalLoading) showGlobalLoading("Initializing Diff viewer...");
-  try {
-      if (!window.diff_match_patch) {
-          await loadScript("https://cdnjs.cloudflare.com/ajax/libs/diff_match_patch/20121119/diff_match_patch.js");
-      }
-      if (!CodeMirror.MergeView) {
-          await loadScript("https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/merge/merge.min.js");
-      }
-  } catch (e) {
-      console.error("Failed to load Diff libraries", e);
-      throw new Error("Could not load Diff components. Please check your internet connection.");
-  } finally {
-      if (hideGlobalLoading) hideGlobalLoading();
-  }
-}
-
 // Memoized file icon lookup (theme support reverted)
 function _getFileIcon(filename) {
   // Home Assistant .storage entries are JSON
@@ -493,6 +473,3 @@ export function getLanguageName(filename) {
     };
     return nameMap[ext] || "Plain Text";
 }
-
-
-

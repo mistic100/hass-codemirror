@@ -41,9 +41,7 @@
  * - showContextMenu: Show context menu
  * - openFile: Open file
  * - hideSidebar: Hide sidebar
- * - showDiffModal: Show diff modal
  * - loadFiles: Reload file list
- * - checkGitStatusIfEnabled: Refresh git status
  * - toggleSelectionMode: Toggle selection mode
  * - processUploads: Process file uploads
  *
@@ -52,7 +50,7 @@
  * 1. Adding new file tree item decorations:
  *    - Modify createTreeItem() function
  *    - Add icon, badge, or indicator based on file properties
- *    - Examples: git status icon, modified badge, read-only lock
+ *    - Examples: modified badge, read-only lock
  *    - Update CSS for new decoration styles
  *
  * 2. Adding custom file grouping/sorting:
@@ -123,7 +121,7 @@
  *
  * ============================================================================
  */
-import { state, elements, gitState } from './state.js';
+import { state, elements } from './state.js';
 import { fetchWithAuth } from './api.js';
 import { API_BASE } from './constants.js';
 import {
@@ -159,9 +157,7 @@ let callbacks = {
   showContextMenu: null,
   openFile: null,
   hideSidebar: null,
-  showDiffModal: null,
   loadFiles: null,
-  checkGitStatusIfEnabled: null,
   toggleSelectionMode: null,
   processUploads: null
 };
@@ -655,9 +651,6 @@ export async function handleFileDropMulti(sourcePaths, targetFolder) {
         callbacks.toggleSelectionMode();
       }
       if (callbacks.loadFiles) await callbacks.loadFiles(true);
-
-      // Refresh git status if enabled
-      if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
     } catch (error) {
       hideGlobalLoading();
       showToast("Failed to move items: " + error.message, "error");
@@ -871,20 +864,6 @@ export function createTreeItem(name, depth, isFolder, isExpanded, itemPath = nul
       if (callbacks.toggleFavorite) callbacks.toggleFavorite(itemPath);
     });
     actions.appendChild(pinBtn);
-  }
-
-  // Diff Button - Only for modified files
-  if (!isFolder && gitState.files.modified.includes(itemPath)) {
-    const diffBtn = document.createElement("button");
-    diffBtn.className = "tree-action-btn";
-    diffBtn.title = "View Diff";
-    diffBtn.innerHTML = '<span class="material-icons" style="font-size: 16px; color: var(--warning-color);">difference</span>';
-
-    diffBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (callbacks.showDiffModal) callbacks.showDiffModal(itemPath);
-    });
-    actions.appendChild(diffBtn);
   }
 
   item.appendChild(actions);

@@ -135,9 +135,7 @@ import {
 
 import { 
   state, 
-  elements, 
-  gitState, 
-  giteaState 
+  elements
 } from './state.js';
 
 import {
@@ -168,8 +166,7 @@ import {
   getEditorMode,
   getLanguageName,
   formatBytes,
-  loadScript,
-  ensureDiffLibrariesLoaded
+  loadScript
 } from './utils.js';
 
 // Import refactored modules
@@ -271,10 +268,7 @@ import {
 } from './split-view.js';
 
 import {
-  gitStatusPollingInterval as pollingInterval,
   checkFileUpdates as checkFileUpdatesImpl,
-  startGitStatusPolling as startGitStatusPollingImpl,
-  stopGitStatusPolling as stopGitStatusPollingImpl,
   registerPollingCallbacks
 } from './polling.js';
 
@@ -349,76 +343,6 @@ import {
 } from './file-tree.js';
 
 import {
-  showDiffModal as showDiffModalImpl,
-  showGitHistory as showGitHistoryImpl,
-  showGitCommitDiff as showGitCommitDiffImpl,
-  registerGitDiffCallbacks
-} from './git-diff.js';
-
-import {
-  registerGitOperationsCallbacks,
-  isGitEnabled as isGitEnabledImpl,
-  checkGitStatusIfEnabled as checkGitStatusIfEnabledImpl,
-  gitStatus as gitStatusImpl,
-  gitInit as gitInitImpl,
-  abortGitOperation as abortGitOperationImpl,
-  forcePush as forcePushImpl,
-  hardReset as hardResetImpl,
-  deleteRemoteBranch as deleteRemoteBranchImpl,
-  gitGetRemotes as gitGetRemotesImpl,
-  gitSetCredentials as gitSetCredentialsImpl,
-  gitStage as gitStageImpl,
-  handleGitLockAndRetry as handleGitLockAndRetryImpl,
-  gitCleanLocks as gitCleanLocksImpl,
-  gitRepairIndex as gitRepairIndexImpl,
-  gitUnstage as gitUnstageImpl,
-  gitReset as gitResetImpl,
-  gitCommit as gitCommitImpl,
-  gitPull as gitPullImpl,
-  gitPush as gitPushImpl
-} from './git-operations.js';
-
-import {
-  registerGithubIntegrationCallbacks,
-  gitAddRemote as gitAddRemoteImpl,
-  githubCreateRepo as githubCreateRepoImpl,
-  repairBranchMismatch as repairBranchMismatchImpl,
-  gitTestConnection as gitTestConnectionImpl,
-  gitClearCredentials as gitClearCredentialsImpl,
-  githubDeviceFlowStart as githubDeviceFlowStartImpl,
-  githubDeviceFlowPoll as githubDeviceFlowPollImpl,
-  showGithubDeviceFlowLogin as showGithubDeviceFlowLoginImpl,
-  showGitExclusions as showGitExclusionsImpl,
-  showGitSettings as showGitSettingsImpl,
-  showCreateGithubRepoDialog as showCreateGithubRepoDialogImpl,
-  saveGitRemote as saveGitRemoteImpl,
-  saveGitCredentials as saveGitCredentialsImpl,
-  testGitConnection as testGitConnectionImpl
-} from './github-integration.js';
-
-import {
-  registerGiteaIntegrationCallbacks,
-  giteaInit as giteaInitImpl,
-  giteaStatus as giteaStatusImpl,
-  giteaPush as giteaPushImpl,
-  giteaPull as giteaPullImpl,
-  giteaCommit as giteaCommitImpl,
-  giteaStage as giteaStageImpl,
-  giteaUnstage as giteaUnstageImpl,
-  giteaAbort as giteaAbortImpl,
-  giteaForcePush as giteaForcePushImpl,
-  giteaHardReset as giteaHardResetImpl,
-  toggleGiteaFileSelection as toggleGiteaFileSelectionImpl,
-  stageSelectedGiteaFiles as stageSelectedGiteaFilesImpl,
-  stageAllGiteaFiles as stageAllGiteaFilesImpl,
-  unstageAllGiteaFiles as unstageAllGiteaFilesImpl,
-  updateGiteaPanel as updateGiteaPanelImpl,
-  renderGiteaFiles as renderGiteaFilesImpl,
-  showGiteaSettings as showGiteaSettingsImpl,
-  giteaCreateRepo as giteaCreateRepoImpl
-} from './gitea-integration.js';
-
-import {
   registerInitializationCallbacks
 } from './initialization.js';
 
@@ -428,19 +352,6 @@ import {
   insertUUID,
   updateSplitViewButtons
 } from './event-handlers.js';
-
-import {
-  registerGitUICallbacks,
-  updateGitPanel as updateGitPanelImpl,
-  renderGitFiles as renderGitFilesImpl,
-  toggleGitGroup as toggleGitGroupImpl,
-  toggleFileSelection as toggleFileSelectionImpl,
-  stageSelectedFiles as stageSelectedFilesImpl,
-  stageAllFiles as stageAllFilesImpl,
-  unstageAllFiles as unstageAllFilesImpl,
-  commitStagedFiles as commitStagedFilesImpl,
-  applyVersionControlVisibility as applyVersionControlVisibilityImpl
-} from './git-ui.js';
 
 import {
   registerTabsCallbacks,
@@ -752,121 +663,12 @@ export async function saveFile(path, content) {
       const fileSize = fileEntry && typeof fileEntry.size === 'number' ? ` (${formatBytes(fileEntry.size)})` : '';
       showToast(`Saved ${path.split("/").pop()}${fileSize}`, "success");
 
-      // Auto-refresh git status after saving to show changes immediately
-      await checkGitStatusIfEnabled();
-
       return true;
     } catch (error) {
       showToast("Failed to save: " + error.message, "error");
       return false;
     }
   }
-
-
-  // ============================================
-  // GitHub Integration Functions
-  // ============================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Git Operations (wrapped from git-operations.js)
-export async function gitStage(files) {
-  return await gitStageImpl(files);
-}
-
-export async function handleGitLockAndRetry(files) {
-  return await handleGitLockAndRetryImpl(files);
-}
-
-export async function gitCleanLocks() {
-  return await gitCleanLocksImpl();
-}
-
-export async function gitRepairIndex() {
-  return await gitRepairIndexImpl();
-}
-
-export async function gitUnstage(files) {
-  return await gitUnstageImpl(files);
-}
-
-export async function gitReset(files) {
-  return await gitResetImpl(files);
-}
-
-export async function gitCommit(commitMessage) {
-  return await gitCommitImpl(commitMessage);
-}
-
-export async function gitPull() {
-  return await gitPullImpl();
-}
-
-export async function gitPush() {
-  return await gitPushImpl();
-}
-
-  // Update Git Panel UI
-export function updateGitPanel() {
-  return updateGitPanelImpl();
-}
-
-  // Render git files in the panel
-export function renderGitFiles(container) {
-  return renderGitFilesImpl(container);
-}
-
-  // ============================================
-  // Gitea Integration Functions
-  // ============================================
-
-
-  // Toggle git file group collapse
-export function toggleGitGroup(groupKey, panelType = 'git') {
-  return toggleGitGroupImpl(groupKey, panelType);
-}
-
-  // Toggle file selection
-export function toggleFileSelection(file) {
-  return toggleFileSelectionImpl(file);
-}
-
-  // Stage selected files
-export async function stageSelectedFiles() {
-  return await stageSelectedFilesImpl();
-}
-
-  // Stage all unstaged files
-export async function stageAllFiles() {
-  return await stageAllFilesImpl();
-}
-
-  // Unstage all staged files
-export async function unstageAllFiles() {
-  return await unstageAllFilesImpl();
-}
-
-  // Commit staged files
-export async function commitStagedFiles() {
-  return await commitStagedFilesImpl();
-}
 
   // ============================================
   // App Settings
@@ -877,23 +679,9 @@ export async function showAppSettings() {
   return await showAppSettingsImpl();
 }
 
-  // Show Git Exclusions modal
-
-
-export function applyVersionControlVisibility() {
-  return applyVersionControlVisibilityImpl();
-}
-
 export function copyToClipboard(text) {
   return copyToClipboardImpl(text);
 }
-
-
-  // ============================================
-  // Git Settings
-  // ============================================
-
-  // Show Git Settings modal
 
 // Command Palette function (wrapped from command-palette.js)
 export function showCommandPalette() {
@@ -911,8 +699,6 @@ export async function performGlobalSearch(query, options = {}) {
 export async function performGlobalReplace() {
   return await performGlobalReplaceImpl();
 }
-
-  // Save git remote
 
 
   // ============================================
@@ -1571,10 +1357,7 @@ export { autoSaveTimer };
 export const saveAllFiles = saveAllFilesImpl;
 
 // Re-export polling module functions
-export const gitStatusPollingInterval = pollingInterval;
 export const checkFileUpdates = checkFileUpdatesImpl;
-export const startGitStatusPolling = startGitStatusPollingImpl;
-export const stopGitStatusPolling = stopGitStatusPollingImpl;
 
 // Re-export downloads-uploads module functions
 export const downloadCurrentFile = downloadCurrentFileImpl;
@@ -1629,59 +1412,6 @@ export const handleDrop = handleDropImpl;
 export const toggleFolder = toggleFolderImpl;
 export const updateToggleAllButton = updateToggleAllButtonImpl;
 
-// Re-export git-diff module functions
-export const showDiffModal = showDiffModalImpl;
-export const showGitHistory = showGitHistoryImpl;
-export const showGitCommitDiff = showGitCommitDiffImpl;
-
-// Re-export git-operations module functions
-export const isGitEnabled = isGitEnabledImpl;
-export const checkGitStatusIfEnabled = checkGitStatusIfEnabledImpl;
-export const gitStatus = gitStatusImpl;
-export const gitInit = gitInitImpl;
-export const abortGitOperation = abortGitOperationImpl;
-export const forcePush = forcePushImpl;
-export const hardReset = hardResetImpl;
-export const deleteRemoteBranch = deleteRemoteBranchImpl;
-export const gitGetRemotes = gitGetRemotesImpl;
-export const gitSetCredentials = gitSetCredentialsImpl;
-
-// Re-export github-integration module functions
-export const gitAddRemote = gitAddRemoteImpl;
-export const githubCreateRepo = githubCreateRepoImpl;
-export const repairBranchMismatch = repairBranchMismatchImpl;
-export const gitTestConnection = gitTestConnectionImpl;
-export const gitClearCredentials = gitClearCredentialsImpl;
-export const githubDeviceFlowStart = githubDeviceFlowStartImpl;
-export const githubDeviceFlowPoll = githubDeviceFlowPollImpl;
-export const showGithubDeviceFlowLogin = showGithubDeviceFlowLoginImpl;
-export const showGitExclusions = showGitExclusionsImpl;
-export const showGitSettings = showGitSettingsImpl;
-export const showCreateGithubRepoDialog = showCreateGithubRepoDialogImpl;
-export const saveGitRemote = saveGitRemoteImpl;
-export const saveGitCredentials = saveGitCredentialsImpl;
-export const testGitConnection = testGitConnectionImpl;
-
-// Re-export gitea-integration module functions
-export const giteaInit = giteaInitImpl;
-export const giteaStatus = giteaStatusImpl;
-export const giteaPush = giteaPushImpl;
-export const giteaPull = giteaPullImpl;
-export const giteaCommit = giteaCommitImpl;
-export const giteaStage = giteaStageImpl;
-export const giteaUnstage = giteaUnstageImpl;
-export const giteaAbort = giteaAbortImpl;
-export const giteaForcePush = giteaForcePushImpl;
-export const giteaHardReset = giteaHardResetImpl;
-export const toggleGiteaFileSelection = toggleGiteaFileSelectionImpl;
-export const stageSelectedGiteaFiles = stageSelectedGiteaFilesImpl;
-export const stageAllGiteaFiles = stageAllGiteaFilesImpl;
-export const unstageAllGiteaFiles = unstageAllGiteaFilesImpl;
-export const updateGiteaPanel = updateGiteaPanelImpl;
-export const renderGiteaFiles = renderGiteaFilesImpl;
-export const showGiteaSettings = showGiteaSettingsImpl;
-export const giteaCreateRepo = giteaCreateRepoImpl;
-
   // ============================================
   // UI Updates
   // ============================================
@@ -1717,12 +1447,6 @@ registerEventHandlerCallbacks({
   toggleMarkdownPreview,
   promptNewFile: (path) => promptNewFile(path),
   promptNewFolder: (path) => promptNewFolder(path),
-  toggleGitGroup,
-  stageSelectedFiles,
-  stageAllFiles,
-  unstageAllFiles,
-  commitStagedFiles,
-  toggleFileSelection,
   promptRename,
   promptMove,
   promptCopy,
@@ -1992,13 +1716,9 @@ registerInitializationCallbacks({
   renderFileTree,
   closeTab,
   loadFile,
-  gitStage,
-  gitUnstage,
   setButtonLoading,
   restoreOpenTabs,
   copyToClipboard,
-  applyVersionControlVisibility,
-  updateGitPanel,
   updateToolbarState,
   updateStatusBar,
   updateSplitViewButtons,
@@ -2010,27 +1730,7 @@ registerInitializationCallbacks({
   handleSelectionChange,
   showContextMenu,
   toggleFavorite,
-  hideSidebar,
-  showDiffModal,
-  gitCleanLocks
-});
-
-registerGitUICallbacks({
-  isGitEnabled,
-  gitStatus,
-  gitStage,
-  gitUnstage,
-  gitCommit,
-  saveSettings,
-  showToast,
-  showModal,
-  showConfirmDialog,
-  repairBranchMismatch,
-  abortGitOperation,
-  deleteRemoteBranch,
-  forcePush,
-  hardReset,
-  setButtonLoading
+  hideSidebar
 });
 
 registerTabsCallbacks({
@@ -2093,10 +1793,6 @@ registerCommandPaletteCallbacks({
   promptNewFile,
   promptNewFolder,
   insertUUID,
-  gitStatus,
-  gitPush,
-  gitPull,
-  showGitHistory,
   validateYaml,
   restartHomeAssistant,
   toggleSidebar,
@@ -2141,12 +1837,4 @@ registerFileOperationsUICallbacks({
   renameItem,
   copyItem,
   deleteItem
-});
-
-// Register git operations module callbacks
-registerGitOperationsCallbacks({
-  commitStagedFiles,
-  checkGitStatusIfEnabled,
-  setButtonLoading,
-  gitStatus
 });

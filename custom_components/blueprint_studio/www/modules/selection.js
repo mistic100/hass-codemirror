@@ -30,8 +30,7 @@ import { showGlobalLoading, hideGlobalLoading, showToast, showConfirmDialog } fr
 // Callbacks for cross-module functions
 let callbacks = {
   renderFileTree: null,
-  loadFiles: null,
-  checkGitStatusIfEnabled: null
+  loadFiles: null
 };
 
 export function registerSelectionCallbacks(cb) {
@@ -122,9 +121,6 @@ export async function deleteSelectedItems() {
       // Exit selection mode and refresh
       toggleSelectionMode();
       if (callbacks.loadFiles) await callbacks.loadFiles(true);
-
-      // Refresh git status if enabled
-      if (callbacks.checkGitStatusIfEnabled) await callbacks.checkGitStatusIfEnabled();
     } catch (error) {
       hideGlobalLoading();
       showToast("Failed to delete items: " + error.message, "error");

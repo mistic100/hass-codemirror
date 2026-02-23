@@ -52,17 +52,6 @@ All JavaScript modules in Blueprint Studio now have comprehensive developer docu
 27. ✅ **breadcrumb.js** - Breadcrumb navigation
 28. ✅ **context-menu.js** - Context menus
 
-### Git Integration (5 modules)
-29. ✅ **git.js** - Core git operations
-30. ✅ **git-operations.js** - Git command execution
-31. ✅ **git-ui.js** - Git panel UI
-32. ✅ **git-diff.js** - Diff viewing
-33. ✅ **github-integration.js** - GitHub OAuth and repo creation
-
-### Gitea Integration (2 modules)
-34. ✅ **gitea-integration.js** - Gitea operations
-35. ✅ **gitea-ui.js** - Gitea panel UI
-
 ### Home Assistant (1 module)
 38. ✅ **ha-autocomplete.js** - HA entity autocomplete
 

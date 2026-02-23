@@ -89,7 +89,6 @@
  *
  * WEBSOCKET MESSAGES:
  * - file_changed: File was modified
- * - git_status_changed: Git status updated
  * - server_reload: Server restarted
  * - Custom messages can be added
  *
@@ -101,8 +100,7 @@
  *
  * ============================================================================
  */
-import { state, elements, gitState, giteaState } from './state.js';
-import { API_BASE } from './constants.js';
+import { state } from './state.js';
 
 export async function fetchWithAuth(url, options = {}) {
   let headers = { ...options.headers };
@@ -179,7 +177,6 @@ export async function fetchWithAuth(url, options = {}) {
 // just import them when main.js ties everything together.
 let updateCallbacks = {
     checkFileUpdates: null,
-    checkGitStatus: null,
     loadFiles: null
 };
 
@@ -204,8 +201,6 @@ export async function initWebSocketSubscription(retries = 0) {
               if (state._wsUpdateTimer) clearTimeout(state._wsUpdateTimer);
               state._wsUpdateTimer = setTimeout(() => {
                   if (updateCallbacks.checkFileUpdates) updateCallbacks.checkFileUpdates();
-                  const gitStatusFn = updateCallbacks.checkGitStatus || updateCallbacks.gitStatus;
-                  if (gitStatusFn) gitStatusFn(false, true);
                   
                   if (event && ["create", "delete", "rename", "create_folder", "upload", "upload_folder"].includes(event.action)) {
                       if (updateCallbacks.loadFiles) updateCallbacks.loadFiles();
@@ -224,11 +219,8 @@ export async function initWebSocketSubscription(retries = 0) {
           }
           throw subError;
       }
-    } else {
-      if (typeof updateCallbacks.startPolling === 'function') updateCallbacks.startPolling();
     }
   } catch (e) {
     console.error("Blueprint Studio: WebSocket subscription failed", e);
-    if (typeof updateCallbacks.startPolling === 'function') updateCallbacks.startPolling();
   }
 }

@@ -6,18 +6,16 @@
  * PURPOSE:
  * Central state management for Blueprint Studio. This module exports reactive
  * state objects that hold ALL application data including files, tabs, settings,
- * git status, and UI state. This is the single source of truth for the app.
+ * and UI state. This is the single source of truth for the app.
  *
  * EXPORTED OBJECTS:
  * - state: Main application state
  * - elements: DOM element references
- * - gitState: Git-specific state
- * - giteaState: Gitea-specific state
  *
  * HOW TO ADD NEW FEATURES:
  *
  * 1. Adding a new state property:
- *    - Add to appropriate state object (state, gitState, giteaState)
+ *    - Add to appropriate state object (state)
  *    - Set sensible default value
  *    - Document in STATE PROPERTIES section below
  *    - Add to settings.js if it should persist
@@ -28,12 +26,6 @@
  *    - Use document.getElementById() or querySelector()
  *    - Initialize in initialization.js
  *    - Access via elements.elementName in other modules
- *
- * 3. Adding git-related state:
- *    - Add to gitState object
- *    - Update in git-operations.js
- *    - Render in git-ui.js
- *    - Persist in settings.js if needed
  *
  * 4. Making state reactive:
  *    - Consider using Proxy for reactivity
@@ -86,15 +78,6 @@
  * - recentFiles: Array of recently opened files
  * - recentFilesLimit: Max recent files to keep
  *
- * GIT INTEGRATION:
- * - gitIntegrationEnabled: Git feature toggle
- * - gitConfig: Git configuration object
- * - gitPanelCollapsed: Git panel state
- *
- * GITEA INTEGRATION:
- * - giteaIntegrationEnabled: Gitea feature toggle
- * - giteaPanelCollapsed: Gitea panel state
- *
  * EDITOR SETTINGS:
  * - fontSize: Editor font size
  * - fontFamily: Editor font family
@@ -118,28 +101,12 @@
  * - showToasts: Show toast notifications
  *
  * PERFORMANCE:
- * - pollingInterval: Status polling interval
- * - remoteFetchInterval: Remote fetch interval
  * - fileCacheSize: File cache size
  * - enableVirtualScroll: Virtual scrolling
  *
  * OTHER:
- * - onboardingCompleted: Onboarding status
  * - customColors: Custom syntax colors
  * - rememberWorkspace: Remember open tabs
- *
- * GIT STATE (gitState object):
- * - branch: Current branch name
- * - ahead: Commits ahead of remote
- * - behind: Commits behind remote
- * - status: Git status object (staged, modified, etc.)
- * - selectedFiles: Set of selected files
- * - collapsedGroups: Set of collapsed groups
- * - lastUpdate: Last status update timestamp
- *
- * GITEA STATE (giteaState object):
- * - Similar to gitState structure
- * - collapsedGroups: Set of collapsed groups
  *
  * ELEMENTS (elements object):
  * All DOM element references cached for performance
@@ -203,7 +170,6 @@ export const state = {
   currentNavigationPath: "", // Current folder being viewed (empty = root)
   navigationHistory: [], // History stack for back button
   editor: null,
-  gitConfig: null,
   selectionMode: false,
   selectedItems: new Set(),
   customColors: {},
@@ -226,23 +192,15 @@ export const state = {
   fileTreeShowIcons: true,
   recentFilesLimit: 10,
   breadcrumbStyle: "path",
-  giteaIntegrationEnabled: false,
-  gitPanelCollapsed: false,
-  giteaPanelCollapsed: false,
   fileTreeCollapsed: false,
   rememberWorkspace: true,
   showToasts: true,
-  gitIntegrationEnabled: false,
   // Performance settings
-  pollingInterval: 10000,        // Git status polling interval (ms)
-  remoteFetchInterval: 30000,    // Remote fetch interval (ms)
   fileCacheSize: 10,             // Number of files to cache in memory
   enableVirtualScroll: false,    // Virtual scrolling for large file trees
   enableSplitView: false,        // Enable split view feature (Experimental)
   onTabMode: false,              // One Tab Mode: auto-save & close other tabs on file open
   _lastShowHidden: false,
-  _lastGitChanges: null,
-  _lastGiteaChanges: null,
   // Internal tracking
   _wsUpdateTimer: null,
   _savedOpenTabs: null,
@@ -275,32 +233,3 @@ export const state = {
 };
 
 export const elements = {};
-
-// Git state needs to be shared too
-export const gitState = {
-    files: { modified: [], added: [], deleted: [], untracked: [], staged: [], unstaged: [] },
-    isInitialized: false,
-    hasRemote: false,
-    currentBranch: "unknown",
-    localBranches: [],
-    remoteBranches: [],
-    ahead: 0,
-    behind: 0,
-    selectedFiles: new Set(),
-    totalChanges: 0,
-    collapsedGroups: new Set(),
-};
-
-export const giteaState = {
-    files: { modified: [], added: [], deleted: [], untracked: [], staged: [], unstaged: [] },
-    isInitialized: false,
-    hasRemote: false,
-    currentBranch: "unknown",
-    localBranches: [],
-    remoteBranches: [],
-    ahead: 0,
-    behind: 0,
-    selectedFiles: new Set(),
-    totalChanges: 0,
-    collapsedGroups: new Set(),
-};

@@ -32,7 +32,6 @@ let callbacks = {
   showModal: null,
   loadFiles: null,
   renderFileTree: null,
-  checkGitStatusIfEnabled: null,
   toggleSelectionMode: null
 };
 
@@ -456,11 +455,6 @@ export async function handleFolderUpload(event) {
         if (callbacks.loadFiles) await callbacks.loadFiles();
         state.expandedFolders.add(targetPath);
         if (callbacks.renderFileTree) callbacks.renderFileTree();
-
-        // Auto-refresh git status after uploading folder
-        if (callbacks.checkGitStatusIfEnabled) {
-          await callbacks.checkGitStatusIfEnabled();
-        }
       }
     } catch (error) {
       hideGlobalLoading();

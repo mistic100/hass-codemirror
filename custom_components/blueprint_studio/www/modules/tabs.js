@@ -40,7 +40,7 @@
  * 3. Adding tab indicators (icons, badges, etc.):
  *    - Modify renderTabs() tab HTML
  *    - Add conditional rendering based on tab state
- *    - Examples: modified dot, git status icon, read-only badge
+ *    - Examples: modified dot, read-only badge
  *
  * 4. Adding tab context menu items:
  *    - Add to showTabContextMenu in context-menu.js

@@ -36,7 +36,7 @@
  * 3. Adding setting categories:
  *    - Group related settings together in code
  *    - Add comments to separate categories
- *    - Examples: UI, Editor, Git, Performance
+ *    - Examples: UI, Editor, Performance
  *
  * 4. Adding workspace state:
  *    - Save in saveSettings() if state.rememberWorkspace
@@ -74,16 +74,7 @@
  *    - fileTreeCompact, fileTreeShowIcons
  *    - recentFilesLimit
  *
- * 4. Git Integration:
- *    - gitIntegrationEnabled, gitConfig
- *    - gitPanelCollapsed, gitCollapsedGroups
- *
- * 5. Gitea Integration:
- *    - giteaIntegrationEnabled
- *    - giteaPanelCollapsed, giteaCollapsedGroups
- *
  * 7. Performance:
- *    - pollingInterval, remoteFetchInterval
  *    - fileCacheSize, enableVirtualScroll
  *
  * 8. Workspace State:
@@ -93,7 +84,6 @@
  *    - favoriteFiles, recentFiles
  *
  * 9. Other:
- *    - onboardingCompleted
  *    - customColors: Custom syntax highlighting
  *
  * ARCHITECTURE NOTES:
@@ -126,7 +116,7 @@
  *
  * ============================================================================
  */
-import { state, elements, gitState, giteaState } from './state.js';
+import { state, elements } from './state.js';
 import { fetchWithAuth } from './api.js';
 import { API_BASE, STORAGE_KEY } from './constants.js';
 
@@ -154,35 +144,13 @@ export async function loadSettings() {
       // Failed to fetch settings from server, using local fallback
     }
 
-    // 2. Fetch local (legacy/fallback)
-    const localStored = localStorage.getItem(STORAGE_KEY);
-    const localSettings = localStored ? JSON.parse(localStored) : {};
-
-    // 3. Migration: If server is empty but local exists, migrate to server
-    let settings = serverSettings;
-    if (Object.keys(serverSettings).length === 0 && (Object.keys(localSettings).length > 0 || localStorage.getItem("onboardingCompleted"))) {
-      // Migrating settings to server...
-      settings = { ...localSettings };
-      // Migrate root keys
-      settings.onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
-      settings.gitIntegrationEnabled = localStorage.getItem("gitIntegrationEnabled") !== "false";
-
-      // Save back to server immediately
-      await fetchWithAuth(API_BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_settings", settings: settings }),
-      });
-    }
-
     // 4. Apply to State
-    state.theme = settings.theme || localSettings.theme || "dark";
+    state.theme = settings.theme || "dark";
     state.showHidden = settings.showHidden || false;
     state.sshHosts = settings.sshHosts || [];
     state.showRecentFiles = settings.showRecentFiles !== false;
     state.favoriteFiles = settings.favoriteFiles || [];
     state.recentFiles = settings.recentFiles || [];
-    state.gitConfig = settings.gitConfig || null;
     state.customColors = settings.customColors || {};
     state.syntaxTheme = settings.syntaxTheme || 'custom';
 
@@ -190,11 +158,11 @@ export async function loadSettings() {
     state.themePreset = settings.themePreset || "dark";
     state.accentColor = settings.accentColor || null;
     state.fontSize = parseInt(settings.fontSize) || 14;
-    state.fontFamily = settings.fontFamily || localSettings.fontFamily || "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace";
+    state.fontFamily = settings.fontFamily || "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace";
     state.tabSize = parseInt(settings.tabSize) || 2;
     state.indentWithTabs = settings.indentWithTabs || false;
-    state.sidebarWidth = parseInt(settings.sidebarWidth) || parseInt(localSettings.sidebarWidth) || 320;
-    state.tabPosition = settings.tabPosition || localSettings.tabPosition || "top";
+    state.sidebarWidth = parseInt(settings.sidebarWidth) || 320;
+    state.tabPosition = settings.tabPosition || "top";
     state.wordWrap = settings.wordWrap !== false; // default true
     state.showLineNumbers = settings.showLineNumbers !== false; // default true
     state.showMinimap = settings.showMinimap || false;
@@ -214,27 +182,10 @@ export async function loadSettings() {
     state.enableSplitView = settings.enableSplitView || false; // default false (experimental)
     state.onTabMode = settings.onTabMode || false; // default false
 
-    // New state properties for sync
-    state.onboardingCompleted = settings.onboardingCompleted ?? (localStorage.getItem("onboardingCompleted") === "true");
-    state.gitIntegrationEnabled = settings.gitIntegrationEnabled ?? (localStorage.getItem("gitIntegrationEnabled") !== "false");
-    state.giteaIntegrationEnabled = settings.giteaIntegrationEnabled ?? (localStorage.getItem("giteaIntegrationEnabled") === "true");
-
-    // Restore collapsed groups
-    if (settings.gitCollapsedGroups && Array.isArray(settings.gitCollapsedGroups)) {
-      gitState.collapsedGroups = new Set(settings.gitCollapsedGroups);
-    }
-    if (settings.giteaCollapsedGroups && Array.isArray(settings.giteaCollapsedGroups)) {
-      giteaState.collapsedGroups = new Set(settings.giteaCollapsedGroups);
-    }
-
-    state.gitPanelCollapsed = settings.gitPanelCollapsed || false;
-    state.giteaPanelCollapsed = settings.giteaPanelCollapsed || false;
     state.fileTreeCollapsed = settings.fileTreeCollapsed || false;
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
 
     // Performance settings
-    state.pollingInterval = parseInt(settings.pollingInterval) || 10000;
-    state.remoteFetchInterval = parseInt(settings.remoteFetchInterval) || 30000;
     state.fileCacheSize = parseInt(settings.fileCacheSize) || 10;
     state.enableVirtualScroll = settings.enableVirtualScroll || false;
 
@@ -249,8 +200,8 @@ export async function loadSettings() {
       state._savedSecondaryActiveTabPath = settings.splitView.secondaryActiveTabPath;
     }
 
-    state._savedOpenTabs = settings.openTabs || localSettings.openTabs || [];
-    state._savedActiveTabPath = settings.activeTabPath || localSettings.activeTabPath || null;
+    state._savedOpenTabs = settings.openTabs || [];
+    state._savedActiveTabPath = settings.activeTabPath || null;
 
     if (callbacks.applyTheme) callbacks.applyTheme();
     if (callbacks.applyCustomSyntaxColors) callbacks.applyCustomSyntaxColors();
@@ -309,12 +260,6 @@ export async function saveSettings() {
       syntaxTheme: state.syntaxTheme,
       openTabs: openTabsState,
       activeTabPath: activeTabPath,
-      gitConfig: state.gitConfig,
-      onboardingCompleted: state.onboardingCompleted,
-      gitIntegrationEnabled: state.gitIntegrationEnabled,
-      giteaIntegrationEnabled: state.giteaIntegrationEnabled,
-      gitCollapsedGroups: Array.from(gitState.collapsedGroups),
-      giteaCollapsedGroups: Array.from(giteaState.collapsedGroups),
       // New UI customization settings
       themePreset: state.themePreset,
       accentColor: state.accentColor,
@@ -335,15 +280,11 @@ export async function saveSettings() {
       treeCollapsableMode: state.treeCollapsableMode,
       recentFilesLimit: state.recentFilesLimit,
       breadcrumbStyle: state.breadcrumbStyle,
-      gitPanelCollapsed: state.gitPanelCollapsed,
-      giteaPanelCollapsed: state.giteaPanelCollapsed,
       fileTreeCollapsed: state.fileTreeCollapsed,
       enableSplitView: state.enableSplitView, // Experimental feature
       onTabMode: state.onTabMode, // One Tab Mode
       rememberWorkspace: state.rememberWorkspace,
       // Performance settings
-      pollingInterval: state.pollingInterval,
-      remoteFetchInterval: state.remoteFetchInterval,
       fileCacheSize: state.fileCacheSize,
       enableVirtualScroll: state.enableVirtualScroll,
       // Split view settings
@@ -367,10 +308,6 @@ export async function saveSettings() {
 
     // Save to local storage (cache/fallback)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-
-    // Sync legacy keys
-    if (state.onboardingCompleted) localStorage.setItem("onboardingCompleted", "true");
-    localStorage.setItem("gitIntegrationEnabled", state.gitIntegrationEnabled);
 
     return savePromise;
   } catch (e) {

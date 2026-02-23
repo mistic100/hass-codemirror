@@ -656,8 +656,6 @@ export function initElements() {
     elements.btnSupportShortcuts = document.getElementById("btn-support-shortcuts");
     elements.btnSupportFeature = document.getElementById("btn-support-feature");
     elements.btnSupportIssue = document.getElementById("btn-support-issue");
-    elements.btnGithubStar = document.getElementById("btn-github-star");
-    elements.btnGithubFollow = document.getElementById("btn-github-follow");
     elements.appVersionDisplay = document.getElementById("app-version-display");
     elements.groupMarkdown = document.getElementById("group-markdown");
     elements.btnMarkdownPreview = document.getElementById("btn-markdown-preview");
@@ -700,32 +698,7 @@ export function initElements() {
     elements.btnDownloadFolder = document.getElementById("btn-download-folder");
     elements.fileUploadInput = document.getElementById("file-upload-input");
     elements.folderUploadInput = document.getElementById("folder-upload-input");
-    elements.btnGitPull = document.getElementById("btn-git-pull");
-    elements.btnGitPush = document.getElementById("btn-git-push");
-    elements.btnGitStatus = document.getElementById("btn-git-status");
-    elements.btnGitSettings = document.getElementById("btn-git-settings");
-    elements.btnGitHelp = document.getElementById("btn-git-help");
-    elements.btnGitRefresh = document.getElementById("btn-git-refresh");
-    elements.btnGitCollapse = document.getElementById("btn-git-collapse");
     elements.btnFileTreeCollapse = document.getElementById("btn-file-tree-collapse");
-    elements.btnGitHistory = document.getElementById("btn-git-history");
-    elements.btnStageSelected = document.getElementById("btn-stage-selected");
-    elements.btnStageAll = document.getElementById("btn-stage-all");
-    elements.btnUnstageAll = document.getElementById("btn-unstage-all");
-    elements.btnCommitStaged = document.getElementById("btn-commit-staged");
-    
-    elements.btnGiteaPull = document.getElementById("btn-gitea-pull");
-    elements.btnGiteaPush = document.getElementById("btn-gitea-push");
-    elements.btnGiteaStatus = document.getElementById("btn-gitea-status");
-    elements.btnGiteaSettings = document.getElementById("btn-gitea-settings");
-    elements.btnGiteaHelp = document.getElementById("btn-gitea-help");
-    elements.btnGiteaRefresh = document.getElementById("btn-gitea-refresh");
-    elements.btnGiteaCollapse = document.getElementById("btn-gitea-collapse");
-    elements.btnGiteaHistory = document.getElementById("btn-gitea-history");
-    elements.btnGiteaStageSelected = document.getElementById("btn-gitea-stage-selected");
-    elements.btnGiteaStageAll = document.getElementById("btn-gitea-stage-all");
-    elements.btnGiteaUnstageAll = document.getElementById("btn-gitea-unstage-all");
-    elements.btnGiteaCommitStaged = document.getElementById("btn-gitea-commit-staged");
 
     elements.loadingOverlay = document.getElementById("loading-overlay");
     elements.loadingText = document.getElementById("loading-text");
