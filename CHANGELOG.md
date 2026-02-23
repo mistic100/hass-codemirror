@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-02-23
+
+### ✨ Terminal Integration, Themes & Workspace Persistence
+
+#### 🆕 New Features
+*   **Interactive Terminal (xterm.js + PTY)**: A fully functional, stateful terminal environment for Home Assistant.
+    *   **True Shell Access**: Runs a persistent `/bin/sh` or `bash` session with full environment support.
+    *   **SSH Capable**: Supports interactive `ssh` sessions with password prompts and key management.
+    *   **Secure & Restricted**: Backend commands are allow-listed (`ha`, `git`, `python3`, `ssh`, `pip`, etc.) to prevent accidental damage.
+    *   **Admin-Only Access**: Terminal commands are strict-checked and limited to administrator users.
+    *   **Audit Logging**: Every command execution is logged to the Home Assistant core logger for accountability.
+    *   **Movable Panel**: Toggle as a VS Code-style bottom panel (`Ctrl+Shift+T`) or dock it as a main editor tab.
+    *   **Resizable Interface**: Draggable top border to resize the terminal panel height.
+    *   **Keyboard Shortcuts**: `Ctrl+Shift+T` to toggle, `Ctrl+L` or `Ctrl+K` to clear screen.
+    *   **Quick Connect**: Save and manage SSH hosts for one-click connection directly from the terminal header.
+*   **Contextual Shell Actions**: Right-click any file or folder to "Run in Terminal" (e.g., execute Python scripts, cat files).
+*   **Mobile & Tablet Experience**:
+    *   **PWA Support**: Install Blueprint Studio as a standalone, full-screen app on iOS/Android.
+    *   **Touch Gestures**: Swipe right from edge to open sidebar, swipe left to close.
+    *   **Touch Optimization**: Larger touch targets for files and tabs.
+*   **Theme System Overhaul**:
+    *   **Auto (Match HA)**: New theme mode that instantly synchronizes with your Home Assistant theme (colors and light/dark mode) in real-time.
+    *   **Glass Theme**: A premium "Glassmorphism" preset featuring translucent panels, 3D depth, and iOS-style blur effects.
+    *   **Midnight Blue**: Added the deep, high-contrast Midnight Blue theme option.
+*   **Persistent SFTP Workspace**: SFTP session state is now fully saved across browser refreshes.
+    *   **Active Connection**: Automatically reconnects to the last used SFTP server.
+    *   **Folder Navigation**: Remembers exactly which folder you were browsing.
+    *   **Open Files**: Remote files in tabs are restored with content and scroll position.
+    *   **SFTP Enhancements**: Added support for "Duplicate" and "Move" operations in the SFTP file tree, mirroring local file tree capabilities. Replaced standard browser prompts with professional UI modals for a consistent user experience. Added support for viewing hidden files and folders in SFTP, synced with the main "Show Hidden Files" toggle. Implemented full support for viewing remote binary files (images, PDFs, videos) via SFTP.
+*   **Split View Enhancements**:
+    *   **Terminal Docking**: Terminal tabs now work seamlessly within split-view panes.
+    *   **Auto-Resize**: Terminal automatically reflows when split panes are resized.
+    *   **Cross-Pane Dragging**: Drag terminal tabs between left/right panes without losing session state.
+
+#### 🐛 Bug Fixes
+*   **Critical Data Safety**: Fixed a race condition in Split View where clicking between tabs in different panes could overwrite file content.
+*   **Ghosting Fix**: Fixed "modified file" ghosting when moving terminal tabs between split panes.
+*   **SFTP Folder Deletion**: Implemented recursive deletion for SFTP, allowing folders with contents to be deleted correctly.
+
+
 ## [2.2.2] - 2026-02-20
 
 ### ✨ Feature & Fix Update
@@ -263,6 +303,7 @@ A big thank you to @cataseven for putting together this extensive UI enhancement
 
 ---
 
+
 ## [2.1.5] - 2026-02-09
 
 ### 🛡️ Fixes
@@ -504,7 +545,9 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 
 ---
 
+
 ## Version History
+- **2.3.0** - Terminal Integration & Workspace Persistence
 - **2.2.2** - Feature & Fix Update (31 Languages)
 - **2.2.1** - Editor & UI Enhancement Suite
 - **2.2.0** - Performance, Architecture & SFTP Integration Update
@@ -526,7 +569,8 @@ Bring AI intelligence directly into your Home Assistant workflow with flexible p
 - **1.2.0** - GitHub Integration, Pin Favorites & Auto-Refresh
 - **1.0.0** - First stable release
 
-[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.2.2...HEAD
+[Unreleased]: https://github.com/soulripper13/blueprint-studio/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.3.0
 [2.2.2]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.2
 [2.2.1]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.1
 [2.2.0]: https://github.com/soulripper13/blueprint-studio/releases/tag/v2.2.0
