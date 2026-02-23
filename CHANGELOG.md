@@ -24,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     *   **Quick Connect**: Save and manage SSH hosts for one-click connection directly from the terminal header.
 *   **Contextual Shell Actions**: Right-click any file or folder to "Run in Terminal" (e.g., execute Python scripts, cat files).
 *   **Mobile & Tablet Experience**:
-    *   **PWA Support**: Install Blueprint Studio as a standalone, full-screen app on iOS/Android.
     *   **Touch Gestures**: Swipe right from edge to open sidebar, swipe left to close.
     *   **Touch Optimization**: Larger touch targets for files and tabs.
 *   **Theme System Overhaul**:
