@@ -98,10 +98,6 @@
  * - fileTreeShowIcons: Show file icons
  * - showToasts: Show toast notifications
  *
- * PERFORMANCE:
- * - fileCacheSize: File cache size
- * - enableVirtualScroll: Virtual scrolling
- *
  * OTHER:
  * - rememberWorkspace: Remember open tabs
  *
@@ -185,9 +181,6 @@ export const state = {
   recentFilesLimit: 10,
   rememberWorkspace: true,
   showToasts: true,
-  // Performance settings
-  fileCacheSize: 10,             // Number of files to cache in memory
-  enableVirtualScroll: false,    // Virtual scrolling for large file trees
   enableSplitView: false,        // Enable split view feature (Experimental)
   _lastShowHidden: false,
   // Internal tracking

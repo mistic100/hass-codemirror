@@ -74,9 +74,6 @@
  *    - fileTreeCompact, fileTreeShowIcons
  *    - recentFilesLimit
  *
- * 7. Performance:
- *    - fileCacheSize, enableVirtualScroll
- *
  * 8. Workspace State:
  *    - openTabs: Array of open tab states
  *    - activeTabPath: Currently active tab
@@ -134,9 +131,9 @@ export function registerSettingsCallbacks(cb) {
 export async function loadSettings() {
   try {
     // 1. Fetch from server
-    let serverSettings = {};
+    let settings = {};
     try {
-      serverSettings = await fetchWithAuth(`${API_BASE}?action=get_settings`);
+      settings = await fetchWithAuth(`${API_BASE}?action=get_settings`);
     } catch (e) {
       // Failed to fetch settings from server, using local fallback
     }
@@ -175,10 +172,6 @@ export async function loadSettings() {
     state.enableSplitView = settings.enableSplitView || false; // default false (experimental)
 
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
-
-    // Performance settings
-    state.fileCacheSize = parseInt(settings.fileCacheSize) || 10;
-    state.enableVirtualScroll = settings.enableVirtualScroll || false;
 
     // Split view settings
     if (settings.splitView) {
@@ -269,9 +262,6 @@ export async function saveSettings() {
       recentFilesLimit: state.recentFilesLimit,
       enableSplitView: state.enableSplitView, // Experimental feature
       rememberWorkspace: state.rememberWorkspace,
-      // Performance settings
-      fileCacheSize: state.fileCacheSize,
-      enableVirtualScroll: state.enableVirtualScroll,
       // Split view settings
       splitView: state.splitView ? {
         enabled: state.splitView.enabled,

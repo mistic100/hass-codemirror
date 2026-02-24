@@ -308,43 +308,6 @@ export async function showAppSettings() {
         <!-- Advanced Tab -->
         <div id="settings-tab-advanced" class="settings-panel" style="display: none;">
           <div class="git-settings-section">
-            <div class="git-settings-label">Performance Settings</div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">
-              Fine-tune polling intervals and caching for optimal performance
-            </div>
-
-            <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-weight: 500;">File Cache Size</div>
-                <span id="file-cache-size-value" style="font-family: monospace; color: var(--text-secondary);">${state.fileCacheSize} files</span>
-              </div>
-              <input type="range" id="file-cache-size-slider" min="5" max="20" step="1" value="${state.fileCacheSize}" style="width: 100%;">
-              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
-                Number of files to cache in memory for faster access (5-20 files).
-              </div>
-            </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">Enable Virtual Scrolling</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Improve performance with large file trees by rendering only visible items</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="virtual-scroll-toggle" ${state.enableVirtualScroll ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 6px; font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
-              <span class="material-icons" style="font-size: 16px; vertical-align: middle; color: var(--info-color);">info</span>
-              <span style="margin-left: 8px;">These settings help optimize CodeMirror for your specific environment. Changes take effect immediately.</span>
-            </div>
-
-            <div class="git-settings-label" style="margin-top: 20px;">Experimental Features</div>
-            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-              These features are in beta and may have limitations. Enable at your own discretion.
-            </div>
-
             <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="flex: 1;">
                 <div style="font-weight: 500; margin-bottom: 4px;">
@@ -785,31 +748,6 @@ export async function showAppSettings() {
         };
 
         elements.modalConfirm.addEventListener("click", handleConfirm, { once: true });
-      });
-    }
-
-    // Handle File Cache Size slider
-    const fileCacheSizeSlider = document.getElementById("file-cache-size-slider");
-    const fileCacheSizeValue = document.getElementById("file-cache-size-value");
-    if (fileCacheSizeSlider && fileCacheSizeValue) {
-      fileCacheSizeSlider.addEventListener("input", (e) => {
-        fileCacheSizeValue.textContent = `${e.target.value} files`;
-      });
-
-      fileCacheSizeSlider.addEventListener("change", async (e) => {
-        state.fileCacheSize = parseInt(e.target.value);
-        await saveSettingsImpl();
-        showToast(`File cache size set to ${state.fileCacheSize} files`, "success");
-      });
-    }
-
-    // Handle Virtual Scrolling toggle
-    const virtualScrollToggle = document.getElementById("virtual-scroll-toggle");
-    if (virtualScrollToggle) {
-      virtualScrollToggle.addEventListener("change", async (e) => {
-        state.enableVirtualScroll = e.target.checked;
-        await saveSettingsImpl();
-        showToast(state.enableVirtualScroll ? "Virtual scrolling enabled" : "Virtual scrolling disabled", "success");
       });
     }
 
