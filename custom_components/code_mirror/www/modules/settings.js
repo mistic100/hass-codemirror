@@ -175,7 +175,6 @@ export async function loadSettings() {
 
     // Experimental features
     state.enableSplitView = settings.enableSplitView || false; // default false (experimental)
-    state.onTabMode = settings.onTabMode || false; // default false
 
     state.fileTreeCollapsed = settings.fileTreeCollapsed || false;
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
@@ -275,7 +274,6 @@ export async function saveSettings() {
       breadcrumbStyle: state.breadcrumbStyle,
       fileTreeCollapsed: state.fileTreeCollapsed,
       enableSplitView: state.enableSplitView, // Experimental feature
-      onTabMode: state.onTabMode, // One Tab Mode
       rememberWorkspace: state.rememberWorkspace,
       // Performance settings
       fileCacheSize: state.fileCacheSize,

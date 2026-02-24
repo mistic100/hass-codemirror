@@ -289,17 +289,6 @@ export async function showAppSettings() {
               <input type="number" id="auto-save-delay-input" value="${state.autoSaveDelay}" min="500" max="10000" step="100" style="width: 80px; padding: 6px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); text-align: center;">
             </div>
 
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">One Tab Mode</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">When opening a file, auto-save and close all other tabs. Only the last opened file stays open.</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="one-tab-mode-toggle" ${state.onTabMode ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
             <div class="git-settings-label" style="margin-top: 20px;">Syntax Highlighting</div>
             <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Customize the font colors for the code editor</div>
 
@@ -668,20 +657,6 @@ export async function showAppSettings() {
         state.autoSaveDelay = parseInt(e.target.value);
         await saveSettingsImpl();
         showToast(`Auto-save delay set to ${state.autoSaveDelay}ms`, "success");
-      });
-    }
-
-    const oneTabModeToggle = document.getElementById("one-tab-mode-toggle");
-    if (oneTabModeToggle) {
-      oneTabModeToggle.addEventListener("change", async (e) => {
-        state.onTabMode = e.target.checked;
-        // Sync toolbar button if present
-        const btnOneTabMode = document.getElementById("btn-one-tab-mode");
-        if (btnOneTabMode) {
-          btnOneTabMode.classList.toggle("active", state.onTabMode);
-        }
-        await saveSettingsImpl();
-        showToast(state.onTabMode ? "One Tab Mode enabled" : "One Tab Mode disabled", "success");
       });
     }
 
