@@ -1,0 +1,12 @@
+{
+  "domain": "code_mirror",
+  "name": "CodeMirror",
+  "codeowners": ["@mistic100"],
+  "config_flow": true,
+  "dependencies": ["http", "frontend"],
+  "documentation": "https://github.com/mistic100/hass-codemirror",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/mistic100/hass-codemirror/issues",
+  "version": "1.0.0"
+}
