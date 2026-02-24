@@ -4,7 +4,7 @@
  * ============================================================================
  *
  * PURPOSE:
- * Handles preview rendering for non-code files including images, PDFs, videos,
+ * Handles preview rendering for non-code files including images, videos,
  * and markdown files. Provides specialized viewers for each file type with
  * appropriate controls and navigation.
  *
@@ -25,19 +25,13 @@
  *    - Create new renderXXXPreview(tab, filename) function
  *    - Build HTML for the preview with toolbar and viewer
  *    - Add event listeners for controls
- *    - Follow existing patterns (image/PDF/video)
+ *    - Follow existing patterns (image/video)
  *
  * 2. Adding image navigation controls:
  *    - Already implemented: previous/next buttons
  *    - Modify renderImagePreview() to add new controls
  *    - Filter files in same directory by extension
  *    - Use callbacks.openFile() to switch images
- *
- * 3. Adding PDF controls:
- *    - Modify renderPdfPreview() function
- *    - Use PDF.js API (already loaded)
- *    - Add to toolbar: zoom, rotate, search, etc.
- *    - Update page rendering logic
  *
  * 4. Enhancing markdown rendering:
  *    - Modify renderMarkdown() function
@@ -59,13 +53,11 @@
  * SUPPORTED FILE TYPES:
  * - Images: PNG, JPG, JPEG, GIF, BMP, WEBP, SVG, ICO
  * - Videos: MP4, WEBM, MOV, AVI, MKV, FLV, WMV, M4V
- * - PDFs: PDF files (using PDF.js)
  * - Markdown: .md files (custom renderer)
  *
  * ARCHITECTURE NOTES:
  * - Uses elements.assetPreview panel for all previews
  * - Binary content is base64 encoded from server
- * - PDF.js loaded globally for PDF rendering
  * - Markdown renderer is lightweight regex-based (no dependencies)
  * - Image navigation finds files in same directory
  * - All previews include download functionality
@@ -111,7 +103,7 @@ export function registerAssetPreviewCallbacks(cb) {
 }
 
 /**
- * Renders preview for binary assets (images, PDFs, videos)
+ * Renders preview for binary assets (images, videos)
  * @param {Object} tab - The tab object containing file data
  * @param {HTMLElement} container - The preview container element (optional, defaults to elements.assetPreview)
  */
@@ -127,8 +119,6 @@ export function renderAssetPreview(tab, container = null) {
 
   if (tab.isImage) {
     renderImagePreview(tab, filename);
-  } else if (tab.isPdf) {
-    renderPdfPreview(tab, filename);
   } else if (tab.isVideo) {
     renderVideoPreview(tab, filename);
   }
@@ -162,7 +152,7 @@ function renderImagePreview(tab, filename) {
 
   elements.assetPreview.innerHTML = `
     <div class="image-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
-      <div class="pdf-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
+      <div class="image-viewer-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="material-icons" style="color: var(--accent-color);">image</span>
           <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${filename}</span>
@@ -239,121 +229,6 @@ function renderImagePreview(tab, filename) {
 }
 
 /**
- * Renders PDF preview with page navigation
- */
-function renderPdfPreview(tab, filename) {
-  elements.assetPreview.style.padding = "0";
-
-  const binaryString = atob(tab.content);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-
-  // Setup PDF.js
-  const pdfjsLib = window['pdfjs-dist/build/pdf'];
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  elements.assetPreview.innerHTML = `
-    <div class="pdf-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
-      <div class="pdf-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="material-icons" style="color: var(--error-color);">picture_as_pdf</span>
-          <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${filename}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 13px;">
-            <button id="pdf-prev" class="toolbar-btn" style="min-width: 32px; height: 32px; padding: 0;"><span class="material-icons">chevron_left</span></button>
-            <span>Page <span id="pdf-page-num">1</span> / <span id="pdf-page-count">-</span></span>
-            <button id="pdf-next" class="toolbar-btn" style="min-width: 32px; height: 32px; padding: 0;"><span class="material-icons">chevron_right</span></button>
-          </div>
-          <div style="width: 1px; height: 24px; background: var(--borderColor);"></div>
-          <button id="btn-download-pdf" class="toolbar-btn" title="Download"><span class="material-icons">download</span></button>
-        </div>
-      </div>
-      <div id="pdf-viewer-viewport" style="flex-grow: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: var(--bg-primary);">
-        <canvas id="pdf-canvas" style="box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 100%; height: auto; display: block;"></canvas>
-      </div>
-    </div>
-  `;
-
-  let pdfDoc = null;
-  let pageNum = 1;
-  let pageRendering = false;
-  let pageNumPending = null;
-  const scale = 1.5;
-  const canvas = document.getElementById('pdf-canvas');
-  const ctx = canvas.getContext('2d');
-
-  async function renderPage(num) {
-    pageRendering = true;
-    const page = await pdfDoc.getPage(num);
-    const dpr = window.devicePixelRatio || 1;
-    const viewport = page.getViewport({ scale: scale * dpr });
-
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-
-    // Set display size
-    const styleViewport = page.getViewport({ scale });
-    canvas.style.width = styleViewport.width + 'px';
-    canvas.style.height = styleViewport.height + 'px';
-
-    const renderContext = {
-      canvasContext: ctx,
-      viewport: viewport
-    };
-    const renderTask = page.render(renderContext);
-
-    await renderTask.promise;
-    pageRendering = false;
-    if (pageNumPending !== null) {
-      renderPage(pageNumPending);
-      pageNumPending = null;
-    }
-    document.getElementById('pdf-page-num').textContent = num;
-  }
-
-  function queueRenderPage(num) {
-    if (pageRendering) {
-      pageNumPending = num;
-    } else {
-      renderPage(num);
-    }
-  }
-
-  // Load PDF
-  const loadingTask = pdfjsLib.getDocument({ data: bytes });
-  loadingTask.promise.then(pdf => {
-    pdfDoc = pdf;
-    document.getElementById('pdf-page-count').textContent = pdf.numPages;
-    renderPage(pageNum);
-  }).catch(err => {
-    console.error('PDF.js error:', err);
-    elements.assetPreview.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--error-color);">Failed to load PDF: ${err.message}</div>`;
-  });
-
-  document.getElementById('pdf-prev').addEventListener('click', () => {
-    if (pageNum <= 1) return;
-    pageNum--;
-    queueRenderPage(pageNum);
-  });
-
-  document.getElementById('pdf-next').addEventListener('click', () => {
-    if (pageNum >= pdfDoc.numPages) return;
-    pageNum++;
-    queueRenderPage(pageNum);
-  });
-
-  document.getElementById("btn-download-pdf")?.addEventListener("click", () => {
-    // Use downloadContent to download from tab content instead of server
-    if (callbacks.downloadContent) {
-      callbacks.downloadContent(filename, tab.content, true, tab.mimeType);
-    }
-  });
-}
-
-/**
  * Renders video preview with controls
  */
 function renderVideoPreview(tab, filename) {
@@ -362,7 +237,7 @@ function renderVideoPreview(tab, filename) {
 
   elements.assetPreview.innerHTML = `
     <div class="video-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
-      <div class="pdf-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
+      <div class="video-viewer-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="material-icons" style="color: var(--accent-color);">movie</span>
           <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px;">${filename}</span>

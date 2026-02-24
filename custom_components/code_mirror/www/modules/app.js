@@ -616,7 +616,7 @@ export async function loadFile(path) {
       }
 
       // We only enforce the 2MB warning for TEXT files that would be loaded into the editor.
-      // Images and PDFs are handled as binary previews and are generally safe to load at larger sizes.
+      // Images are handled as binary previews and are generally safe to load at larger sizes.
       if (isText && fileInfo && fileInfo.size > TEXT_FILE_WARNING_SIZE) {
           const confirmed = await showConfirmDialog({
               title: "Large File Detected",
@@ -756,12 +756,11 @@ export async function openFile(path, forceReload = false, noActivate = false) {
     const filename = path.split("/").pop();
     const ext = filename.split(".").pop().toLowerCase();
     const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
-    const isPdf = ext === "pdf";
     const isVideo = ["mp4", "webm", "mov", "avi", "mkv", "flv", "wmv", "m4v"].includes(ext);
     const isBinary = !isTextFile(path);
 
-    // If it's a binary file that's not an image, PDF, or video, just download it
-    if (isBinary && !isImage && !isPdf && !isVideo) {
+    // If it's a binary file that's not an image, or video, just download it
+    if (isBinary && !isImage && !isVideo) {
       downloadFileByPath(path);
       return;
     }
@@ -784,7 +783,6 @@ export async function openFile(path, forceReload = false, noActivate = false) {
             console.warn("One Tab Mode: could not auto-save", t.path, e);
           }
         }
-        if (t._blobUrl) URL.revokeObjectURL(t._blobUrl);
       }
       state.openTabs = [];
       state.activeTab = null;
@@ -823,7 +821,6 @@ export async function openFile(path, forceReload = false, noActivate = false) {
           scroll: null,
           isBinary: isBinary,
           isImage: isImage,
-          isPdf: isPdf,
           isVideo: isVideo,
           mimeType: data.mime_type
         };
@@ -1198,11 +1195,6 @@ export function closeTab(tab, force = false) {
     }
 
     const index = state.openTabs.indexOf(tab);
-    
-    // Revoke blob URL if it exists (for PDFs)
-    if (tab._blobUrl) {
-        URL.revokeObjectURL(tab._blobUrl);
-    }
 
     state.openTabs.splice(index, 1);
 

@@ -275,13 +275,6 @@ export async function closeAllTabs(force = false) {
     }
   }
 
-  // Revoke all blob URLs
-  state.openTabs.forEach(tab => {
-    if (tab._blobUrl) {
-      URL.revokeObjectURL(tab._blobUrl);
-    }
-  });
-
   state.openTabs = [];
   state.activeTab = null;
 
@@ -324,13 +317,6 @@ export async function closeOtherTabs(keepTab, force = false) {
     }
   }
 
-  // Revoke blob URLs for tabs being closed
-  otherTabs.forEach(tab => {
-    if (tab._blobUrl) {
-      URL.revokeObjectURL(tab._blobUrl);
-    }
-  });
-
   state.openTabs = [keepTab];
 
   if (state.activeTab !== keepTab) {
@@ -358,13 +344,6 @@ export async function closeTabsToRight(tab, force = false) {
       return false;
     }
   }
-
-  // Revoke blob URLs
-  tabsToClose.forEach(t => {
-    if (t._blobUrl) {
-      URL.revokeObjectURL(t._blobUrl);
-    }
-  });
 
   state.openTabs = state.openTabs.slice(0, index + 1);
 
