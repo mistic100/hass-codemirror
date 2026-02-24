@@ -193,26 +193,6 @@ export async function showAppSettings() {
             </div>
 
             <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="font-weight: 500; margin-bottom: 8px;">Font Family</div>
-              <select id="font-family-select" class="git-settings-input" style="width: 100%; margin-bottom: 8px;">
-                  <option value="'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ${state.fontFamily === "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace" ? 'selected' : ''}>SF Mono (Default)</option>
-                  <option value="'Fira Code', monospace" ${state.fontFamily === "'Fira Code', monospace" ? 'selected' : ''}>Fira Code</option>
-                  <option value="'JetBrains Mono', monospace" ${state.fontFamily === "'JetBrains Mono', monospace" ? 'selected' : ''}>JetBrains Mono</option>
-                  <option value="'Source Code Pro', monospace" ${state.fontFamily === "'Source Code Pro', monospace" ? 'selected' : ''}>Source Code Pro</option>
-                  <option value="'Roboto Mono', monospace" ${state.fontFamily === "'Roboto Mono', monospace" ? 'selected' : ''}>Roboto Mono</option>
-                  <option value="'Ubuntu Mono', monospace" ${state.fontFamily === "'Ubuntu Mono', monospace" ? 'selected' : ''}>Ubuntu Mono</option>
-                  <option value="'Monaco', 'Courier New', monospace" ${state.fontFamily === "'Monaco', 'Courier New', monospace" ? 'selected' : ''}>Monaco</option>
-                  <option value="'Consolas', monospace" ${state.fontFamily === "'Consolas', monospace" ? 'selected' : ''}>Consolas</option>
-                  <option value="'DM Mono', monospace" ${state.fontFamily === "'DM Mono', monospace" ? 'selected' : ''}>DM Mono</option>
-                  <option value="'Reddit Mono', monospace" ${state.fontFamily === "'Reddit Mono', monospace" ? 'selected' : ''}>Reddit Mono</option>
-                  <option value="'Libertinus Mono', monospace" ${state.fontFamily === "'Libertinus Mono', monospace" ? 'selected' : ''}>Libertinus Mono</option>
-                  <option value="'Azeret Mono', monospace" ${state.fontFamily === "'Azeret Mono', monospace" ? 'selected' : ''}>Azeret Mono</option>
-                  <option value="monospace" ${state.fontFamily === "monospace" ? 'selected' : ''}>System Monospace</option>
-                </select>
-              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Choose a monospace font for the code editor</div>
-            </div>
-
-            <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="font-weight: 500; margin-bottom: 8px;">Tab Size (Indentation)</div>
               <select id="tab-size-select" class="git-settings-input" style="width: 100%; margin-bottom: 8px;">
                 <option value="2" ${state.tabSize === 2 ? 'selected' : ''}>2 spaces (Home Assistant Standard)</option>
@@ -497,26 +477,6 @@ export async function showAppSettings() {
 
         await saveSettingsImpl();
         showToast(`Font size set to ${state.fontSize}px`, "success");
-      });
-    }
-
-    // Handle Font Family
-    const fontFamilySelect = document.getElementById("font-family-select");
-    if (fontFamilySelect) {
-      fontFamilySelect.addEventListener("change", async (e) => {
-        state.fontFamily = e.target.value;
-
-        // Apply to all editors immediately
-        if (callbacks.applyEditorSettings) {
-          callbacks.applyEditorSettings();
-        }
-
-        // Refresh all editors
-        if (state.primaryEditor) state.primaryEditor.refresh();
-        if (state.secondaryEditor) state.secondaryEditor.refresh();
-
-        await saveSettingsImpl();
-        showToast("Font family updated", "success");
       });
     }
 

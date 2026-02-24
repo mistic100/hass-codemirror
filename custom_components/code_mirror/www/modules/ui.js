@@ -637,7 +637,6 @@ export function applyEditorSettings() {
       const primaryWrapper = state.primaryEditor.getWrapperElement();
       if (primaryWrapper) {
         primaryWrapper.style.fontSize = state.fontSize + 'px';
-        primaryWrapper.style.fontFamily = state.fontFamily;
       }
       state.primaryEditor.setOption('lineNumbers', state.showLineNumbers);
       state.primaryEditor.setOption('lineWrapping', state.wordWrap);
@@ -653,7 +652,6 @@ export function applyEditorSettings() {
       const secondaryWrapper = state.secondaryEditor.getWrapperElement();
       if (secondaryWrapper) {
         secondaryWrapper.style.fontSize = state.fontSize + 'px';
-        secondaryWrapper.style.fontFamily = state.fontFamily;
       }
       state.secondaryEditor.setOption('lineNumbers', state.showLineNumbers);
       state.secondaryEditor.setOption('lineWrapping', state.wordWrap);
@@ -669,7 +667,6 @@ export function applyEditorSettings() {
       const editorWrapper = state.editor.getWrapperElement();
       if (editorWrapper) {
         editorWrapper.style.fontSize = state.fontSize + 'px';
-        editorWrapper.style.fontFamily = state.fontFamily;
       }
       state.editor.setOption('lineNumbers', state.showLineNumbers);
       state.editor.setOption('lineWrapping', state.wordWrap);

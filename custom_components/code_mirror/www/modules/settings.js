@@ -61,7 +61,7 @@
  *
  * 1. UI Customization:
  *    - theme, themePreset
- *    - fontSize, fontFamily, sidebarWidth
+ *    - fontSize, sidebarWidth
  *    - tabPosition
  *    - showToasts, showHidden, showRecentFiles
  *
@@ -150,7 +150,6 @@ export async function loadSettings() {
     // New UI customization settings
     state.themePreset = settings.themePreset || "dark";
     state.fontSize = parseInt(settings.fontSize) || 14;
-    state.fontFamily = settings.fontFamily || "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace";
     state.tabSize = parseInt(settings.tabSize) || 2;
     state.indentWithTabs = settings.indentWithTabs || false;
     state.sidebarWidth = parseInt(settings.sidebarWidth) || 320;
@@ -246,7 +245,6 @@ export async function saveSettings() {
       // New UI customization settings
       themePreset: state.themePreset,
       fontSize: state.fontSize,
-      fontFamily: state.fontFamily,
       tabSize: state.tabSize,
       indentWithTabs: state.indentWithTabs,
       sidebarWidth: state.sidebarWidth,

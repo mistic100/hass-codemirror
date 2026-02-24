@@ -80,7 +80,6 @@
  *
  * EDITOR SETTINGS:
  * - fontSize: Editor font size
- * - fontFamily: Editor font family
  * - tabSize: Tab width in spaces
  * - indentWithTabs: Use tabs vs spaces
  * - wordWrap: Line wrapping
@@ -165,7 +164,6 @@ export const state = {
 
   themePreset: "dark",
   fontSize: 14,
-  fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
   tabSize: 2,
   indentWithTabs: false,
   sidebarWidth: 320,

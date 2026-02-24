@@ -66,7 +66,6 @@
  *
  * EDITOR CONFIGURATION (from state):
  * - fontSize: Editor font size (default: 14px)
- * - fontFamily: Editor font family
  * - tabSize: Tab width in spaces (default: 2)
  * - indentWithTabs: Use tabs vs spaces
  * - wordWrap: Enable line wrapping
