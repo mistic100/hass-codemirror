@@ -231,11 +231,6 @@ import {
 } from './recent-files.js';
 
 import {
-  updateBreadcrumb as updateBreadcrumbImpl,
-  expandFolderInTree as expandFolderInTreeImpl
-} from './breadcrumb.js';
-
-import {
   initResizeHandle as initResizeHandleImpl,
   registerResizeCallbacks
 } from './resize.js';
@@ -1015,9 +1010,6 @@ export function activateTab(tab, skipSave = false) {
       elements.filePath.textContent = tab.path;
     }
 
-    // Update breadcrumb navigation
-    updateBreadcrumb(tab.path);
-
     // Update current folder path
     state.currentFolderPath = tab.path.split("/").slice(0, -1).join("/");
 
@@ -1037,14 +1029,6 @@ export const toggleMarkdownPreview = toggleMarkdownPreviewImpl;
 export function detectIndentation(content) {
   return detectIndentationImpl(content);
 }
-
-  // ============================================
-  // Breadcrumb Navigation
-  // ============================================
-
-// Re-export breadcrumb module functions
-export const updateBreadcrumb = updateBreadcrumbImpl;
-export const expandFolderInTree = expandFolderInTreeImpl;
 
 // Re-export sidebar module functions
 export const showSidebar = showSidebarImpl;
@@ -1201,10 +1185,6 @@ export function closeTab(tab, force = false) {
         }
         if (elements.filePath) {
           elements.filePath.textContent = "";
-        }
-        // Clear breadcrumb
-        if (elements.breadcrumb) {
-          elements.breadcrumb.innerHTML = "";
         }
       }
     }

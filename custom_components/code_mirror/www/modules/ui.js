@@ -516,8 +516,6 @@ export function initElements() {
     elements.assetPreview = document.getElementById("asset-preview");
     elements.welcomeScreen = document.getElementById("welcome-screen");
     elements.filePath = document.getElementById("file-path");
-    elements.breadcrumb = document.getElementById("breadcrumb");
-    elements.breadcrumbCopy = document.getElementById("breadcrumb-copy");
     elements.fileSearch = document.getElementById("file-search");
     elements.btnContentSearch = document.getElementById("btn-content-search");
     elements.toastContainer = document.getElementById("toast-container");
@@ -700,9 +698,7 @@ export function applyLayoutSettings() {
     document.body.classList.toggle('file-tree-no-icons', !state.fileTreeShowIcons);
 
     // Show/hide folder navigation elements based on tree mode
-    const breadcrumb = document.getElementById("breadcrumb");
     const backBtn = document.getElementById("btn-nav-back");
-    if (breadcrumb) breadcrumb.style.display = state.treeCollapsableMode ? "none" : "";
     if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
 }
 

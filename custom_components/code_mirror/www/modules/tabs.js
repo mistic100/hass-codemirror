@@ -294,9 +294,6 @@ export async function closeAllTabs(force = false) {
   if (elements.filePath) {
     elements.filePath.textContent = "";
   }
-  if (elements.breadcrumb) {
-    elements.breadcrumb.innerHTML = "";
-  }
 
   renderTabs();
   if (callbacks.renderFileTree) callbacks.renderFileTree();

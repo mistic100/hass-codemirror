@@ -579,33 +579,6 @@ export function initEventListeners() {
       });
     }
 
-    // Breadcrumb copy button
-    if (elements.breadcrumbCopy) {
-      elements.breadcrumbCopy.addEventListener("click", () => {
-        const path = elements.filePath?.textContent;
-        if (path) {
-          navigator.clipboard.writeText(path).then(() => {
-            // Visual feedback
-            elements.breadcrumbCopy.classList.add("copied");
-            const icon = elements.breadcrumbCopy.querySelector(".material-icons");
-            if (icon) {
-              const originalIcon = icon.textContent;
-              icon.textContent = "check";
-              setTimeout(() => {
-                icon.textContent = originalIcon;
-                elements.breadcrumbCopy.classList.remove("copied");
-              }, 2000);
-            }
-            showToast("Path copied to clipboard", "success");
-          }).catch(() => {
-            showToast("Failed to copy path", "error");
-          });
-        } else {
-          showToast("No file open", "warning");
-        }
-      });
-    }
-
     // Shortcuts overlay close button
     if (elements.shortcutsClose) {
       elements.shortcutsClose.addEventListener("click", hideShortcuts);

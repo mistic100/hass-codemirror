@@ -997,7 +997,6 @@ export async function navigateToFolder(folderPath) {
 
   // Render current folder
   renderFileTree();
-  updateFolderNavigationBreadcrumb();
   updateNavigationBackButton();
 }
 
@@ -1011,61 +1010,7 @@ export function navigateBack() {
   state.currentNavigationPath = previousPath;
 
   renderFileTree();
-  updateFolderNavigationBreadcrumb();
   updateNavigationBackButton();
-}
-
-/**
- * Update folder navigation breadcrumb
- */
-export function updateFolderNavigationBreadcrumb() {
-  const breadcrumb = document.getElementById("breadcrumb");
-  if (!breadcrumb) return;
-
-  breadcrumb.innerHTML = "";
-
-  // Home (root)
-  const homeItem = document.createElement("span");
-  homeItem.className = `breadcrumb-item breadcrumb-home ${state.currentNavigationPath === "" ? "active" : ""}`;
-  homeItem.dataset.path = "";
-  homeItem.innerHTML = `
-    <span class="material-icons">home</span>
-    <span class="breadcrumb-text">Home</span>
-  `;
-  homeItem.addEventListener("click", () => navigateToFolder(""));
-  breadcrumb.appendChild(homeItem);
-
-  // Path segments
-  if (state.currentNavigationPath) {
-    const parts = state.currentNavigationPath.split("/");
-    let currentPath = "";
-
-    parts.forEach((part, index) => {
-      // Add separator
-      const separator = document.createElement("span");
-      separator.className = "breadcrumb-separator";
-      separator.textContent = "›";
-      breadcrumb.appendChild(separator);
-
-      // Add breadcrumb item
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      const isLast = index === parts.length - 1;
-
-      const item = document.createElement("span");
-      item.className = `breadcrumb-item ${isLast ? "active" : ""}`;
-      item.dataset.path = currentPath;
-      item.textContent = part;
-
-      const itemPath = currentPath; // Capture for closure
-      item.addEventListener("click", () => {
-        // Navigate to this level
-        state.navigationHistory = []; // Clear history when clicking breadcrumb
-        navigateToFolder(itemPath);
-      });
-
-      breadcrumb.appendChild(item);
-    });
-  }
 }
 
 /**

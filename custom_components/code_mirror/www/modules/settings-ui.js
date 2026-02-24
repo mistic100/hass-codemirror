@@ -724,9 +724,7 @@ export async function showAppSettings() {
         }
 
         // Show/hide nav elements based on mode
-        const breadcrumb = document.getElementById("breadcrumb");
         const backBtn = document.getElementById("btn-nav-back");
-        if (breadcrumb) breadcrumb.style.display = state.treeCollapsableMode ? "none" : "";
         if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
 
         showToast(state.treeCollapsableMode ? "Collapsable tree mode enabled" : "Folder navigation mode enabled", "success");

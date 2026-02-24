@@ -62,7 +62,7 @@
  * 1. UI Customization:
  *    - theme, themePreset
  *    - fontSize, fontFamily, sidebarWidth
- *    - tabPosition, breadcrumbStyle
+ *    - tabPosition
  *    - showToasts, showHidden, showRecentFiles
  *
  * 2. Editor Settings:
@@ -170,7 +170,6 @@ export async function loadSettings() {
     // Apply tree mode to lazyLoadingEnabled
     state.lazyLoadingEnabled = !state.treeCollapsableMode;
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
-    state.breadcrumbStyle = settings.breadcrumbStyle || "path";
     state.showToasts = settings.showToasts !== false; // default true
 
     // Experimental features
@@ -271,7 +270,6 @@ export async function saveSettings() {
       fileTreeShowIcons: state.fileTreeShowIcons,
       treeCollapsableMode: state.treeCollapsableMode,
       recentFilesLimit: state.recentFilesLimit,
-      breadcrumbStyle: state.breadcrumbStyle,
       fileTreeCollapsed: state.fileTreeCollapsed,
       enableSplitView: state.enableSplitView, // Experimental feature
       rememberWorkspace: state.rememberWorkspace,

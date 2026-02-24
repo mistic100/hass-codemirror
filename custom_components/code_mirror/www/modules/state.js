@@ -94,7 +94,6 @@
  * - themePreset: Theme preset name
  * - sidebarWidth: Sidebar width (px)
  * - tabPosition: Tab bar position
- * - breadcrumbStyle: Breadcrumb display style
  * - fileTreeCompact: Compact file tree
  * - fileTreeShowIcons: Show file icons
  * - showToasts: Show toast notifications
@@ -187,7 +186,6 @@ export const state = {
   fileTreeCompact: false,
   fileTreeShowIcons: true,
   recentFilesLimit: 10,
-  breadcrumbStyle: "path",
   fileTreeCollapsed: false,
   rememberWorkspace: true,
   showToasts: true,

@@ -277,87 +277,6 @@
       min-width: 8px;
     }
 
-    /* Breadcrumb Navigation */
-    .breadcrumb-container {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0 8px;
-      max-width: 400px;
-      flex-shrink: 1;
-    }
-
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      color: var(--text-secondary);
-      overflow: hidden;
-      flex: 1;
-    }
-
-    .breadcrumb-item {
-      display: flex;
-      align-items: center;
-      white-space: nowrap;
-      transition: all 0.15s;
-    }
-
-    .breadcrumb-item:last-child {
-      color: var(--text-primary);
-      font-weight: 500;
-    }
-
-    .breadcrumb-link {
-      padding: 4px 6px;
-      border-radius: 4px;
-      cursor: pointer;
-      text-decoration: none;
-      color: inherit;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .breadcrumb-link:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .breadcrumb-separator {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin: 0 2px;
-      user-select: none;
-    }
-
-    .breadcrumb-copy-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: transparent;
-      border-radius: 4px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .breadcrumb-copy-btn:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .breadcrumb-copy-btn .material-icons {
-      font-size: 16px;
-    }
-
-    .breadcrumb-copy-btn.copied {
-      color: var(--success-color);
-    }
-
     .file-path-display {
       font-size: 12px;
       color: var(--text-secondary);
@@ -819,47 +738,6 @@
     .nav-back-btn .material-icons {
       font-size: 18px;
       line-height: 1;
-    }
-
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      flex: 1;
-      overflow-x: auto;
-      gap: 4px;
-      font-size: 13px;
-    }
-
-    .breadcrumb-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      white-space: nowrap;
-      color: var(--text-secondary);
-      transition: background 0.1s;
-    }
-
-    .breadcrumb-item:hover {
-      background: var(--bg-hover);
-      color: var(--text-primary);
-    }
-
-    .breadcrumb-item.active {
-      color: var(--text-primary);
-      font-weight: 500;
-    }
-
-    .breadcrumb-item .material-icons {
-      font-size: 16px;
-    }
-
-    .breadcrumb-separator {
-      color: var(--text-secondary);
-      font-size: 14px;
-      margin: 0 4px;
     }
 
     .tree-action-btn {
@@ -2188,11 +2066,6 @@
         padding: 0 2px;
       }
 
-      /* Reduce breadcrumb max-width */
-      .breadcrumb-container {
-        max-width: 200px;
-      }
-
       /* Adjust search widget for tablet */
       .search-widget {
         width: 300px;
@@ -2394,10 +2267,6 @@
       }
 
       .file-path-display {
-        display: none;
-      }
-
-      .breadcrumb-container {
         display: none;
       }
 
@@ -4069,13 +3938,6 @@
       </button>
     </div>
 
-    <div class="breadcrumb-container" id="breadcrumb-container">
-      <div class="breadcrumb" id="breadcrumb"></div>
-      <button class="breadcrumb-copy-btn" id="breadcrumb-copy" title="Copy full path">
-        <span class="material-icons">content_copy</span>
-      </button>
-    </div>
-
     <div class="toolbar-spacer"></div>
 
     <div class="toolbar-group" id="group-markdown" style="display: none;">
@@ -4166,12 +4028,6 @@
         <button class="nav-back-btn" id="btn-nav-back" title="Go back (Alt+Left)" disabled>
           <span class="material-icons">arrow_back</span>
         </button>
-        <div class="breadcrumb" id="breadcrumb">
-          <span class="breadcrumb-item breadcrumb-home" data-path="">
-            <span class="material-icons">home</span>
-            <span class="breadcrumb-text">Home</span>
-          </span>
-        </div>
         <button class="nav-back-btn" id="btn-file-tree-collapse" title="Collapse file tree" style="margin-left:auto;flex-shrink:0">
           <span class="material-icons">expand_less</span>
         </button>
