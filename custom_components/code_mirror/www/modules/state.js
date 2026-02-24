@@ -90,7 +90,7 @@
  * - autoSaveDelay: Auto-save delay (ms)
  *
  * UI CUSTOMIZATION:
- * - themePreset: Theme preset name
+ * - theme: Theme name
  * - sidebarWidth: Sidebar width (px)
  * - tabPosition: Tab bar position
  * - fileTreeCompact: Compact file tree
@@ -162,7 +162,6 @@ export const state = {
   selectionMode: false,
   selectedItems: new Set(),
 
-  themePreset: "dark",
   fontSize: 14,
   tabSize: 2,
   indentWithTabs: false,

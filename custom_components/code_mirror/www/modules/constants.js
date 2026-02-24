@@ -11,7 +11,6 @@
  * EXPORTED CONSTANTS:
  * - API_BASE: Base URL for API endpoints
  * - MOBILE_BREAKPOINT: Screen width for mobile detection (px)
- * - STORAGE_KEY: LocalStorage key for settings
  * - MAX_RECENT_FILES: Maximum recent files to track
  * - TEXT_FILE_EXTENSIONS: Set of text file extensions
  * - BINARY_FILE_EXTENSIONS: Set of binary file extensions
@@ -43,7 +42,6 @@
  * INTEGRATION POINTS:
  * - api.js: Uses API_BASE
  * - state.js: Uses MOBILE_BREAKPOINT
- * - settings.js: Uses STORAGE_KEY
  * - utils.js: Uses file extension sets
  * - recent-files.js: Uses MAX_RECENT_FILES
  *
@@ -77,7 +75,6 @@
 
 export const API_BASE = "/api/code_mirror";
 export const MOBILE_BREAKPOINT = 768;
-export const STORAGE_KEY = "code_mirror_settings";
 export const MAX_RECENT_FILES = 10;
 
 // File Size Limits
@@ -90,7 +87,7 @@ export const TEXT_FILE_EXTENSIONS = new Set([
   "pem", "crt", "key", "cpp", "h", "gitignore", "lock"
 ]);
 
-export const THEME_PRESETS = {
+export const THEMES = {
   dark: {
     name: "Dark (Default)",
     colors: {

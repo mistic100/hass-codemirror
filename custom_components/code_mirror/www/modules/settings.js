@@ -60,7 +60,7 @@
  * SETTINGS CATEGORIES:
  *
  * 1. UI Customization:
- *    - theme, themePreset
+ *    - theme
  *    - fontSize, sidebarWidth
  *    - tabPosition
  *    - showToasts, showHidden, showRecentFiles
@@ -112,7 +112,7 @@
  */
 import { state, elements } from './state.js';
 import { fetchWithAuth } from './api.js';
-import { API_BASE, STORAGE_KEY } from './constants.js';
+import { API_BASE } from './constants.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
@@ -148,7 +148,6 @@ export async function loadSettings() {
     state.syntaxTheme = settings.syntaxTheme || 'dracula';
 
     // New UI customization settings
-    state.themePreset = settings.themePreset || "dark";
     state.fontSize = parseInt(settings.fontSize) || 14;
     state.tabSize = parseInt(settings.tabSize) || 2;
     state.indentWithTabs = settings.indentWithTabs || false;
@@ -243,7 +242,6 @@ export async function saveSettings() {
       openTabs: openTabsState,
       activeTabPath: activeTabPath,
       // New UI customization settings
-      themePreset: state.themePreset,
       fontSize: state.fontSize,
       tabSize: state.tabSize,
       indentWithTabs: state.indentWithTabs,
@@ -278,9 +276,6 @@ export async function saveSettings() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "save_settings", settings: settings }),
     }).catch(e => console.error("Failed to save settings to server:", e));
-
-    // Save to local storage (cache/fallback)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 
     return savePromise;
   } catch (e) {

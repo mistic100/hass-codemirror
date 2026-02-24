@@ -28,7 +28,6 @@
  * Themes:
  * - applyTheme() - Apply current theme
  * - setTheme(theme) - Set theme (dark/light)
- * - setThemePreset(preset) - Set theme preset
  * - applySyntaxColors() - Apply syntax highlighting
  *
  * HOW TO ADD NEW FEATURES:
@@ -46,8 +45,8 @@
  *    - Return promise for user input
  *    - Example: showImageCropModal()
  *
- * 3. Adding a new theme preset:
- *    - Add to THEME_PRESETS in constants.js
+ * 3. Adding a new theme:
+ *    - Add to THEME in constants.js
  *    - Define CSS variables
  *    - Test in both dark/light modes
  *    - Add to settings UI
@@ -115,26 +114,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
-import { THEME_PRESETS, SYNTAX_THEMES } from './constants.js';
-import { lightenColor } from './utils.js';
-
-const HA_VAR_MAPPING = {
-    '--bg-primary': '--primary-background-color',
-    '--bg-secondary': '--card-background-color',
-    '--bg-tertiary': '--secondary-background-color',
-    '--bg-hover': '--secondary-background-color', // often used for hover
-    '--text-primary': '--primary-text-color',
-    '--text-secondary': '--secondary-text-color',
-    '--text-muted': '--disabled-text-color',
-    '--border-color': '--divider-color',
-    '--accent-color': '--accent-color',
-    '--accent-hover': '--primary-color', // Fallback
-    '--error-color': '--error-color',
-    '--success-color': '--success-color',
-    '--warning-color': '--warning-color',
-    '--modal-bg': '--card-background-color',
-    '--input-bg': '--primary-background-color'
-};
+import { THEMES, SYNTAX_THEMES } from './constants.js';
 
 let callbacks = {
     saveSettings: null
@@ -142,13 +122,6 @@ let callbacks = {
 
 export function registerUICallbacks(cb) {
     callbacks = { ...callbacks, ...cb };
-}
-
-export function getEffectiveTheme() {
-  if (state.theme === "auto") {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  }
-  return state.theme;
 }
 
 export function applySyntaxColors() {
@@ -191,10 +164,7 @@ export function applySyntaxColors() {
 }
 
 export function applyTheme() {
-  const effectiveTheme = getEffectiveTheme();
-  // If auto, pick base based on effective theme (dark/light)
-  // If not auto, use the preset's definitions
-  const preset = THEME_PRESETS[state.themePreset] || THEME_PRESETS.dark;
+  const preset = THEMES[state.theme] || THEMES.dark;
   
   const root = document.documentElement;
   const colors = preset.colors;
@@ -228,8 +198,7 @@ export function applyTheme() {
   root.style.setProperty('--cm-line-number-color', colors.textMuted);
   root.style.setProperty('--cm-fold-color', colors.textMuted);
   
-  document.body.setAttribute("data-theme", effectiveTheme);
-  document.body.setAttribute("data-theme-preset", state.themePreset);
+  document.body.setAttribute("data-theme", state.theme);
 
   // Update CodeMirror theme
   if (state.editor) {
@@ -247,14 +216,14 @@ function updateThemeToggleDisplay() {
         light: "Light", dark: "Dark",
     };
 
-    const displayKey = state.themePreset;
+    const displayKey = state.theme;
 
-    if (elements.themeIcon) elements.themeIcon.textContent = themeIcons[displayKey] || "dark_mode";
-    if (elements.themeLabel) elements.themeLabel.textContent = themeLabels[displayKey] || "Dark";
+    if (elements.themeIcon) elements.themeIcon.textContent = themeIcons[displayKey] || themeIcons.dark;
+    if (elements.themeLabel) elements.themeLabel.textContent = themeLabels[displayKey] || themeLabels.dark;
 
     document.querySelectorAll(".theme-menu-item").forEach(item => {
       const itemTheme = item.dataset.theme;
-      const isActive = itemTheme === state.themePreset;
+      const isActive = itemTheme === state.theme;
       item.classList.toggle("active", isActive);
     });
 }
@@ -691,20 +660,6 @@ export function applyLayoutSettings() {
     document.body.setAttribute('data-tab-position', state.tabPosition);
     document.body.classList.toggle('file-tree-compact', state.fileTreeCompact);
     document.body.classList.toggle('file-tree-no-icons', !state.fileTreeShowIcons);
-}
-
-export function setThemePreset(preset) {
-    state.themePreset = preset;
-    if (preset === 'light') {
-      state.theme = 'light';
-    } else if (preset === 'dark') {
-      state.theme = 'dark';
-    } else {
-        // Fallback for new themes or custom
-        state.theme = 'dark';
-    }
-    applyTheme();
-    if (callbacks.saveSettings) callbacks.saveSettings();
 }
 
 export function setTheme(theme) {

@@ -73,8 +73,7 @@ import { API_BASE } from './constants.js';
 import { fetchWithAuth } from './api.js';
 import { 
     showToast, showGlobalLoading, hideGlobalLoading, showModal, 
-    showConfirmDialog, hideModal, confirmModal, applyTheme, 
-    setThemePreset, setTheme 
+    showConfirmDialog, hideModal, confirmModal, setTheme
 } from './ui.js';
 import { isMobile, isTextFile } from './utils.js';
 import { validateYaml } from './file-operations.js';
@@ -742,7 +741,7 @@ export function initEventListeners() {
         e.preventDefault(); // Prevent ghost clicks on touch
         e.stopPropagation();
         const theme = item.dataset.theme;
-        setThemePreset(theme);
+        setTheme(theme);
         elements.themeMenu.classList.remove("visible");
       };
 

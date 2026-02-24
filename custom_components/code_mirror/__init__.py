@@ -27,9 +27,9 @@ from .websocket import async_register_websockets, async_stop_watcher
 
 _LOGGER = logging.getLogger(__name__)
 
-# Storage version for credentials
+# Storage version for settings
 STORAGE_VERSION = 1
-STORAGE_KEY = f"{DOMAIN}.credentials"
+STORAGE_KEY = f"{DOMAIN}.storage"
 
 # This integration is configured via config entries (UI)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -44,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {}
 
-    # Initialize credential storage
+    # Initialize settings storage
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load() or {}
 

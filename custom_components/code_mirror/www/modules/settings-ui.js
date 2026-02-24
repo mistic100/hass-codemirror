@@ -32,7 +32,7 @@
 import { state, elements } from './state.js';
 import { saveSettings } from './settings.js';
 import { fetchWithAuth } from './api.js';
-import { API_BASE, THEME_PRESETS, SYNTAX_THEMES } from './constants.js';
+import { API_BASE, THEMES, SYNTAX_THEMES } from './constants.js';
 import { showToast, showConfirmDialog } from './ui.js';
 
 // Callbacks for cross-module functions
@@ -66,9 +66,9 @@ export async function showAppSettings() {
 
     modalTitle.textContent = "CodeMirror Settings";
 
-    // Generate theme preset options
-    const themePresetOptions = Object.entries(THEME_PRESETS).map(([key, preset]) =>
-      `<option value="${key}" ${state.themePreset === key ? 'selected' : ''}>${preset.name}</option>`
+    // Generate theme options
+    const themeOptions = Object.entries(THEMES).map(([key, preset]) =>
+      `<option value="${key}" ${state.theme === key ? 'selected' : ''}>${preset.name}</option>`
     ).join('');
 
     modalBody.innerHTML = `
@@ -144,12 +144,10 @@ export async function showAppSettings() {
         <!-- Appearance Tab -->
         <div id="settings-tab-appearance" class="settings-panel" style="display: none;">
           <div class="git-settings-section">
-            <div class="git-settings-label">Theme</div>
-
             <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="font-weight: 500; margin-bottom: 8px;">Theme Preset</div>
-              <select id="theme-preset-select" class="git-settings-input" style="width: 100%;">
-                ${themePresetOptions}
+              <div style="font-weight: 500; margin-bottom: 8px;">Theme</div>
+              <select id="theme-select" class="git-settings-input" style="width: 100%;">
+                ${themeOptions}
               </select>
             </div>
 
@@ -442,16 +440,16 @@ export async function showAppSettings() {
       });
     }
 
-    // Handle Theme Preset selection
-    const themePresetSelect = document.getElementById("theme-preset-select");
-    if (themePresetSelect) {
-      themePresetSelect.addEventListener("change", async (e) => {
-        state.themePreset = e.target.value;
+    // Handle Theme selection
+    const themeSelect = document.getElementById("theme-select");
+    if (themeSelect) {
+      themeSelect.addEventListener("change", async (e) => {
+        state.theme = e.target.value;
         await saveSettingsImpl();
         if (callbacks.applyTheme) {
           callbacks.applyTheme();
         }
-        showToast(`Theme changed to ${THEME_PRESETS[state.themePreset].name}`, "success");
+        showToast(`Theme changed to ${THEMES[state.theme].name}`, "success");
       });
     }
 
