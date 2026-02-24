@@ -150,7 +150,7 @@ let callbacks = {
   renderFileTree: null,
   triggerAutoSave: null,
   applyEditorSettings: null,
-  applyCustomSyntaxColors: null,
+  applySyntaxColors: null,
   saveSettings: null,
   getWorkspaceSaveTimer: null,
   setWorkspaceSaveTimer: null
@@ -336,9 +336,9 @@ export function createEditor(container = null, isPrimary = true) {
   if (callbacks.applyEditorSettings) {
     callbacks.applyEditorSettings();
   }
-  // Apply custom syntax colors after editor is created
-  if (callbacks.applyCustomSyntaxColors) {
-    callbacks.applyCustomSyntaxColors();
+  // Apply syntax colors after editor is created
+  if (callbacks.applySyntaxColors) {
+    callbacks.applySyntaxColors();
   }
 
   // Aggressive Global Capture Listener for Shortcuts (Move/Duplicate Lines)

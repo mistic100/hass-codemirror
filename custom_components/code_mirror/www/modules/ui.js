@@ -29,8 +29,7 @@
  * - applyTheme() - Apply current theme
  * - setTheme(theme) - Set theme (dark/light)
  * - setThemePreset(preset) - Set theme preset
- * - setAccentColor(color) - Set accent color
- * - applyCustomSyntaxColors() - Apply custom syntax highlighting
+ * - applySyntaxColors() - Apply syntax highlighting
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -52,12 +51,6 @@
  *    - Define CSS variables
  *    - Test in both dark/light modes
  *    - Add to settings UI
- *
- * 4. Adding custom accent colors:
- *    - Add to ACCENT_COLORS in constants.js
- *    - Update CSS variable: --accent-color
- *    - Derive hover/active colors
- *    - Test accessibility (contrast ratios)
  *
  * 5. Adding loading animations:
  *    - Modify showGlobalLoading() HTML
@@ -122,7 +115,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
-import { THEME_PRESETS, ACCENT_COLORS, SYNTAX_THEMES } from './constants.js';
+import { THEME_PRESETS, SYNTAX_THEMES } from './constants.js';
 import { lightenColor } from './utils.js';
 
 const HA_VAR_MAPPING = {
@@ -143,50 +136,6 @@ const HA_VAR_MAPPING = {
     '--input-bg': '--primary-background-color'
 };
 
-let themeObserver = null;
-
-function syncHaTheme() {
-    try {
-        const parentRoot = window.parent.document.documentElement;
-        const localRoot = document.documentElement;
-        const computed = getComputedStyle(parentRoot);
-
-        for (const [localVar, haVar] of Object.entries(HA_VAR_MAPPING)) {
-            const val = computed.getPropertyValue(haVar).trim();
-            if (val) localRoot.style.setProperty(localVar, val);
-        }
-        
-        // Try to detect dark mode from HA
-        // If HA has 'dark' attribute on html tag
-        const isHaDark = parentRoot.hasAttribute('dark');
-        if (state.themePreset === 'auto') {
-             state.theme = isHaDark ? 'dark' : 'light';
-             document.body.setAttribute("data-theme", state.theme);
-             // Update CodeMirror theme based on dark/light
-             if (state.editor) {
-                 const cmTheme = isHaDark ? "material-darker" : "default";
-                 state.editor.setOption("theme", cmTheme);
-                 localRoot.style.setProperty('--cm-theme', cmTheme);
-             }
-        }
-    } catch (e) {
-        // Fallback for standalone mode
-    }
-}
-
-function startThemeObserver() {
-    if (themeObserver) return;
-    try {
-        const parentRoot = window.parent.document.documentElement;
-        themeObserver = new MutationObserver(() => syncHaTheme());
-        themeObserver.observe(parentRoot, { attributes: true, attributeFilter: ['style', 'class', 'dark'] });
-        // Initial sync
-        syncHaTheme();
-    } catch (e) {
-        console.log("Theme Sync: Running in standalone mode (no parent access)");
-    }
-}
-
 let callbacks = {
     saveSettings: null
 };
@@ -202,7 +151,7 @@ export function getEffectiveTheme() {
   return state.theme;
 }
 
-export function applyCustomSyntaxColors() {
+export function applySyntaxColors() {
     const styleId = "custom-syntax-colors";
     let styleEl = document.getElementById(styleId);
     if (!styleEl) {
@@ -212,13 +161,7 @@ export function applyCustomSyntaxColors() {
     }
 
     // Determine which color set to use
-    let colors;
-    const themeDef = SYNTAX_THEMES[state.syntaxTheme];
-    if (themeDef && themeDef.colors) {
-      colors = themeDef.colors;
-    } else {
-      colors = state.customColors || {};
-    }
+    const colors = SYNTAX_THEMES[state.syntaxTheme]?.colors || {};
 
     let css = "";
 
@@ -248,36 +191,13 @@ export function applyCustomSyntaxColors() {
 }
 
 export function applyTheme() {
-  const isAuto = state.themePreset === 'auto';
-  
-  if (isAuto) {
-      startThemeObserver();
-  } else if (themeObserver) {
-      try {
-        themeObserver.disconnect();
-        themeObserver = null;
-      } catch(e) {}
-  }
-
   const effectiveTheme = getEffectiveTheme();
   // If auto, pick base based on effective theme (dark/light)
   // If not auto, use the preset's definitions
-  let preset;
-  if (isAuto) {
-      preset = effectiveTheme === 'dark' ? THEME_PRESETS.dark : THEME_PRESETS.light;
-  } else {
-      preset = THEME_PRESETS[state.themePreset] || THEME_PRESETS.dark;
-  }
+  const preset = THEME_PRESETS[state.themePreset] || THEME_PRESETS.dark;
   
   const root = document.documentElement;
   const colors = preset.colors;
-  
-  let accentColor = colors.accentColor;
-  let accentHover = colors.accentHover;
-  if (state.accentColor) {
-    accentColor = state.accentColor;
-    accentHover = lightenColor(accentColor, 20);
-  }
   
   // Apply base variables
   root.style.setProperty('--bg-primary', colors.bgPrimary);
@@ -289,8 +209,8 @@ export function applyTheme() {
   root.style.setProperty('--text-secondary', colors.textSecondary);
   root.style.setProperty('--text-muted', colors.textMuted);
   root.style.setProperty('--border-color', colors.borderColor);
-  root.style.setProperty('--accent-color', accentColor);
-  root.style.setProperty('--accent-hover', accentHover);
+  root.style.setProperty('--accent-color', colors.accentColor);
+  root.style.setProperty('--accent-hover', colors.accentHover);
   root.style.setProperty('--success-color', colors.successColor);
   root.style.setProperty('--warning-color', colors.warningColor);
   root.style.setProperty('--error-color', colors.errorColor);
@@ -305,25 +225,15 @@ export function applyTheme() {
   root.style.setProperty('--shadow-color', colors.shadowColor);
   root.style.setProperty('--cm-theme', colors.cmTheme);
   root.style.setProperty('--cm-gutter-bg', colors.bgGutter || colors.bgSecondary);
-  
-  const custom = state.customColors || {};
-  root.style.setProperty('--cm-line-number-color', custom.lineNumberColor || colors.textMuted);
-  root.style.setProperty('--cm-fold-color', custom.foldColor || colors.textMuted);
+  root.style.setProperty('--cm-line-number-color', colors.textMuted);
+  root.style.setProperty('--cm-fold-color', colors.textMuted);
   
   document.body.setAttribute("data-theme", effectiveTheme);
   document.body.setAttribute("data-theme-preset", state.themePreset);
 
-  // Apply Overrides if Auto
-  if (isAuto) {
-      syncHaTheme();
-  }
-
   // Update CodeMirror theme
   if (state.editor) {
-    // syncHaTheme might have updated this for auto, but for non-auto:
-    if (!isAuto) {
-        state.editor.setOption("theme", colors.cmTheme);
-    }
+    state.editor.setOption("theme", colors.cmTheme);
   }
 
   updateThemeToggleDisplay();
@@ -331,25 +241,20 @@ export function applyTheme() {
 
 function updateThemeToggleDisplay() {
     const themeIcons = { 
-        light: "light_mode", dark: "dark_mode", auto: "brightness_auto",
-        highContrast: "contrast", solarizedDark: "palette", solarizedLight: "palette",
-        ocean: "water", dracula: "nightlight_round", glass: "blur_on", midnightBlue: "nightlight_round"
+        light: "light_mode", dark: "dark_mode",
     };
     const themeLabels = { 
-        light: "Light", dark: "Dark", auto: "Auto",
-        highContrast: "Contrast", solarizedDark: "Solar Dark", solarizedLight: "Solar Light",
-        ocean: "Ocean", dracula: "Dracula", glass: "Glass", midnightBlue: "Midnight Blue"
+        light: "Light", dark: "Dark",
     };
 
-    const displayKey = state.themePreset === 'auto' ? 'auto' : state.themePreset;
+    const displayKey = state.themePreset;
 
     if (elements.themeIcon) elements.themeIcon.textContent = themeIcons[displayKey] || "dark_mode";
     if (elements.themeLabel) elements.themeLabel.textContent = themeLabels[displayKey] || "Dark";
 
     document.querySelectorAll(".theme-menu-item").forEach(item => {
       const itemTheme = item.dataset.theme;
-      const isActive = (state.themePreset === 'auto' && itemTheme === 'auto') || 
-                       (state.themePreset !== 'auto' && itemTheme === state.themePreset);
+      const isActive = itemTheme === state.themePreset;
       item.classList.toggle("active", isActive);
     });
 }
@@ -804,22 +709,14 @@ export function applyLayoutSettings() {
 
 export function setThemePreset(preset) {
     state.themePreset = preset;
-    if (preset === 'auto') {
-        state.theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? 'dark' : 'light';
-    } else if (preset === 'light' || preset === 'solarizedLight') {
+    if (preset === 'light') {
       state.theme = 'light';
-    } else if (['dark', 'highContrast', 'solarizedDark', 'ocean', 'dracula', 'glass', 'midnightBlue'].includes(preset)) {
+    } else if (preset === 'dark') {
       state.theme = 'dark';
     } else {
         // Fallback for new themes or custom
         state.theme = 'dark';
     }
-    applyTheme();
-    if (callbacks.saveSettings) callbacks.saveSettings();
-}
-
-export function setAccentColor(color) {
-    state.accentColor = color;
     applyTheme();
     if (callbacks.saveSettings) callbacks.saveSettings();
 }

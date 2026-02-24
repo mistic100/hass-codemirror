@@ -32,14 +32,14 @@
 import { state, elements } from './state.js';
 import { saveSettings } from './settings.js';
 import { fetchWithAuth } from './api.js';
-import { API_BASE, THEME_PRESETS, ACCENT_COLORS, SYNTAX_THEMES } from './constants.js';
+import { API_BASE, THEME_PRESETS, SYNTAX_THEMES } from './constants.js';
 import { showToast, showConfirmDialog } from './ui.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
   loadFiles: null,
   applyTheme: null,
-  applyCustomSyntaxColors: null,
+  applySyntaxColors: null,
   applyLayoutSettings: null,
   applyEditorSettings: null,
   renderFileTree: null,
@@ -63,25 +63,8 @@ export async function showAppSettings() {
 
     // Get current setting from localStorage
     const showRecentFiles = state.showRecentFiles;
-    const customColors = state.customColors || {};
 
     modalTitle.textContent = "CodeMirror Settings";
-
-    const renderColorInput = (label, key) => {
-        const hasValue = customColors.hasOwnProperty(key);
-        const colorValue = hasValue ? customColors[key] : '#000000';
-        const disabled = !hasValue;
-
-        return `
-        <div style="display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center;">
-                <input type="checkbox" class="syntax-color-toggle" data-key="${key}" ${hasValue ? 'checked' : ''} style="margin-right: 8px;">
-                <span style="font-size: 12px; opacity: ${disabled ? '0.5' : '1'}; transition: opacity 0.2s;">${label}</span>
-            </div>
-            <input type="color" class="syntax-color-input" data-key="${key}" value="${colorValue}" ${disabled ? 'disabled' : ''} style="cursor: ${disabled ? 'default' : 'pointer'}; height: 24px; width: 40px; border: none; padding: 0; background: transparent; opacity: ${disabled ? '0.2' : '1'}; transition: opacity 0.2s;">
-        </div>
-    `;
-    };
 
     // Generate theme preset options
     const themePresetOptions = Object.entries(THEME_PRESETS).map(([key, preset]) =>
@@ -168,17 +151,6 @@ export async function showAppSettings() {
               <select id="theme-preset-select" class="git-settings-input" style="width: 100%;">
                 ${themePresetOptions}
               </select>
-              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Choose from pre-defined color schemes</div>
-            </div>
-
-            <div style="padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="font-weight: 500; margin-bottom: 8px;">Accent Color</div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                ${ACCENT_COLORS.map(color => `
-                  <button class="accent-color-btn" data-color="${color.value}" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid ${state.accentColor === color.value ? 'var(--text-primary)' : 'transparent'}; background: ${color.value}; cursor: pointer;" title="${color.name}"></button>
-                `).join('')}
-                <button class="accent-color-btn" data-color="" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid ${!state.accentColor ? 'var(--text-primary)' : 'transparent'}; background: var(--bg-tertiary); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);" title="Use Theme Default">✕</button>
-              </div>
             </div>
 
             <div class="git-settings-label" style="margin-top: 20px;">File Tree</div>
@@ -336,10 +308,10 @@ export async function showAppSettings() {
               <div style="font-weight: 500; margin-bottom: 10px; font-size: 13px;">Pre-defined Themes</div>
               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;" id="syntax-theme-grid">
                 ${Object.entries(SYNTAX_THEMES).map(([key, theme]) => {
-                  const isActive = (state.syntaxTheme || 'custom') === key;
-                  const swatches = theme.colors ? Object.values(theme.colors).slice(0, 5).map(c =>
+                  const isActive = state.syntaxTheme === key;
+                  const swatches = Object.values(theme.colors).slice(0, 5).map(c =>
                     `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:2px;"></span>`
-                  ).join('') : '<span style="opacity:0.5;font-size:10px;">custom</span>';
+                  ).join('');
                   return `
                     <button class="syntax-theme-btn ${isActive ? 'active' : ''}" data-theme="${key}"
                       style="padding:8px 6px;border-radius:6px;border:2px solid ${isActive ? 'var(--accent-color)' : 'var(--border-color)'};
@@ -351,25 +323,6 @@ export async function showAppSettings() {
                     </button>`;
                 }).join('')}
               </div>
-            </div>
-
-            <!-- Custom Colors (shown only when Custom theme selected) -->
-            <div id="custom-colors-section" style="display:${(state.syntaxTheme || 'custom') === 'custom' ? 'block' : 'none'};">
-              <div style="font-weight: 500; margin-bottom: 8px; font-size: 13px;">Custom Colors</div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                ${renderColorInput("Comment", "comment")}
-                ${renderColorInput("Keyword", "keyword")}
-                ${renderColorInput("String", "string")}
-                ${renderColorInput("Number", "number")}
-                ${renderColorInput("Boolean", "boolean")}
-                ${renderColorInput("Key / Property", "key")}
-                ${renderColorInput("Tag", "tag")}
-                ${renderColorInput("Line Numbers", "lineNumberColor")}
-                ${renderColorInput("Fold Arrows", "foldColor")}
-              </div>
-              <button class="btn-secondary" id="btn-reset-colors" style="margin-top: 12px; width: 100%; font-size: 12px;">
-                Reset to Default Colors
-              </button>
             </div>
           </div>
         </div>
@@ -580,27 +533,6 @@ export async function showAppSettings() {
         showToast(`Theme changed to ${THEME_PRESETS[state.themePreset].name}`, "success");
       });
     }
-
-    // Handle Accent Color buttons
-    const accentColorButtons = modalBody.querySelectorAll('.accent-color-btn');
-    accentColorButtons.forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const color = btn.dataset.color || null;
-        state.accentColor = color;
-
-        // Update button borders
-        accentColorButtons.forEach(b => {
-          const isActive = (b.dataset.color || null) === color;
-          b.style.borderColor = isActive ? 'var(--text-primary)' : 'transparent';
-        });
-
-        await saveSettingsImpl();
-        if (callbacks.applyTheme) {
-          callbacks.applyTheme();
-        }
-        showToast(color ? "Accent color updated" : "Accent color reset to theme default", "success");
-      });
-    });
 
     // Handle Font Size
     const fontSizeSlider = document.getElementById("font-size-slider");
@@ -825,6 +757,7 @@ export async function showAppSettings() {
         showToast(state.treeCollapsableMode ? "Collapsable tree mode enabled" : "Folder navigation mode enabled", "success");
       });
     }
+
     const showToastsToggle = document.getElementById("show-toasts-toggle");
     if (showToastsToggle) {
       showToastsToggle.addEventListener("change", async (e) => {
@@ -834,58 +767,6 @@ export async function showAppSettings() {
       });
     }
 
-    // Handle Syntax Color Toggles (Checkbox)
-    const colorToggles = modalBody.querySelectorAll(".syntax-color-toggle");
-    colorToggles.forEach(toggle => {
-        toggle.addEventListener("change", async (e) => {
-            const key = e.target.dataset.key;
-            const checked = e.target.checked;
-            const input = modalBody.querySelector(`.syntax-color-input[data-key="${key}"]`);
-            const labelSpan = e.target.nextElementSibling;
-
-            if (checked) {
-                // Enable: add to customColors with current color value
-                state.customColors[key] = input.value;
-                input.disabled = false;
-                input.style.opacity = "1";
-                input.style.cursor = "pointer";
-                if (labelSpan) labelSpan.style.opacity = "1";
-            } else {
-                // Disable: remove from customColors
-                delete state.customColors[key];
-                input.disabled = true;
-                input.style.opacity = "0.2";
-                input.style.cursor = "default";
-                if (labelSpan) labelSpan.style.opacity = "0.5";
-            }
-
-            await saveSettingsImpl();
-            if (callbacks.applyCustomSyntaxColors) {
-              callbacks.applyCustomSyntaxColors();
-            }
-        });
-    });
-
-    // Handle Syntax Color Inputs (Color Picker)
-    const colorInputs = modalBody.querySelectorAll(".syntax-color-input");
-    colorInputs.forEach(input => {
-        input.addEventListener("change", async (e) => {
-            const key = e.target.dataset.key;
-            const value = e.target.value;
-
-            // Only update if checkbox is enabled
-            const toggle = modalBody.querySelector(`.syntax-color-toggle[data-key="${key}"]`);
-            if (toggle && toggle.checked) {
-                state.customColors[key] = value;
-                await saveSettingsImpl();
-                if (callbacks.applyCustomSyntaxColors) {
-                  callbacks.applyCustomSyntaxColors();
-                }
-            }
-        });
-    });
-
-    // Handle Reset Colors button
     // Handle Syntax Theme selection
     const syntaxThemeBtns = modalBody.querySelectorAll(".syntax-theme-btn");
     syntaxThemeBtns.forEach(btn => {
@@ -895,8 +776,8 @@ export async function showAppSettings() {
         await saveSettingsImpl();
 
         // Apply immediately
-        if (callbacks.applyCustomSyntaxColors) {
-          callbacks.applyCustomSyntaxColors();
+        if (callbacks.applySyntaxColors) {
+          callbacks.applySyntaxColors();
         }
 
         // Update button styles
@@ -907,33 +788,9 @@ export async function showAppSettings() {
           b.style.background = isActive ? "var(--bg-hover)" : "var(--bg-primary)";
         });
 
-        // Show/hide custom colors section
-        const customSection = document.getElementById("custom-colors-section");
-        if (customSection) {
-          customSection.style.display = themeKey === "custom" ? "block" : "none";
-        }
-
         showToast(`Syntax theme: ${SYNTAX_THEMES[themeKey].name}`, "success");
       });
     });
-
-    const btnResetColors = document.getElementById("btn-reset-colors");
-    if (btnResetColors) {
-        btnResetColors.addEventListener("click", async () => {
-            state.customColors = {};
-            await saveSettingsImpl();
-            if (callbacks.applyCustomSyntaxColors) {
-              callbacks.applyCustomSyntaxColors();
-            }
-            showToast("Colors reset to defaults", "success");
-
-            // Re-render settings to update UI
-            setTimeout(() => {
-                closeSettings();
-                showAppSettings();
-            }, 300);
-        });
-    }
 
     // Handle Reset Application button
     const btnResetApp = document.getElementById("btn-reset-app");

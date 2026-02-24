@@ -177,9 +177,6 @@ export function showCommandPalette() {
       { id: "unfold_all", label: "Unfold All", icon: "unfold_more", action: () => { if (state.editor) state.editor.execCommand("unfoldAll"); } },
       { id: "close_others", label: "Close Other Tabs", icon: "close_fullscreen", action: () => { if (state.activeTab && callbacks.closeTab) { const tabs = state.openTabs.filter(t => t !== state.activeTab); tabs.forEach(t => callbacks.closeTab(t)); } } },
       { id: "close_saved", label: "Close Saved Tabs", icon: "save", action: () => { if (state.activeTab && callbacks.closeTab) { const tabs = state.openTabs.filter(t => !t.modified && t !== state.activeTab); tabs.forEach(t => callbacks.closeTab(t)); } } },
-      { id: "theme_light", label: "Switch to Light Theme", icon: "light_mode", action: () => callbacks.setTheme && callbacks.setTheme("light") },
-      { id: "theme_dark", label: "Switch to Dark Theme", icon: "dark_mode", action: () => callbacks.setTheme && callbacks.setTheme("dark") },
-      { id: "theme_auto", label: "Switch to Auto Theme", icon: "brightness_auto", action: () => callbacks.setTheme && callbacks.setTheme("auto") },
   ];
 
   let selectedIndex = 0;

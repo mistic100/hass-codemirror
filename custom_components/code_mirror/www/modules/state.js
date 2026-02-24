@@ -92,7 +92,6 @@
  *
  * UI CUSTOMIZATION:
  * - themePreset: Theme preset name
- * - accentColor: Custom accent color
  * - sidebarWidth: Sidebar width (px)
  * - tabPosition: Tab bar position
  * - breadcrumbStyle: Breadcrumb display style
@@ -105,7 +104,6 @@
  * - enableVirtualScroll: Virtual scrolling
  *
  * OTHER:
- * - customColors: Custom syntax colors
  * - rememberWorkspace: Remember open tabs
  *
  * ELEMENTS (elements object):
@@ -172,10 +170,8 @@ export const state = {
   editor: null,
   selectionMode: false,
   selectedItems: new Set(),
-  customColors: {},
 
   themePreset: "dark",
-  accentColor: null,
   fontSize: 14,
   fontFamily: "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace",
   tabSize: 2,
@@ -213,7 +209,7 @@ export const state = {
   searchCaseSensitive: false, // Editor search: match case (exact match)
   searchWholeWord: false,     // Editor search: match whole word
   searchUseRegex: false,      // Editor search: use regular expression
-  syntaxTheme: 'custom',      // Pre-defined syntax highlighting theme
+  syntaxTheme: 'dracula',     // Pre-defined syntax highlighting theme
 
   // Split view configuration
   splitView: {

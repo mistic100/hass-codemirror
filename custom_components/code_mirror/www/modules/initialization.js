@@ -105,7 +105,7 @@ import {
   hideGlobalLoading,
   showModal,
   applyTheme,
-  applyCustomSyntaxColors,
+  applySyntaxColors,
   applyLayoutSettings,
   applyEditorSettings,
   registerUICallbacks,
@@ -307,13 +307,13 @@ export async function init() {
 
     registerSettingsCallbacks({
       applyTheme,
-      applyCustomSyntaxColors
+      applySyntaxColors
     });
 
     registerSettingsUICallbacks({
       loadFiles,
       applyTheme,
-      applyCustomSyntaxColors,
+      applySyntaxColors,
       applyLayoutSettings,
       applyEditorSettings,
       renderFileTree,

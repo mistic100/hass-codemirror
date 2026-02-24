@@ -1387,13 +1387,6 @@ export function initEventListeners() {
       }, 300);
     });
 
-    // System theme change (for auto mode)
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      if (state.theme === "auto") {
-        applyTheme();
-      }
-    });
-
     // Visibility change - refresh editor when page/tab becomes visible
     // This is crucial for iframe-based panels in Home Assistant
     document.addEventListener("visibilitychange", () => {

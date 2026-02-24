@@ -16,7 +16,7 @@
  *
  * REQUIRED CALLBACKS (from app.js):
  * - applyTheme: Apply theme to UI
- * - applyCustomSyntaxColors: Apply custom syntax colors
+ * - applySyntaxColors: Apply syntax colors
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -60,7 +60,7 @@
  * SETTINGS CATEGORIES:
  *
  * 1. UI Customization:
- *    - theme, themePreset, accentColor
+ *    - theme, themePreset
  *    - fontSize, fontFamily, sidebarWidth
  *    - tabPosition, breadcrumbStyle
  *    - showToasts, showHidden, showRecentFiles
@@ -82,9 +82,6 @@
  *    - activeTabPath: Currently active tab
  *    - rememberWorkspace: Enable workspace restoration
  *    - favoriteFiles, recentFiles
- *
- * 9. Other:
- *    - customColors: Custom syntax highlighting
  *
  * ARCHITECTURE NOTES:
  * - Settings are synced to server (primary storage)
@@ -123,7 +120,7 @@ import { API_BASE, STORAGE_KEY } from './constants.js';
 // Callbacks for cross-module functions
 let callbacks = {
   applyTheme: null,
-  applyCustomSyntaxColors: null
+  applySyntaxColors: null
 };
 
 export function registerSettingsCallbacks(cb) {
@@ -151,12 +148,10 @@ export async function loadSettings() {
     state.showRecentFiles = settings.showRecentFiles !== false;
     state.favoriteFiles = settings.favoriteFiles || [];
     state.recentFiles = settings.recentFiles || [];
-    state.customColors = settings.customColors || {};
-    state.syntaxTheme = settings.syntaxTheme || 'custom';
+    state.syntaxTheme = settings.syntaxTheme || 'dracula';
 
     // New UI customization settings
     state.themePreset = settings.themePreset || "dark";
-    state.accentColor = settings.accentColor || null;
     state.fontSize = parseInt(settings.fontSize) || 14;
     state.fontFamily = settings.fontFamily || "'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace";
     state.tabSize = parseInt(settings.tabSize) || 2;
@@ -204,7 +199,7 @@ export async function loadSettings() {
     state._savedActiveTabPath = settings.activeTabPath || null;
 
     if (callbacks.applyTheme) callbacks.applyTheme();
-    if (callbacks.applyCustomSyntaxColors) callbacks.applyCustomSyntaxColors();
+    if (callbacks.applySyntaxColors) callbacks.applySyntaxColors();
 
   } catch (e) {
     // Could not load settings
@@ -256,13 +251,11 @@ export async function saveSettings() {
       showRecentFiles: state.showRecentFiles,
       favoriteFiles: state.favoriteFiles,
       recentFiles: state.recentFiles,
-      customColors: state.customColors,
       syntaxTheme: state.syntaxTheme,
       openTabs: openTabsState,
       activeTabPath: activeTabPath,
       // New UI customization settings
       themePreset: state.themePreset,
-      accentColor: state.accentColor,
       fontSize: state.fontSize,
       fontFamily: state.fontFamily,
       tabSize: state.tabSize,

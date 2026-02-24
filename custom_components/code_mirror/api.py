@@ -57,7 +57,7 @@ class CodeMirrorApiView(HomeAssistantView):
 
     def _update_hass(self, hass: HomeAssistant) -> None:
         """Update hass instance in managers."""
-        self.ai.hass = hass
+        self.syntax_checker.hass = hass
         self.file.hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
