@@ -175,7 +175,6 @@ import {
 
 import {
   registerFileTreeCallbacks,
-  navigateBack,
   navigateToFolder
 } from './file-tree.js';
 
@@ -247,11 +246,6 @@ export async function init() {
     applyEditorSettings();
 
     updateShowHiddenButton();
-
-    // Register event handler callbacks (folder navigation)
-    registerEventHandlerCallbacks({
-      navigateBack
-    });
 
     initEventListeners();
     initResizeHandle();
@@ -387,18 +381,6 @@ export async function init() {
 
     // Don't auto-expand folders - let users expand what they need
     renderFileTree();
-
-    // Restore file tree collapsed state
-    if (state.fileTreeCollapsed) {
-      const fileTree = document.getElementById("file-tree");
-      const btn = document.getElementById("btn-file-tree-collapse");
-      if (fileTree) fileTree.style.display = "none";
-      if (btn) {
-        const icon = btn.querySelector(".material-icons");
-        if (icon) icon.textContent = "expand_more";
-        btn.title = "Expand file tree";
-      }
-    }
 
     // ⚡ PARALLEL POST-LOAD - Run remaining operations concurrently
     await Promise.all([

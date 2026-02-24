@@ -176,17 +176,6 @@ export async function showAppSettings() {
                 <span class="toggle-slider"></span>
               </label>
             </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">Collapsable Tree Mode</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Show folders as a collapsable tree (single click to expand/collapse) instead of the default folder navigation mode (double click to enter)</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="tree-collapsable-mode-toggle" ${state.treeCollapsableMode ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
           </div>
         </div>
 
@@ -695,39 +684,6 @@ export async function showAppSettings() {
           callbacks.renderFileTree();
         }
         showToast(state.fileTreeShowIcons ? "File icons shown" : "File icons hidden", "success");
-      });
-    }
-
-    // Handle Collapsable Tree Mode
-    const treeCollapsableModeToggle = document.getElementById("tree-collapsable-mode-toggle");
-    if (treeCollapsableModeToggle) {
-      treeCollapsableModeToggle.addEventListener("change", async (e) => {
-        state.treeCollapsableMode = e.target.checked;
-        state.lazyLoadingEnabled = !state.treeCollapsableMode;
-        await saveSettingsImpl();
-
-        // Reset navigation state when switching modes
-        if (!state.treeCollapsableMode) {
-          // Switching back to folder navigation: reset to root
-          state.currentNavigationPath = "";
-          state.navigationHistory = [];
-        } else {
-          // Switching to collapsable tree: clear expanded folders
-          state.expandedFolders.clear();
-        }
-
-        // Reload file tree with new mode
-        if (callbacks.loadFiles) {
-          await callbacks.loadFiles(true);
-        } else if (callbacks.renderFileTree) {
-          callbacks.renderFileTree();
-        }
-
-        // Show/hide nav elements based on mode
-        const backBtn = document.getElementById("btn-nav-back");
-        if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
-
-        showToast(state.treeCollapsableMode ? "Collapsable tree mode enabled" : "Folder navigation mode enabled", "success");
       });
     }
 

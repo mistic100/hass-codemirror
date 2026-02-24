@@ -22,7 +22,6 @@
  * File Operations:
  * - createTreeItem(item, depth) - Create file/folder tree item element
  * - toggleFolder(path) - Expand/collapse folder
- * - updateToggleAllButton() - Update expand/collapse all button
  * - folderMatchesSearch(folder) - Check if folder contains search matches
  *
  * Drag & Drop:
@@ -375,18 +374,16 @@ export function renderFileTree() {
     });
 
     elements.fileTree.appendChild(fragment);
-    updateToggleAllButton();
     return; // Exit early - don't show folder navigation
   }
 
-  // COLLAPSABLE TREE MODE: Classic expand/collapse tree (when treeCollapsableMode is enabled)
-  if (state.treeCollapsableMode && !state.lazyLoadingEnabled) {
+  // COLLAPSABLE TREE MODE: Classic expand/collapse tree
+  if (!state.lazyLoadingEnabled) {
     const fragment = document.createDocumentFragment();
     if (state.fileTree && Object.keys(state.fileTree).length > 0) {
       renderTreeLevel(state.fileTree, fragment, 0);
     }
     elements.fileTree.appendChild(fragment);
-    updateToggleAllButton();
     return;
   }
 
@@ -493,7 +490,6 @@ export function renderFileTree() {
   });
 
   elements.fileTree.appendChild(fragment);
-  updateToggleAllButton();
 }
 
 /**
@@ -997,34 +993,6 @@ export async function navigateToFolder(folderPath) {
 
   // Render current folder
   renderFileTree();
-  updateNavigationBackButton();
-}
-
-/**
- * Navigate back to previous folder
- */
-export function navigateBack() {
-  if (state.navigationHistory.length === 0) return;
-
-  const previousPath = state.navigationHistory.pop();
-  state.currentNavigationPath = previousPath;
-
-  renderFileTree();
-  updateNavigationBackButton();
-}
-
-/**
- * Update navigation back button state
- */
-export function updateNavigationBackButton() {
-  const backBtn = document.getElementById("btn-nav-back");
-  if (!backBtn) return;
-
-  if (state.navigationHistory.length > 0) {
-    backBtn.disabled = false;
-  } else {
-    backBtn.disabled = true;
-  }
 }
 
 export async function toggleFolder(path) {
@@ -1128,27 +1096,11 @@ function updateFileTreeWithLoadedDirectory(parentPath, folders, files) {
 }
 
 /**
- * Update toggle all button state
- */
-export function updateToggleAllButton() {
-  if (elements.btnToggleAll) {
-    const icon = elements.btnToggleAll.querySelector('.material-icons');
-    if (state.expandedFolders.size > 0) {
-      elements.btnToggleAll.title = "Collapse All";
-      icon.textContent = "unfold_less";
-    } else {
-      elements.btnToggleAll.title = "Expand All";
-      icon.textContent = "unfold_more";
-    }
-  }
-}
-
-/**
  * Collapse all folders — works in both tree and navigation modes
  */
 export async function collapseAllFolders() {
   // Collapsable tree mode: clear expanded set and re-render
-  if (state.treeCollapsableMode && !state.lazyLoadingEnabled) {
+  if (!state.lazyLoadingEnabled) {
     state.expandedFolders.clear();
     renderFileTree();
     return;

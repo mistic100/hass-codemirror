@@ -140,8 +140,6 @@ let callbacks = {
     moveToPrimaryPane: null,
     moveToSecondaryPane: null,
     setActivePaneFromPosition: null,
-    // Folder navigation callbacks
-    navigateBack: null,
 };
 
 export function registerEventHandlerCallbacks(cb) {
@@ -504,14 +502,6 @@ export function initEventListeners() {
       });
     }
 
-    // Folder Navigation: Back button
-    const btnNavBack = document.getElementById("btn-nav-back");
-    if (btnNavBack) {
-      btnNavBack.addEventListener("click", () => {
-        if (callbacks.navigateBack) callbacks.navigateBack();
-      });
-    }
-
     // Restart HA
     if (elements.btnRestartHa) {
       elements.btnRestartHa.addEventListener("click", restartHomeAssistant);
@@ -639,68 +629,6 @@ export function initEventListeners() {
     }
     if (elements.folderUploadInput) {
       elements.folderUploadInput.addEventListener("change", handleFolderUpload);
-    }
-
-    if (elements.btnFileTreeCollapse) {
-      elements.btnFileTreeCollapse.addEventListener("click", () => {
-        const fileTree = document.getElementById("file-tree");
-        state.fileTreeCollapsed = !state.fileTreeCollapsed;
-        const icon = elements.btnFileTreeCollapse.querySelector(".material-icons");
-        if (state.fileTreeCollapsed) {
-          if (fileTree) fileTree.style.display = "none";
-          if (icon) icon.textContent = "expand_more";
-          elements.btnFileTreeCollapse.title = "Expand file tree";
-        } else {
-          if (fileTree) fileTree.style.display = "";
-          if (icon) icon.textContent = "expand_less";
-          elements.btnFileTreeCollapse.title = "Collapse file tree";
-        }
-        saveSettings();
-      });
-    }
-    if (elements.btnStageSelected) {
-      elements.btnStageSelected.addEventListener("click", () => {
-        if (callbacks.stageSelectedFiles) callbacks.stageSelectedFiles();
-      });
-    }
-    if (elements.btnStageAll) {
-      elements.btnStageAll.addEventListener("click", () => {
-        if (callbacks.stageAllFiles) callbacks.stageAllFiles();
-      });
-    }
-    if (elements.btnUnstageAll) {
-      elements.btnUnstageAll.addEventListener("click", () => {
-        if (callbacks.unstageAllFiles) callbacks.unstageAllFiles();
-      });
-    }
-    if (elements.btnCommitStaged) {
-      elements.btnCommitStaged.addEventListener("click", () => {
-        if (callbacks.commitStagedFiles) callbacks.commitStagedFiles();
-      });
-    }
-
-    // Toggle Collapse/Expand all
-    if (elements.btnToggleAll) {
-      elements.btnToggleAll.addEventListener("click", () => {
-        if (state.expandedFolders.size > 0) {
-          // Collapse all
-          state.expandedFolders.clear();
-        } else {
-          // Expand all
-          function expandAll(tree) {
-            for (const key of Object.keys(tree)) {
-              if (!key.startsWith("_")) {
-                if (tree[key]._path) {
-                  state.expandedFolders.add(tree[key]._path);
-                }
-                expandAll(tree[key]);
-              }
-            }
-          }
-          expandAll(state.fileTree);
-        }
-        renderFileTree(); // This will also call updateToggleAllButton
-      });
     }
 
     // Show/Hide hidden folders toggle
@@ -1261,9 +1189,6 @@ export function initEventListeners() {
               
               // Ignore if clicking a tree item (it has its own handler)
               if (e.target.closest('.tree-item')) return;
-
-              // Don't show if file tree is explicitly collapsed
-              if (state.fileTreeCollapsed) return;
 
               e.preventDefault();
               e.stopPropagation();

@@ -157,10 +157,7 @@ export const state = {
   contextMenuTarget: null,
   tabContextMenuTarget: null,
   currentFolderPath: "",
-  // Tree display mode: false = folder navigation (default), true = collapsable tree
-  treeCollapsableMode: false,
-  // Lazy loading state (NEW - for on-demand folder loading)
-  lazyLoadingEnabled: true, // Enable lazy loading by default
+  lazyLoadingEnabled: false,
   loadedDirectories: new Map(), // Cache: path -> {folders: [], files: []}
   loadingDirectories: new Set(), // Track which directories are currently loading
   // Folder navigation (NEW - for browse-style navigation)
@@ -186,7 +183,6 @@ export const state = {
   fileTreeCompact: false,
   fileTreeShowIcons: true,
   recentFilesLimit: 10,
-  fileTreeCollapsed: false,
   rememberWorkspace: true,
   showToasts: true,
   // Performance settings

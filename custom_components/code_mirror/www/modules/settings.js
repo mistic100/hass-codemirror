@@ -166,16 +166,14 @@ export async function loadSettings() {
     state.autoSaveDelay = parseInt(settings.autoSaveDelay) || 1000;
     state.fileTreeCompact = settings.fileTreeCompact || false;
     state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
-    state.treeCollapsableMode = settings.treeCollapsableMode || false;
     // Apply tree mode to lazyLoadingEnabled
-    state.lazyLoadingEnabled = !state.treeCollapsableMode;
+    state.lazyLoadingEnabled = false;
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
     state.showToasts = settings.showToasts !== false; // default true
 
     // Experimental features
     state.enableSplitView = settings.enableSplitView || false; // default false (experimental)
 
-    state.fileTreeCollapsed = settings.fileTreeCollapsed || false;
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
 
     // Performance settings
@@ -268,9 +266,7 @@ export async function saveSettings() {
       autoSaveDelay: state.autoSaveDelay,
       fileTreeCompact: state.fileTreeCompact,
       fileTreeShowIcons: state.fileTreeShowIcons,
-      treeCollapsableMode: state.treeCollapsableMode,
       recentFilesLimit: state.recentFilesLimit,
-      fileTreeCollapsed: state.fileTreeCollapsed,
       enableSplitView: state.enableSplitView, // Experimental feature
       rememberWorkspace: state.rememberWorkspace,
       // Performance settings

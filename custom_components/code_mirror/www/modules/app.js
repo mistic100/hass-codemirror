@@ -329,7 +329,6 @@ import {
   handleDragLeave as handleDragLeaveImpl,
   handleDrop as handleDropImpl,
   toggleFolder as toggleFolderImpl,
-  updateToggleAllButton as updateToggleAllButtonImpl,
   debouncedContentSearch as debouncedContentSearchImpl,
   debouncedFilenameSearch as debouncedFilenameSearchImpl,
   performContentSearch as performContentSearchImpl,
@@ -1358,7 +1357,6 @@ export const handleDragOver = handleDragOverImpl;
 export const handleDragLeave = handleDragLeaveImpl;
 export const handleDrop = handleDropImpl;
 export const toggleFolder = toggleFolderImpl;
-export const updateToggleAllButton = updateToggleAllButtonImpl;
 
   // ============================================
   // UI Updates

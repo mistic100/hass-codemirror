@@ -564,7 +564,6 @@ export function initElements() {
     elements.btnRestartHa = document.getElementById("btn-restart-ha");
     elements.btnAppSettings = document.getElementById("btn-app-settings");
     elements.btnValidate = document.getElementById("btn-validate");
-    elements.btnToggleAll = document.getElementById("btn-toggle-all");
     elements.btnCloseSidebar = document.getElementById("btn-close-sidebar");
     elements.btnShowHidden = document.getElementById("btn-show-hidden");
     elements.btnNewFile = document.getElementById("btn-new-file");
@@ -598,7 +597,6 @@ export function initElements() {
     elements.btnDownloadFolder = document.getElementById("btn-download-folder");
     elements.fileUploadInput = document.getElementById("file-upload-input");
     elements.folderUploadInput = document.getElementById("folder-upload-input");
-    elements.btnFileTreeCollapse = document.getElementById("btn-file-tree-collapse");
 
     elements.loadingOverlay = document.getElementById("loading-overlay");
     elements.loadingText = document.getElementById("loading-text");
@@ -696,10 +694,6 @@ export function applyLayoutSettings() {
     document.body.setAttribute('data-tab-position', state.tabPosition);
     document.body.classList.toggle('file-tree-compact', state.fileTreeCompact);
     document.body.classList.toggle('file-tree-no-icons', !state.fileTreeShowIcons);
-
-    // Show/hide folder navigation elements based on tree mode
-    const backBtn = document.getElementById("btn-nav-back");
-    if (backBtn) backBtn.style.display = state.treeCollapsableMode ? "none" : "";
 }
 
 export function setThemePreset(preset) {
