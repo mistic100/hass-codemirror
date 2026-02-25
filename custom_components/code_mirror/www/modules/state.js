@@ -174,7 +174,7 @@ export const state = {
   recentFilesLimit: 10,
   rememberWorkspace: true,
   showToasts: true,
-  enableSplitView: false,        // Enable split view feature (Experimental)
+  enableSplitView: false,
   // Internal tracking
   _wsUpdateTimer: null,
   _savedOpenTabs: null,

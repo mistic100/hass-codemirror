@@ -76,7 +76,6 @@ export async function showAppSettings() {
         <button class="settings-tab active" data-tab="general" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-primary); cursor: pointer; border-bottom: 2px solid var(--accent-color); font-size: 13px;">General</button>
         <button class="settings-tab" data-tab="appearance" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Appearance</button>
         <button class="settings-tab" data-tab="editor" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Editor</button>
-        <button class="settings-tab" data-tab="advanced" style="padding: 10px 16px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; font-size: 13px;">Advanced</button>
       </div>
 
       <div class="settings-content">
@@ -235,7 +234,18 @@ export async function showAppSettings() {
               </label>
             </div>
 
-            <div class="git-settings-label" style="margin-top: 20px;">Auto-Save</div>
+            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
+              <div style="flex: 1;">
+                <div style="font-weight: 500; margin-bottom: 4px;">
+                  Split View
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary);">Enable VS Code-style split view to edit multiple files side-by-side</div>
+              </div>
+              <label class="toggle-switch" style="margin-left: 16px;">
+                <input type="checkbox" id="split-view-toggle" ${state.enableSplitView ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
 
             <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="flex: 1;">
@@ -279,36 +289,6 @@ export async function showAppSettings() {
                     </button>`;
                 }).join('')}
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Advanced Tab -->
-        <div id="settings-tab-advanced" class="settings-panel" style="display: none;">
-          <div class="git-settings-section">
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">
-                  Split View <span style="font-size: 11px; padding: 2px 6px; background: var(--warning-color); color: #000; border-radius: 3px; margin-left: 6px;">BETA</span>
-                </div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Enable VS Code-style split view to edit multiple files side-by-side</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="split-view-toggle" ${state.enableSplitView ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div class="git-settings-label" style="margin-top: 20px; color: var(--error-color);">Danger Zone</div>
-
-            <!-- Reset Application -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
-                <div style="font-size: 12px; color: var(--text-secondary); max-width: 70%;">
-                    Reset all application settings, theme preferences, and onboarding status. This does not delete your files.
-                </div>
-                <button class="btn-secondary" id="btn-reset-app" style="padding: 6px 12px; font-size: 12px; color: var(--error-color); border-color: var(--error-color);">
-                    Reset Application
-                </button>
             </div>
           </div>
         </div>
@@ -638,78 +618,11 @@ export async function showAppSettings() {
           b.style.background = isActive ? "var(--bg-hover)" : "var(--bg-primary)";
         });
 
-        showToast(`Syntax theme: ${SYNTAX_THEMES[themeKey].name}`, "success");
+        showToast(`Syntax theme: ${SYNexpTAX_THEMES[themeKey].name}`, "success");
       });
     });
 
-    // Handle Reset Application button
-    const btnResetApp = document.getElementById("btn-reset-app");
-    if (btnResetApp) {
-      btnResetApp.addEventListener("click", async () => {
-        // Close settings modal first
-        closeSettings();
-
-        // Show confirmation dialog
-        const confirmed = await showConfirmDialogWithItems(
-            "Reset Application",
-            "Are you sure you want to reset the application? This will:",
-            [
-                "Clear all settings and preferences",
-                "Reset theme to default",
-                "Clear recent files and favorites"
-            ],
-            "This action cannot be undone, but your files will remain safe.",
-            true
-        );
-
-        if (!confirmed) return;
-
-        // Show advanced options
-        const advancedModal = document.getElementById("modal");
-        const advancedModalBody = document.getElementById("modal-body");
-        const advancedModalTitle = document.getElementById("modal-title");
-
-        advancedModalTitle.textContent = "Reset Options";
-        advancedModalBody.innerHTML = `
-          <div style="padding: 16px 0;">
-            <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; font-size: 12px; color: var(--text-secondary);">
-              <strong>Note:</strong> Your configuration files will not be deleted. Only application settings will be reset.
-            </div>
-          </div>
-        `;
-
-        const handleConfirm = async () => {
-            // Reset server-side settings
-            try {
-                await fetchWithAuth(API_BASE, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "save_settings",
-                        settings: {}
-                    }),
-                });
-            } catch (e) {
-                console.error("Failed to reset server settings:", e);
-            }
-
-            localStorage.clear();
-            window.location.reload();
-        };
-
-        // One-time listener for this specific modal instance
-        const cleanup = () => {
-            elements.modalConfirm.removeEventListener("click", handleConfirm);
-            if (callbacks.hideModal) {
-              elements.modalCancel.removeEventListener("click", callbacks.hideModal);
-            }
-        };
-
-        elements.modalConfirm.addEventListener("click", handleConfirm, { once: true });
-      });
-    }
-
-    // Handle Split View toggle (Experimental)
+    // Handle Split View toggle
     const splitViewToggle = document.getElementById("split-view-toggle");
     if (splitViewToggle) {
       splitViewToggle.addEventListener("change", async (e) => {

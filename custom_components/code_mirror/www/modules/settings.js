@@ -163,10 +163,7 @@ export async function loadSettings() {
     state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
     state.showToasts = settings.showToasts !== false; // default true
-
-    // Experimental features
-    state.enableSplitView = settings.enableSplitView || false; // default false (experimental)
-
+    state.enableSplitView = settings.enableSplitView || false; // default false
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
 
     // Split view settings
@@ -254,7 +251,7 @@ export async function saveSettings() {
       fileTreeCompact: state.fileTreeCompact,
       fileTreeShowIcons: state.fileTreeShowIcons,
       recentFilesLimit: state.recentFilesLimit,
-      enableSplitView: state.enableSplitView, // Experimental feature
+      enableSplitView: state.enableSplitView,
       rememberWorkspace: state.rememberWorkspace,
       // Split view settings
       splitView: state.splitView ? {
