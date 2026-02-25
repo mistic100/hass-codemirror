@@ -497,7 +497,7 @@ export function initEventListeners() {
     // Refresh (Hard Refresh)
     if (elements.btnRefresh) {
       elements.btnRefresh.addEventListener("click", () => {
-        if (callbacks.loadFiles) callbacks.loadFiles(true);
+        if (callbacks.loadFiles) callbacks.loadFiles();
       });
     }
 
@@ -636,7 +636,7 @@ export function initEventListeners() {
         state.showHidden = !state.showHidden;
         saveSettings();
         updateShowHiddenButton();
-        if (callbacks.loadFiles) callbacks.loadFiles(true);
+        if (callbacks.loadFiles) callbacks.loadFiles();
       });
     }
 
@@ -653,22 +653,12 @@ export function initEventListeners() {
           return;
         }
 
-        // In lazy loading mode, always use recursive search
-        if (state.lazyLoadingEnabled) {
-          if (state.contentSearchEnabled) {
-            // Search file content across all files
-            if (callbacks.debouncedContentSearch) callbacks.debouncedContentSearch();
-          } else {
-            // Search filenames across all files
-            if (callbacks.debouncedFilenameSearch) callbacks.debouncedFilenameSearch();
-          }
+        if (state.contentSearchEnabled) {
+          // Search file content across all files
+          if (callbacks.debouncedContentSearch) callbacks.debouncedContentSearch();
         } else {
-          // Old tree mode - use local filtering
-          if (state.contentSearchEnabled) {
-            if (callbacks.debouncedContentSearch) callbacks.debouncedContentSearch();
-          } else {
-            debouncedRenderFileTree();
-          }
+          // Search filenames across all files
+          if (callbacks.debouncedFilenameSearch) callbacks.debouncedFilenameSearch();
         }
       });
     }
@@ -703,7 +693,7 @@ export function initEventListeners() {
                 elements.fileSearch.placeholder = "Search all files...";
                 // Re-run search with filename mode (or clear if lazy loading disabled)
                 if (state.searchQuery) {
-                    if (state.lazyLoadingEnabled && callbacks.debouncedFilenameSearch) {
+                    if (callbacks.debouncedFilenameSearch) {
                         callbacks.debouncedFilenameSearch();
                     } else {
                         state.contentSearchResults = null;
@@ -1176,32 +1166,6 @@ export function initEventListeners() {
               document.querySelectorAll(".tree-item.active").forEach(el => el.classList.remove("active"));
           }
       });
-
-      // Background context menu - attached to viewExplorer to catch clicks in empty space below the tree
-      if (elements.viewExplorer) {
-          elements.viewExplorer.addEventListener("contextmenu", (e) => {
-              // Ignore clicks inside other specific panels
-              if (e.target.closest('#favorites-panel') || 
-                  e.target.closest('#recent-files-panel')) {
-                  return;
-              }
-              
-              // Ignore if clicking a tree item (it has its own handler)
-              if (e.target.closest('.tree-item')) return;
-
-              e.preventDefault();
-              e.stopPropagation();
-              
-              const currentPath = state.currentNavigationPath || "";
-              
-              if (callbacks.showContextMenu) {
-                  callbacks.showContextMenu(e.clientX, e.clientY, { 
-                      path: currentPath, 
-                      isFolder: true 
-                  });
-              }
-          });
-      }
 
       elements.fileTree.addEventListener("dragover", (e) => {
         e.preventDefault();

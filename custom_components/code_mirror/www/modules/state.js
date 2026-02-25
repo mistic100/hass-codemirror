@@ -152,12 +152,8 @@ export const state = {
   contextMenuTarget: null,
   tabContextMenuTarget: null,
   currentFolderPath: "",
-  lazyLoadingEnabled: false,
   loadedDirectories: new Map(), // Cache: path -> {folders: [], files: []}
   loadingDirectories: new Set(), // Track which directories are currently loading
-  // Folder navigation (NEW - for browse-style navigation)
-  currentNavigationPath: "", // Current folder being viewed (empty = root)
-  navigationHistory: [], // History stack for back button
   editor: null,
   selectionMode: false,
   selectedItems: new Set(),
@@ -179,7 +175,6 @@ export const state = {
   rememberWorkspace: true,
   showToasts: true,
   enableSplitView: false,        // Enable split view feature (Experimental)
-  _lastShowHidden: false,
   // Internal tracking
   _wsUpdateTimer: null,
   _savedOpenTabs: null,

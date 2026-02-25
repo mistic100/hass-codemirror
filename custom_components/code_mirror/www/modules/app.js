@@ -9,7 +9,7 @@
  *
  * EXPORTED FUNCTIONS:
  * Core File Operations:
- * - loadFiles(force) - Load file tree from server
+ * - loadFiles() - Load file tree from server
  * - openFile(path, forceReload, noActivate) - Open file in tab
  * - loadFile(path) - Load file content from server
  * - saveFile(path, content) - Save file to server
@@ -111,11 +111,9 @@
 import {
   API_BASE,
   MOBILE_BREAKPOINT,
-  STORAGE_KEY,
   MAX_RECENT_FILES,
   MAX_FILE_SIZE,
   TEXT_FILE_WARNING_SIZE,
-  THEME_PRESETS,
   HA_SCHEMA,
   TEXT_FILE_EXTENSIONS
 } from './constants.js';
@@ -146,12 +144,10 @@ import {
   showGlobalLoading,
   hideGlobalLoading,
   showModal,
-  getEffectiveTheme,
   applyTheme,
   applySyntaxColors,
   applyEditorSettings,
   applyLayoutSettings,
-  setThemePreset,
   setTheme,
   registerUICallbacks,
   resetModalToDefault,
@@ -316,6 +312,7 @@ import {
 
 import {
   fileTreeRenderTimer,
+  loadDirectory,
   debouncedRenderFileTree as debouncedRenderFileTreeImpl,
   buildFileTree as buildFileTreeImpl,
   renderFileTree as renderFileTreeImpl,
@@ -446,7 +443,7 @@ export async function getAuthToken() {
     return null;
 }
 
-export async function loadFiles(force = false) {
+export async function loadFiles() {
     try {
       if (elements.btnRefresh) {
           elements.btnRefresh.classList.add("loading");
@@ -454,90 +451,51 @@ export async function loadFiles(force = false) {
       }
 
       // LAZY LOADING: Only load root directory initially
-      if (state.lazyLoadingEnabled) {
-        // Remember current navigation path if forcing refresh (e.g., toggling hidden files)
-        const preservedPath = force ? state.currentNavigationPath : null;
+      const result = await fetchWithAuth(`${API_BASE}?action=list_directory&path=&show_hidden=${state.showHidden}`);
 
-        const result = await fetchWithAuth(`${API_BASE}?action=list_directory&path=&show_hidden=${state.showHidden}`);
-
-        if (result.error) {
-          throw new Error(result.error);
-        }
-
-        // Clear loaded directories cache if forcing refresh
-        if (force) {
-          state.loadedDirectories.clear();
-          // Don't reset navigation - we'll restore it below
-        }
-
-        // Cache root directory contents
-        state.loadedDirectories.set("", {
-          folders: result.folders || [],
-          files: result.files || []
-        });
-
-        // Build initial file tree (just root level)
-        state.fileTree = {};
-        result.folders.forEach(folder => {
-          state.fileTree[folder.name] = {
-            _path: folder.path,
-            _childCount: folder.childCount || 0
-          };
-        });
-        state.fileTree._files = result.files || [];
-
-        // Store flat lists for backward compatibility
-        state.folders = result.folders || [];
-        state.files = result.files || [];
-        state.allItems = [...result.folders, ...result.files];
-
-        // Initialize navigation if first load
-        if (!state.currentNavigationPath && state.currentNavigationPath !== "") {
-          state.currentNavigationPath = "";
-        }
-
-        // If we preserved a path (force refresh while in subfolder), reload that folder
-        if (preservedPath && preservedPath !== "") {
-          state.currentNavigationPath = preservedPath;
-          // Reload the current folder to get updated contents with new hidden files setting
-          try {
-            const currentResult = await fetchWithAuth(
-              `${API_BASE}?action=list_directory&path=${encodeURIComponent(preservedPath)}&show_hidden=${state.showHidden}`
-            );
-            if (!currentResult.error) {
-              state.loadedDirectories.set(preservedPath, {
-                folders: currentResult.folders || [],
-                files: currentResult.files || []
-              });
-            }
-          } catch (e) {
-            console.warn("Failed to reload preserved path:", e);
-            // Fall back to root if reload fails
-            state.currentNavigationPath = "";
-            state.navigationHistory = [];
-          }
-        }
-
-        renderFileTree();
-        setFileTreeLoading(false);
-        setButtonLoading(elements.btnRefresh, false);
-        return;
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      // FALLBACK: Old behavior (load all recursively)
-      // If we are changing showHidden, we MUST force a refresh to bypass backend cache
-      const shouldForce = force || state._lastShowHidden !== state.showHidden;
-      state._lastShowHidden = state.showHidden;
+      // Clear loaded directories cache
+      state.loadedDirectories.clear();
 
-      const items = await fetchWithAuth(`${API_BASE}?action=list_all&show_hidden=${state.showHidden}&force=${shouldForce}`);
-      state.files = items.filter(item => item.type === "file");
-      state.folders = items.filter(item => item.type === "folder");
-      state.allItems = items;
-      state.fileTree = buildFileTree(items);
+      // Cache root directory contents
+      state.loadedDirectories.set("", {
+        folders: result.folders || [],
+        files: result.files || []
+      });
+
+      // Build initial file tree (just root level)
+      state.fileTree = {};
+      result.folders.forEach(folder => {
+        state.fileTree[folder.name] = {
+          _path: folder.path,
+          _childCount: folder.childCount || 0
+        };
+      });
+      state.fileTree._files = result.files || [];
+
+      // Store flat lists for backward compatibility
+      state.folders = result.folders || [];
+      state.files = result.files || [];
+      state.allItems = [...result.folders, ...result.files];
+
+      // Restore expanded folders
+      const toExpand = Array.from(state.expandedFolders).sort();
+      for (const path of toExpand) {
+        try {
+          await loadDirectory(path);
+        } catch (e) {
+          console.warn("Failed to reload preserved path:", e);
+          state.expandedFolders.delete(path);
+        }
+      }
+
       renderFileTree();
-
       setFileTreeLoading(false);
       setButtonLoading(elements.btnRefresh, false);
+
     } catch (error) {
       setFileTreeLoading(false);
       setButtonLoading(elements.btnRefresh, false);

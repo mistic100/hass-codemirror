@@ -174,8 +174,7 @@ import {
 } from './file-operations.js';
 
 import {
-  registerFileTreeCallbacks,
-  navigateToFolder
+  registerFileTreeCallbacks
 } from './file-tree.js';
 
 import {

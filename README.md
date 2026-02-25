@@ -4,7 +4,7 @@
 
 Simple yet powerful add-on to edit your configuration directly in the browser.
 
-This is a fork of Blueprint Studio with all heavy features removed.
+This is a fork of [Blueprint Studio](https://github.com/soulripper13/blueprint-studio) with all heavy features removed.
 
 **Motivation**
 
@@ -17,6 +17,9 @@ The following features have been removed:
 - Git integration 
 - AI agents
 - Terminal panel
+- PDF viewer
+- Extra themes other than light and dark
+- Custom colors and fonts
 
 ---
 

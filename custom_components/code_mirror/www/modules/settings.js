@@ -161,8 +161,6 @@ export async function loadSettings() {
     state.autoSaveDelay = parseInt(settings.autoSaveDelay) || 1000;
     state.fileTreeCompact = settings.fileTreeCompact || false;
     state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
-    // Apply tree mode to lazyLoadingEnabled
-    state.lazyLoadingEnabled = false;
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
     state.showToasts = settings.showToasts !== false; // default true
 

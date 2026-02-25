@@ -120,7 +120,7 @@ export async function deleteSelectedItems() {
 
       // Exit selection mode and refresh
       toggleSelectionMode();
-      if (callbacks.loadFiles) await callbacks.loadFiles(true);
+      if (callbacks.loadFiles) await callbacks.loadFiles();
     } catch (error) {
       hideGlobalLoading();
       showToast("Failed to delete items: " + error.message, "error");

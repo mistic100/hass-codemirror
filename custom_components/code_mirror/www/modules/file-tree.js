@@ -377,118 +377,10 @@ export function renderFileTree() {
     return; // Exit early - don't show folder navigation
   }
 
-  // COLLAPSABLE TREE MODE: Classic expand/collapse tree
-  if (!state.lazyLoadingEnabled) {
-    const fragment = document.createDocumentFragment();
-    if (state.fileTree && Object.keys(state.fileTree).length > 0) {
-      renderTreeLevel(state.fileTree, fragment, 0);
-    }
-    elements.fileTree.appendChild(fragment);
-    return;
-  }
-
-  // FOLDER NAVIGATION MODE: Show only current folder contents
-  const currentPath = state.currentNavigationPath;
-
-  const currentData = state.loadedDirectories.get(currentPath);
-
-  if (!currentData) {
-    // No data loaded yet - show loading
-    const loadingItem = document.createElement("div");
-    loadingItem.className = "loading-item";
-    loadingItem.innerHTML = `
-      <span class="material-icons loading-spinner">sync</span>
-      <span class="tree-name">Loading...</span>
-    `;
-    elements.fileTree.appendChild(loadingItem);
-    return;
-  }
-
-  const query = state.searchQuery.toLowerCase();
   const fragment = document.createDocumentFragment();
-
-
-  // Render folders (flat list, no tree hierarchy)
-  currentData.folders.forEach((folder) => {
-    if (query && !folder.name.toLowerCase().includes(query)) {
-      return;
-    }
-
-
-    const item = createTreeItem(folder.name, 0, true, false, folder.path, false,
-      folder.isSymlink ? (folder.symlinkTarget || "") : null);
-
-    // Double-click to navigate into folder (desktop)
-    // Single tap to navigate (touch devices)
-    if (isTouchDevice()) {
-      // On touch devices, use single click to navigate into folders
-      item.addEventListener("click", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        e.stopPropagation();
-        navigateToFolder(folder.path);
-      });
-    } else {
-      // On desktop, use double-click
-      item.addEventListener("dblclick", (e) => {
-        if (e.target.closest(".tree-action-btn")) return;
-        e.stopPropagation();
-        navigateToFolder(folder.path);
-      });
-    }
-
-    // Context menu
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (callbacks.showContextMenu) {
-        callbacks.showContextMenu(e.clientX, e.clientY, { path: folder.path, isFolder: true });
-      }
-    });
-
-    fragment.appendChild(item);
-  });
-
-  // Render files (flat list)
-  currentData.files.forEach((file) => {
-    // If search results exist (from either content or filename search), filter by them
-    if (state.contentSearchResults && state.contentSearchResults.size > 0) {
-      if (!state.contentSearchResults.has(file.path)) return;
-    } else if (query && !file.name.toLowerCase().includes(query)) {
-      // Fallback: local filename filtering (for non-lazy-loading mode)
-      return;
-    }
-
-
-    const item = createTreeItem(file.name, 0, false, false, file.path, false,
-      file.isSymlink ? (file.symlinkTarget || "") : null);
-
-    item.addEventListener("click", (e) => {
-      if (e.target.closest(".tree-action-btn")) return;
-      if (callbacks.openFile) callbacks.openFile(file.path);
-      if (isMobile() && callbacks.hideSidebar) callbacks.hideSidebar();
-    });
-
-    // Context menu
-    item.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (callbacks.showContextMenu) {
-        callbacks.showContextMenu(e.clientX, e.clientY, { path: file.path, isFolder: false });
-      }
-    });
-
-    if (state.activeTab && state.activeTab.path === file.path) {
-      item.classList.add("active");
-    }
-
-    const tab = state.openTabs.find((t) => t.path === file.path);
-    if (tab && tab.modified) {
-      item.classList.add("modified");
-    }
-
-    fragment.appendChild(item);
-  });
-
+  if (state.fileTree && Object.keys(state.fileTree).length > 0) {
+    renderTreeLevel(state.fileTree, fragment, 0);
+  }
   elements.fileTree.appendChild(fragment);
 }
 
@@ -547,16 +439,6 @@ export function renderTreeLevel(tree, container, depth) {
     if (isExpanded && !isLoading) {
       // Only render children if expanded and not currently loading
       renderTreeLevel(folderData, fragment, depth + 1);
-    } else if (isExpanded && isLoading) {
-      // Show loading placeholder
-      const loadingItem = document.createElement("div");
-      loadingItem.className = "tree-item loading-item";
-      loadingItem.style.paddingLeft = `${(depth + 1) * 20 + 12}px`;
-      loadingItem.innerHTML = `
-        <span class="material-icons loading-spinner">sync</span>
-        <span class="tree-name">Loading...</span>
-      `;
-      fragment.appendChild(loadingItem);
     }
   });
 
@@ -646,7 +528,7 @@ export async function handleFileDropMulti(sourcePaths, targetFolder) {
       if (state.selectionMode && callbacks.toggleSelectionMode) {
         callbacks.toggleSelectionMode();
       }
-      if (callbacks.loadFiles) await callbacks.loadFiles(true);
+      if (callbacks.loadFiles) await callbacks.loadFiles();
     } catch (error) {
       hideGlobalLoading();
       showToast("Failed to move items: " + error.message, "error");
@@ -769,19 +651,18 @@ export function createTreeItem(name, depth, isFolder, isExpanded, itemPath = nul
   });
   item.appendChild(checkbox);
 
-  // In folder navigation mode (lazy loading), don't show chevrons
-  // We navigate by double-clicking instead of expanding
-  if (isFolder && !state.lazyLoadingEnabled) {
+  // show chevrons for folders (expand on click)
+  if (isFolder) {
     const chevron = document.createElement("div");
     chevron.className = `tree-chevron ${isExpanded ? "expanded" : ""}`;
     if (isLoading) {
       // Show spinning loader icon while loading
-      chevron.innerHTML = '<span class="material-icons loading-spinner">sync</span>';
+      chevron.innerHTML = '<span class="material-icons spinning">sync</span>';
     } else {
       chevron.innerHTML = '<span class="material-icons">chevron_right</span>';
     }
     item.appendChild(chevron);
-  } else if (!state.lazyLoadingEnabled) {
+  } else {
     // Spacer for alignment if not a folder (only in tree mode)
     const spacer = document.createElement("div");
     spacer.className = "tree-chevron hidden";
@@ -975,25 +856,6 @@ export async function handleDrop(e) {
 /**
  * Toggle folder expansion
  */
-/**
- * Navigate into a folder (show only its contents)
- */
-export async function navigateToFolder(folderPath) {
-  // Add current path to history before navigating
-  if (state.currentNavigationPath !== folderPath) {
-    state.navigationHistory.push(state.currentNavigationPath);
-  }
-
-  state.currentNavigationPath = folderPath;
-
-  // Load folder contents if not already loaded
-  if (!state.loadedDirectories.has(folderPath)) {
-    await loadDirectory(folderPath);
-  }
-
-  // Render current folder
-  renderFileTree();
-}
 
 export async function toggleFolder(path) {
   if (state.expandedFolders.has(path)) {
@@ -1005,7 +867,7 @@ export async function toggleFolder(path) {
     state.expandedFolders.add(path);
 
     // LAZY LOADING: Load directory contents if not already loaded
-    if (state.lazyLoadingEnabled && !state.loadedDirectories.has(path)) {
+    if (!state.loadedDirectories.has(path)) {
       await loadDirectory(path);
     }
 
@@ -1016,7 +878,7 @@ export async function toggleFolder(path) {
 /**
  * Load directory contents on demand (LAZY LOADING)
  */
-async function loadDirectory(path) {
+export async function loadDirectory(path) {
   if (state.loadingDirectories.has(path)) {
     // Already loading, skip
     return;
@@ -1099,16 +961,6 @@ function updateFileTreeWithLoadedDirectory(parentPath, folders, files) {
  * Collapse all folders — works in both tree and navigation modes
  */
 export async function collapseAllFolders() {
-  // Collapsable tree mode: clear expanded set and re-render
-  if (!state.lazyLoadingEnabled) {
-    state.expandedFolders.clear();
-    renderFileTree();
-    return;
-  }
-
-  // Folder navigation mode (default/lazy loading): navigate back to root
-  if (state.currentNavigationPath !== "") {
-    state.navigationHistory = [];
-    await navigateToFolder("");
-  }
+  state.expandedFolders.clear();
+  renderFileTree();
 }
