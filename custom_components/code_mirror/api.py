@@ -77,13 +77,7 @@ class CodeMirrorApiView(HomeAssistantView):
             show_hidden = params.get("show_hidden", "false").lower() == "true"
             files = await hass.async_add_executor_job(self.file.list_files, show_hidden)
             return json_response(files)
-        if action == "list_all":
-            show_hidden = params.get("show_hidden", "false").lower() == "true"
-            force_refresh = params.get("force", "false").lower() == "true"
-            items = await hass.async_add_executor_job(self.file.list_all, show_hidden, force_refresh)
-            return json_response(items)
         if action == "list_directory":
-            # LAZY LOADING: List only one directory (non-recursive)
             path = params.get("path", "")  # Empty string = root
             show_hidden = params.get("show_hidden", "false").lower() == "true"
             result = await hass.async_add_executor_job(self.file.list_directory, path, show_hidden)

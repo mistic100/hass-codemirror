@@ -500,51 +500,22 @@ export async function loadFiles() {
       setFileTreeLoading(false);
       setButtonLoading(elements.btnRefresh, false);
 
-      // 🛡️ AUTO-RECOVERY: If we get HTTP 500, automatically retry with force=true to reinitialize backend cache
-      if (error.message && error.message.includes("500") && !force) {
-        console.warn("HTTP 500 detected - Attempting auto-recovery with cache reinit...");
-        showToast("Recovering from server error...", "warning");
-
-        // Wait a moment before retry
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        try {
-          // Retry with force=true to clear backend cache
-          const items = await fetchWithAuth(`${API_BASE}?action=list_all&show_hidden=${state.showHidden}&force=true`);
-          state.files = items.filter(item => item.type === "file");
-          state.folders = items.filter(item => item.type === "folder");
-          state.allItems = items;
-          state.fileTree = buildFileTree(items);
-          renderFileTree();
-
-          showToast("✓ Recovered successfully - files loaded", "success");
-          console.log("Auto-recovery successful!");
-          return; // Success!
-        } catch (retryError) {
-          console.error("Auto-recovery failed:", retryError);
-
-          // Backend is completely dead - need manual intervention
-          if (retryError.message && retryError.message.includes("500")) {
-            console.error("🚨 CRITICAL: Backend is non-responsive even with force=true");
-            showToast(
-              "⚠️ Backend Crashed - Restart Required\n\n" +
-              "The CodeMirror backend has crashed and cannot recover.\n\n" +
-              "To fix:\n" +
-              "Settings → System → Restart Home Assistant\n\n" +
-              "(Note: Integration reload won't fix this - full restart needed)\n\n" +
-              "After restart, check logs for the root cause:\n" +
-              "Settings → System → Logs → Search 'code_mirror'",
-              "error",
-              20000 // Show for 20 seconds
-            );
-          } else {
-            showToast("Failed to load files: " + retryError.message + " - Please refresh manually", "error");
-          }
-          return;
-        }
+      if (error.message && error.message.includes("500")) {
+        console.error("🚨 CRITICAL: Backend is non-responsive");
+        showToast(
+          "⚠️ Backend Crashed - Restart Required\n\n" +
+          "The CodeMirror backend has crashed and cannot recover.\n\n" +
+          "To fix:\n" +
+          "Settings → System → Restart Home Assistant\n\n" +
+          "(Note: Integration reload won't fix this - full restart needed)\n\n" +
+          "After restart, check logs for the root cause:\n" +
+          "Settings → System → Logs → Search 'code_mirror'",
+          "error",
+          20000 // Show for 20 seconds
+        );
+      } else {
+        showToast("Failed to load files: " + error.message + " - Please refresh manually", "error");
       }
-
-      showToast("Failed to load files: " + error.message, "error");
     }
   }
 

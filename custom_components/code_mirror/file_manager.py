@@ -6,7 +6,6 @@ import io
 import logging
 import os
 import shutil
-import threading
 import zipfile
 import mimetypes
 import time
@@ -36,9 +35,6 @@ class FileManager:
         """
         self.hass = hass
         self.config_dir = config_dir
-        self._file_cache: dict[bool, list[dict]] = {}
-        self._last_cache_update: float = 0
-        self._cache_lock = threading.Lock()  # 🔒 Thread safety for concurrent requests
 
     def _get_root_dir(self) -> Path:
         """Get the root directory (always config_dir).
@@ -74,10 +70,6 @@ class FileManager:
 
     def _fire_update(self, action: str, path: str | None = None):
         """Fire a websocket update event."""
-        # 🔒 THREAD SAFETY: Protect cache invalidation from race conditions
-        with self._cache_lock:
-            # Invalidate both caches on any change
-            self._file_cache = {}
 
         if self.hass:
             self.hass.bus.async_fire("code_mirror_update", {
@@ -85,12 +77,6 @@ class FileManager:
                 "path": path,
                 "timestamp": time.time()
             })
-
-    def clear_cache(self):
-        """Safely clear the file cache (thread-safe)."""
-        with self._cache_lock:
-            self._file_cache = {}
-            self._last_cache_update = 0
 
     def list_files(self, show_hidden: bool = False) -> list[dict]:
         """List files recursively."""
@@ -106,163 +92,9 @@ class FileManager:
                 res.append({"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "file"})
         return sorted(res, key=lambda x: x["path"])
 
-    def list_all(self, show_hidden: bool = False, force: bool = False) -> list[dict]:
-        """List all files and folders."""
-        # 🔒 THREAD SAFETY: Acquire lock to prevent concurrent access corruption
-        # This is the DEFINITIVE FIX for Python 3.13 race condition issues
-        with self._cache_lock:
-            # 🛡️ ULTRA-DEFENSIVE: Ensure cache attributes exist (handles None, missing attrs, etc.)
-            # This fixes the "argument of type 'NoneType' is not iterable" error from logs
-            if not hasattr(self, '_file_cache') or self._file_cache is None or not isinstance(self._file_cache, dict):
-                _LOGGER.warning("File cache was corrupted or None (type: %s), reinitializing...",
-                              type(getattr(self, '_file_cache', None)).__name__)
-                self._file_cache = {}
-                self._last_cache_update = 0
-
-            # Defensive: Ensure _last_cache_update is a valid number
-            if not hasattr(self, '_last_cache_update') or not isinstance(self._last_cache_update, (int, float)):
-                _LOGGER.warning("Cache timestamp was corrupted (type: %s), reinitializing...",
-                              type(getattr(self, '_last_cache_update', None)).__name__)
-                self._file_cache = {}
-                self._last_cache_update = 0
-
-            # Get root directory
-            root_dir = self._get_root_dir()
-
-            # Use cache if available and not too old (30s TTL as fallback) and not forced
-            cache_key = show_hidden
-            if not force and cache_key in self._file_cache and (time.time() - self._last_cache_update < 30):
-                return self._file_cache[cache_key]
-
-            # 🛡️ CRITICAL FIX: Wrap entire filesystem operation in try-except
-            # Prevents HTTP 500 crashes from permission errors, corrupted files, symlink loops, etc.
-            try:
-                res = []
-                file_count = 0
-                max_files = 50000  # Safety limit to prevent memory exhaustion
-                max_depth = 20  # Limit recursion depth
-
-                for root, dirs, files in os.walk(root_dir):
-                    # Calculate current depth
-                    try:
-                        depth = len(Path(root).relative_to(root_dir).parts)
-                    except (ValueError, OSError):
-                        depth = 0
-
-                    # Safety: Stop if we've scanned too many files
-                    if file_count >= max_files:
-                        _LOGGER.warning(
-                            "Hit file count limit (%d files) during scan - stopping early. "
-                            "Some files may not be visible. Consider excluding large directories.",
-                            max_files
-                        )
-                        break
-
-                    # Safety: Don't recurse too deep (prevents symlink loops and performance issues)
-                    if depth >= max_depth:
-                        dirs[:] = []  # Don't recurse deeper
-                        continue
-                    # 🛡️ DEFENSIVE: Handle corrupted os.walk() results (dirs/files should never be None)
-                    if dirs is None or files is None:
-                        _LOGGER.error("os.walk() returned None for dirs or files in %s - filesystem corruption?", root)
-                        continue  # Skip this directory
-
-                    # Control recursion and filter directories
-                    all_exclusions = EXCLUDED_PATTERNS
-
-                    if not show_hidden:
-                        dirs[:] = [d for d in dirs if d not in all_exclusions and not d.startswith(".")]
-                    else:
-                        dirs[:] = [d for d in dirs if d not in all_exclusions]
-
-                    rel_root = Path(root).relative_to(root_dir)
-                    for name in sorted(dirs):
-                        try:
-                            dir_path = Path(root) / name
-                            is_symlink = dir_path.is_symlink()
-                            symlink_target = None
-                            if is_symlink:
-                                try:
-                                    symlink_target = str(dir_path.readlink())
-                                except (OSError, ValueError):
-                                    symlink_target = None
-                            size = self._get_dir_size(dir_path)
-                        except Exception as e:
-                            _LOGGER.debug("Failed to get size for directory %s: %s", name, e)
-                            size = 0
-                            is_symlink = False
-                            symlink_target = None
-
-                        folder_data = {"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "folder", "size": size}
-                        if is_symlink:
-                            folder_data["isSymlink"] = True
-                            if symlink_target:
-                                folder_data["symlinkTarget"] = symlink_target
-                        res.append(folder_data)
-
-                    for name in sorted(files):
-                        # Safety: Check file count limit
-                        file_count += 1
-                        if file_count > max_files:
-                            break
-
-                        file_path = Path(root) / name
-                        if (not show_hidden and name.startswith(".")) or not self._is_file_allowed(file_path): continue
-
-                        try:
-                            is_symlink = file_path.is_symlink()
-                            symlink_target = None
-                            if is_symlink:
-                                try:
-                                    symlink_target = str(file_path.readlink())
-                                except (OSError, ValueError):
-                                    symlink_target = None
-                            size = file_path.stat().st_size
-                        except:
-                            size = 0
-                            is_symlink = False
-                            symlink_target = None
-
-                        file_data = {"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "file", "size": size}
-                        if is_symlink:
-                            file_data["isSymlink"] = True
-                            if symlink_target:
-                                file_data["symlinkTarget"] = symlink_target
-                        res.append(file_data)
-
-                # Save to cache
-                self._file_cache[cache_key] = sorted(res, key=lambda x: x["path"])
-                self._last_cache_update = time.time()
-
-                return self._file_cache[cache_key]
-
-            except Exception as e:
-                # 🚨 CRITICAL ERROR: Filesystem operation failed completely
-                _LOGGER.error(
-                    "CRITICAL: list_all() failed with filesystem error: %s (type: %s)\n"
-                    "Config dir: %s\n"
-                    "This usually indicates:\n"
-                    "  1. Permission issues reading config directory\n"
-                    "  2. Corrupted filesystem or symlink loops\n"
-                    "  3. Network mount timeout (if config is on network storage)\n"
-                    "  4. Disk full or I/O errors\n"
-                    "Please check Home Assistant logs and fix filesystem issues.",
-                    str(e), type(e).__name__, self.config_dir
-                )
-
-                # Return cached data if available (degraded mode)
-                if cache_key in self._file_cache:
-                    _LOGGER.warning("Returning stale cached data due to filesystem error")
-                    return self._file_cache[cache_key]
-
-                # Last resort: return empty list to prevent HTTP 500
-                _LOGGER.error("No cache available - returning empty file list!")
-                return []
-
     def list_directory(self, path: str = "", show_hidden: bool = False) -> dict:
         """
-        List contents of a single directory (non-recursive) - LAZY LOADING.
-        This is much faster than list_all() as it only lists one folder.
+        List contents of a single directory (non-recursive).
 
         Args:
             path: Relative path to directory (empty string = root)
