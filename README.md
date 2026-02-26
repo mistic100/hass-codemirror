@@ -20,6 +20,7 @@ The following features have been removed:
 - PDF viewer
 - Extra themes other than light and dark
 - Custom colors and fonts
+- Split view
 
 ---
 

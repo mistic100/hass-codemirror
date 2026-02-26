@@ -187,7 +187,7 @@ import {
 let loadFiles, openFile, saveFile, saveCurrentFile, renderTabs, renderFileTree;
 let closeTab, loadFile, setButtonLoading;
 let restoreOpenTabs, copyToClipboard;
-let updateToolbarState, updateStatusBar, updateSplitViewButtons;
+let updateToolbarState, updateStatusBar;
 let isTextFile, toggleSelectionMode, processUploads;
 let renderRecentFilesPanel, renderFavoritesPanel, handleSelectionChange;
 let showContextMenu, toggleFavorite, hideSidebar;
@@ -209,7 +209,6 @@ export function registerInitializationCallbacks(callbacks) {
   copyToClipboard = callbacks.copyToClipboard;
   updateToolbarState = callbacks.updateToolbarState;
   updateStatusBar = callbacks.updateStatusBar;
-  updateSplitViewButtons = callbacks.updateSplitViewButtons;
   isTextFile = callbacks.isTextFile;
   toggleSelectionMode = callbacks.toggleSelectionMode;
   processUploads = callbacks.processUploads;
@@ -389,7 +388,6 @@ export async function init() {
 
     updateToolbarState();
     updateStatusBar();
-    updateSplitViewButtons();
   } catch (error) {
     console.error("CodeMirror: Critical initialization error:", error);
     // Even if it fails, try to show the UI

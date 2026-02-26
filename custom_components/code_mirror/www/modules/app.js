@@ -240,24 +240,6 @@ import {
 } from './autosave.js';
 
 import {
-  registerSplitViewCallbacks,
-  enableSplitView,
-  disableSplitView,
-  setActivePaneFromPosition,
-  moveToPrimaryPane,
-  moveToSecondaryPane,
-  getPaneForTab,
-  getActivePaneEditor,
-  updatePaneSizes,
-  initSplitResize,
-  handleTabDragStart,
-  handleTabDragOver,
-  handleTabDrop,
-  handleTabDragEnd,
-  updatePaneActiveState
-} from './split-view.js';
-
-import {
   checkFileUpdates as checkFileUpdatesImpl,
   registerPollingCallbacks
 } from './polling.js';
@@ -339,8 +321,7 @@ import {
 import {
   registerEventHandlerCallbacks,
   restartHomeAssistant as restartHomeAssistantImpl,
-  insertUUID,
-  updateSplitViewButtons
+  insertUUID
 } from './event-handlers.js';
 
 import {
@@ -357,8 +338,6 @@ import {
   registerEditorCallbacks,
   copyToClipboard as copyToClipboardImpl,
   createEditor as createEditorImpl,
-  createSecondaryEditor as createSecondaryEditorImpl,
-  destroySecondaryEditor as destroySecondaryEditorImpl,
   yamlLinter as yamlLinterImpl,
   detectIndentation as detectIndentationImpl,
   handleEditorChange as handleEditorChangeImpl,
@@ -744,7 +723,6 @@ export async function openFile(path, forceReload = false, noActivate = false) {
     activateTab(tab, forceReload);
     renderTabs();
     renderFileTree();
-    updateSplitViewButtons();
     saveSettingsImpl(); // To save recent files
   }
 
@@ -754,76 +732,23 @@ export function activateTab(tab, skipSave = false) {
       elements.welcomeScreen.style.display = "none";
     }
 
-    // Determine which pane this tab should be in
-    const tabIndex = state.openTabs.indexOf(tab);
-    let pane = null;
-    
-    // Robustly determine the editor for the CURRENT active tab (before switch)
-    // We cannot rely on state.editor because setActivePaneFromPosition might have updated it already on click
-    let currentEditor = state.editor; 
-    if (state.splitView && state.splitView.enabled && state.activeTab) {
-        const activeIdx = state.openTabs.indexOf(state.activeTab);
-        if (activeIdx !== -1) {
-            const activePane = getPaneForTab(activeIdx);
-            if (activePane === 'primary') currentEditor = state.primaryEditor;
-            else if (activePane === 'secondary') currentEditor = state.secondaryEditor;
-        }
-    }
-
-    let targetEditor = state.editor;  // Editor for the NEW tab (will be updated below)
-
-    if (state.splitView && state.splitView.enabled && tabIndex !== -1) {
-      pane = getPaneForTab(tabIndex);
-      if (pane === 'primary') {
-        targetEditor = state.primaryEditor;
-        state.splitView.primaryActiveTab = tab;
-        state.splitView.activePane = 'primary';
-      } else if (pane === 'secondary') {
-        targetEditor = state.secondaryEditor;
-        state.splitView.secondaryActiveTab = tab;
-        state.splitView.activePane = 'secondary';
-      } else {
-        // Tab not assigned to any pane yet, assign to active pane
-        if (state.splitView.activePane === 'secondary' && state.secondaryEditor) {
-          targetEditor = state.secondaryEditor;
-          pane = 'secondary';
-          if (!state.splitView.secondaryTabs.includes(tabIndex)) {
-            state.splitView.secondaryTabs.push(tabIndex);
-          }
-          state.splitView.secondaryActiveTab = tab;
-        } else {
-          targetEditor = state.primaryEditor;
-          pane = 'primary';
-          if (!state.splitView.primaryTabs.includes(tabIndex)) {
-            state.splitView.primaryTabs.push(tabIndex);
-          }
-          state.splitView.primaryActiveTab = tab;
-        }
-      }
-      state.editor = targetEditor;
-      updatePaneActiveState();
-    }
-
     // Save current tab state before switching (only for text files)
-    // CRITICAL FIX: Use currentEditor (the editor of the OLD tab) to save state
-    if (!skipSave && state.activeTab && currentEditor && !state.activeTab.isBinary) {
-      state.activeTab.content = currentEditor.getValue();
-      state.activeTab.history = currentEditor.getHistory();
-      state.activeTab.cursor = currentEditor.getCursor();
-      state.activeTab.scroll = currentEditor.getScrollInfo();
+    if (!skipSave && state.activeTab && state.editor && !state.activeTab.isBinary) {
+      state.activeTab.content = state.editor.getValue();
+      state.activeTab.history = state.editor.getHistory();
+      state.activeTab.cursor = state.editor.getCursor();
+      state.activeTab.scroll = state.editor.getScrollInfo();
     }
 
     state.activeTab = tab;
 
     // Handle Binary Preview
     if (tab.isBinary) {
-        if (targetEditor) {
-            targetEditor.getWrapperElement().style.display = "none";
+        if (state.editor) {
+            state.editor.getWrapperElement().style.display = "none";
         }
         // Use appropriate preview container based on pane
-        const previewContainer = (pane === 'secondary') ?
-          document.getElementById('secondary-asset-preview') :
-          elements.assetPreview;
+        const previewContainer = elements.assetPreview;
         if (previewContainer) {
             previewContainer.classList.add("visible");
             renderAssetPreview(tab, previewContainer);
@@ -831,61 +756,45 @@ export function activateTab(tab, skipSave = false) {
     } else {
         // Handle Text Editor
         // Hide preview in appropriate pane
-        const previewContainer = (pane === 'secondary') ?
-          document.getElementById('secondary-asset-preview') :
-          elements.assetPreview;
+        const previewContainer = elements.assetPreview;
         if (previewContainer) {
         previewContainer.classList.remove("visible");
         previewContainer.innerHTML = "";
       }
 
         // Create editor if it doesn't exist
-        if (!targetEditor) {
-          if (pane === 'secondary') {
-            createSecondaryEditor();
-            targetEditor = state.secondaryEditor;
-          } else {
-            createEditor();
-            targetEditor = state.primaryEditor;
-          }
-          state.editor = targetEditor;
+        if (!state.editor) {
+          createEditor();
           applyEditorSettings(); // Ensure theme/font are applied to new instance
           // Update toolbar immediately after editor creation
           updateToolbarState();
         }
 
-        if (targetEditor) {
+        if (state.editor) {
           // Show the custom wrapper div (contains CodeMirror)
-          if (pane === 'primary' || !pane) {
-            const wrapperDiv = document.getElementById('codemirror-wrapper');
-            if (wrapperDiv) {
-              wrapperDiv.style.display = "block";
-            }
-          } else if (pane === 'secondary') {
-            const wrapperDiv = document.getElementById('codemirror-wrapper-secondary');
-            if (wrapperDiv) {
-              wrapperDiv.style.display = "block";
-            }
+          const wrapperDiv = document.getElementById('codemirror-wrapper');
+          if (wrapperDiv) {
+            wrapperDiv.style.display = "block";
           }
 
-          targetEditor.getWrapperElement().style.display = "block";
+          state.editor.getWrapperElement().style.display = "block";
 
           // Update editor content and settings
           const mode = getEditorMode(tab.path);
 
           // Try to set the mode, fall back to yaml if ha-yaml fails
           try {
-            targetEditor.setOption("mode", mode);
+            state.editor.setOption("mode", mode);
           } catch (error) {
             console.error("Error setting editor mode:", error);
             if (mode === "ha-yaml") {
-              targetEditor.setOption("mode", "yaml");
+              state.editor.setOption("mode", "yaml");
             }
           }
 
           const isReadOnly = tab.path.endsWith(".gitignore") || tab.path.endsWith(".lock");
-          targetEditor.setOption("readOnly", isReadOnly);
-          targetEditor.setOption("lint", (mode === "ha-yaml" || mode === "yaml") ? { getAnnotations: yamlLinter, async: true } : false);
+          state.editor.setOption("readOnly", isReadOnly);
+          state.editor.setOption("lint", (mode === "ha-yaml" || mode === "yaml") ? { getAnnotations: yamlLinter, async: true } : false);
 
           // Dynamic Indent Detection - only for files with meaningful indentation
           // Skip detection for empty/small files to respect user preference
@@ -894,33 +803,33 @@ export function activateTab(tab, skipSave = false) {
             ? detectIndentation(tab.content)
             : { tabs: state.indentWithTabs || false, size: state.tabSize || 2 };
 
-          targetEditor.setOption("indentWithTabs", indent.tabs);
-          targetEditor.setOption("indentUnit", indent.size);
-          targetEditor.setOption("tabSize", indent.size);
+          state.editor.setOption("indentWithTabs", indent.tabs);
+          state.editor.setOption("indentUnit", indent.size);
+          state.editor.setOption("tabSize", indent.size);
 
           // Set content without triggering change event
-          targetEditor.off("change", handleEditorChange);
-          targetEditor.setValue(tab.content);
-          targetEditor.on("change", () => handleEditorChange(targetEditor));
+          state.editor.off("change", handleEditorChange);
+          state.editor.setValue(tab.content);
+          state.editor.on("change", () => handleEditorChange(state.editor));
 
           // Restore history if available
           if (tab.history) {
-            targetEditor.setHistory(tab.history);
+            state.editor.setHistory(tab.history);
           } else {
-            targetEditor.clearHistory();
+            state.editor.clearHistory();
           }
 
           // Restore cursor and scroll position
           if (tab.cursor) {
-            targetEditor.setCursor(tab.cursor);
+            state.editor.setCursor(tab.cursor);
           }
           if (tab.scroll) {
-            targetEditor.scrollTo(tab.scroll.left, tab.scroll.top);
+            state.editor.scrollTo(tab.scroll.left, tab.scroll.top);
           }
 
           // Refresh and focus
-          targetEditor.refresh();
-          targetEditor.focus();
+          state.editor.refresh();
+          state.editor.focus();
         }
     }
 
@@ -963,20 +872,6 @@ export const showSidebar = showSidebarImpl;
 export const hideSidebar = hideSidebarImpl;
 export const switchSidebarView = switchSidebarViewImpl;
 export const toggleSidebar = toggleSidebarImpl;
-
-// Re-export split view module functions
-export {
-  enableSplitView,
-  disableSplitView,
-  setActivePaneFromPosition,
-  moveToPrimaryPane,
-  moveToSecondaryPane,
-  getPaneForTab,
-  getActivePaneEditor,
-  updatePaneSizes,
-  initSplitResize,
-  updatePaneActiveState
-};
 
 // ============================================
 // LOADING STATE FUNCTIONS
@@ -1027,23 +922,7 @@ export function selectNextOccurrence(cm) {
 
 // Wrapper for editor module function
 export function createEditor() {
-  const editor = createEditorImpl();
-  // Ensure state references are set correctly
-  if (!state.primaryEditor) {
-    state.primaryEditor = editor;
-  }
-  if (!state.editor) {
-    state.editor = editor;
-  }
-  return editor;
-}
-
-export function createSecondaryEditor() {
-  return createSecondaryEditorImpl();
-}
-
-export function destroySecondaryEditor() {
-  return destroySecondaryEditorImpl();
+  return createEditorImpl();
 }
 
 // Wrapper for editor module function
@@ -1087,11 +966,6 @@ export function closeTab(tab, force = false) {
 
     state.openTabs.splice(index, 1);
 
-    // Auto-close split view if only 1 tab remains
-    if (state.splitView && state.splitView.enabled && state.openTabs.length <= 1) {
-      disableSplitView();
-    }
-
     if (state.activeTab === tab) {
       if (state.openTabs.length > 0) {
         const newIndex = Math.min(index, state.openTabs.length - 1);
@@ -1120,7 +994,6 @@ export function closeTab(tab, force = false) {
     renderTabs();
     renderFileTree();
     updateToolbarState();
-    updateSplitViewButtons();
     saveSettingsImpl();  // Save open tabs state
   }
 
@@ -1333,13 +1206,7 @@ registerEventHandlerCallbacks({
   previousTab: previousTabImpl,
   showCommandPalette,
   debouncedContentSearch,
-  debouncedFilenameSearch,
-  // Split view callbacks
-  enableSplitView,
-  disableSplitView,
-  moveToPrimaryPane,
-  moveToSecondaryPane,
-  setActivePaneFromPosition
+  debouncedFilenameSearch
 });
 
   // ============================================
@@ -1347,15 +1214,15 @@ registerEventHandlerCallbacks({
   // ============================================
 
 export async function restoreOpenTabs() {
-    // CRITICAL: Ensure primary editor exists BEFORE restoring any tabs
-    if (!state.primaryEditor) {
+    // CRITICAL: Ensure editor exists BEFORE restoring any tabs
+    if (!state.editor) {
       createEditor();
     }
 
     if (!state._savedOpenTabs || state._savedOpenTabs.length === 0) {
       // No tabs to restore - show welcome screen
-      if (state.primaryEditor) {
-        state.primaryEditor.setValue("");
+      if (state.editor) {
+        state.editor.setValue("");
         // Hide the custom wrapper div (contains CodeMirror)
         const wrapperDiv = document.getElementById('codemirror-wrapper');
         if (wrapperDiv) {
@@ -1409,175 +1276,9 @@ export async function restoreOpenTabs() {
       }
     }
 
-    // Restore split view if it was enabled
-    if (state.splitView && state.splitView.enabled) {
-      // Ensure both editors exist
-      if (!state.secondaryEditor) {
-        createSecondaryEditor();
-      }
-
-      // Explicitly show split view DOM elements (in case split-view.js is cached)
-      const splitContainer = document.getElementById('split-container');
-      const primaryPane = document.getElementById('primary-pane');
-      const secondaryPane = document.getElementById('secondary-pane');
-      const resizeHandle = document.getElementById('split-resize-handle');
-      if (splitContainer) {
-        splitContainer.className = `split-container ${state.splitView.orientation}`;
-      }
-      if (primaryPane) {
-        primaryPane.style.display = 'flex';
-        primaryPane.style.flex = `0 0 ${state.splitView.primaryPaneSize}%`;
-      }
-      if (secondaryPane) {
-        secondaryPane.style.display = 'flex';
-        secondaryPane.style.flex = `0 0 ${100 - state.splitView.primaryPaneSize}%`;
-      }
-      if (resizeHandle) {
-        resizeHandle.style.display = 'block';
-      }
-
-      // Enable split view without initializing tab distribution (we'll use saved arrays)
-      enableSplitView(state.splitView.orientation, true);
-
-      // Restore primary pane active tab and content
-      if (state._savedPrimaryActiveTabPath) {
-        const primaryTab = state.openTabs.find(t => t.path === state._savedPrimaryActiveTabPath);
-        if (primaryTab) {
-          state.splitView.primaryActiveTab = primaryTab;
-
-          // Load content into primary editor
-          if (state.primaryEditor) {
-            state.primaryEditor.setValue(primaryTab.content || primaryTab.originalContent || "");
-
-            // Set mode
-            const mode = getEditorMode(primaryTab.path);
-            if (mode) state.primaryEditor.setOption('mode', mode);
-
-            if (primaryTab.cursor) state.primaryEditor.setCursor(primaryTab.cursor);
-            if (primaryTab.scroll) state.primaryEditor.scrollTo(primaryTab.scroll.left, primaryTab.scroll.top);
-            state.primaryEditor.refresh();
-          }
-        }
-      }
-
-      // Restore secondary pane active tab and content
-      if (state._savedSecondaryActiveTabPath) {
-        const secondaryTab = state.openTabs.find(t => t.path === state._savedSecondaryActiveTabPath);
-        if (secondaryTab) {
-          state.splitView.secondaryActiveTab = secondaryTab;
-
-          // Load content into secondary editor
-          if (state.secondaryEditor) {
-            state.secondaryEditor.setValue(secondaryTab.content || secondaryTab.originalContent || "");
-
-            // Set mode
-            const mode = getEditorMode(secondaryTab.path);
-            if (mode) state.secondaryEditor.setOption('mode', mode);
-
-            if (secondaryTab.cursor) state.secondaryEditor.setCursor(secondaryTab.cursor);
-            if (secondaryTab.scroll) state.secondaryEditor.scrollTo(secondaryTab.scroll.left, secondaryTab.scroll.top);
-            state.secondaryEditor.refresh();
-          }
-        }
-      }
-
-      // Restore pane sizes
-      if (state.splitView.primaryPaneSize) {
-        updatePaneSizes(state.splitView.primaryPaneSize);
-      }
-
-      // Initialize resize handle manually (since split-view.js is cached)
-      const handle = document.getElementById('split-resize-handle');
-      if (handle) {
-        let isResizing = false;
-        let startPos = 0;
-        let startPrimarySize = 0;
-
-        // Remove any existing listeners
-        const newHandle = handle.cloneNode(true);
-        handle.parentNode.replaceChild(newHandle, handle);
-
-        newHandle.addEventListener('mousedown', (e) => {
-          isResizing = true;
-          startPos = state.splitView.orientation === 'vertical' ? e.clientX : e.clientY;
-          startPrimarySize = state.splitView.primaryPaneSize;
-          document.body.style.cursor = state.splitView.orientation === 'vertical' ? 'col-resize' : 'row-resize';
-          document.body.style.userSelect = 'none';
-          e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-          if (!isResizing) return;
-
-          const container = document.getElementById('split-container');
-          if (!container) return;
-
-          const containerRect = container.getBoundingClientRect();
-          let newSize;
-
-          if (state.splitView.orientation === 'vertical') {
-            const delta = e.clientX - startPos;
-            const deltaPercent = (delta / containerRect.width) * 100;
-            newSize = Math.max(20, Math.min(80, startPrimarySize + deltaPercent));
-          } else {
-            const delta = e.clientY - startPos;
-            const deltaPercent = (delta / containerRect.height) * 100;
-            newSize = Math.max(20, Math.min(80, startPrimarySize + deltaPercent));
-          }
-
-          updatePaneSizes(newSize);
-        });
-
-        document.addEventListener('mouseup', () => {
-          if (!isResizing) return;
-          isResizing = false;
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-
-          if (state.primaryEditor) state.primaryEditor.refresh();
-          if (state.secondaryEditor) state.secondaryEditor.refresh();
-          saveSettings();
-        });
-      }
-
-      renderTabs();
-      updatePaneActiveState();
-
-      // Activate the tab in the active pane to ensure content is visible
-      if (state.splitView.activePane === 'primary' && state.splitView.primaryActiveTab) {
-        state.editor = state.primaryEditor;
-        if (state.primaryEditor) {
-          state.primaryEditor.focus();
-          state.primaryEditor.refresh();
-        }
-      } else if (state.splitView.activePane === 'secondary' && state.splitView.secondaryActiveTab) {
-        state.editor = state.secondaryEditor;
-        if (state.secondaryEditor) {
-          state.secondaryEditor.focus();
-          state.secondaryEditor.refresh();
-        }
-      }
-
-      // Make sure both editor wrappers are visible
-      if (state.primaryEditor) {
-        const primaryWrapper = state.primaryEditor.getWrapperElement();
-        if (primaryWrapper) {
-          primaryWrapper.style.display = 'block';
-        }
-      }
-      if (state.secondaryEditor) {
-        const secondaryWrapper = state.secondaryEditor.getWrapperElement();
-        if (secondaryWrapper) {
-          secondaryWrapper.style.display = 'block';
-        }
-      }
-    }
-
     // Clear saved state
     delete state._savedOpenTabs;
     delete state._savedActiveTabPath;
-    delete state._savedPrimaryActiveTabPath;
-    delete state._savedSecondaryActiveTabPath;
   }
 
 
@@ -1596,7 +1297,6 @@ registerInitializationCallbacks({
   copyToClipboard,
   updateToolbarState,
   updateStatusBar,
-  updateSplitViewButtons,
   isTextFile,
   toggleSelectionMode,
   processUploads,
@@ -1612,23 +1312,7 @@ registerTabsCallbacks({
   activateTab,
   closeTab,
   renderFileTree,
-  showTabContextMenu,
-  setActivePaneFromPosition,
-  handleTabDragStart,
-  handleTabDragOver,
-  handleTabDrop,
-  handleTabDragEnd
-});
-
-// Register split view module callbacks
-registerSplitViewCallbacks({
-  createEditor: createEditorImpl,
-  createSecondaryEditor: createSecondaryEditorImpl,
-  destroySecondaryEditor: destroySecondaryEditorImpl,
-  activateTab,
-  renderTabs,
-  saveSettings: saveSettingsImpl,
-  renderFileTree,
+  showTabContextMenu
 });
 
 // Register editor module callbacks
@@ -1649,8 +1333,7 @@ registerEditorCallbacks({
   applySyntaxColors,
   saveSettings: saveSettingsImpl,
   getWorkspaceSaveTimer: () => workspaceSaveTimer,
-  setWorkspaceSaveTimer: (timer) => { workspaceSaveTimer = timer; },
-  updatePaneActiveState
+  setWorkspaceSaveTimer: (timer) => { workspaceSaveTimer = timer; }
 });
 
 // Register asset preview module callbacks

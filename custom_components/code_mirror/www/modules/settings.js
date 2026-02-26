@@ -159,19 +159,7 @@ export async function loadSettings() {
     state.fileTreeShowIcons = settings.fileTreeShowIcons !== false; // default true
     state.recentFilesLimit = parseInt(settings.recentFilesLimit) || 10;
     state.showToasts = settings.showToasts !== false; // default true
-    state.enableSplitView = settings.enableSplitView || false; // default false
     state.rememberWorkspace = settings.rememberWorkspace !== false; // default true
-
-    // Split view settings
-    if (settings.splitView) {
-      state.splitView.enabled = settings.splitView.enabled || false;
-      state.splitView.orientation = settings.splitView.orientation || 'vertical';
-      state.splitView.primaryPaneSize = settings.splitView.primaryPaneSize || 50;
-      state.splitView.primaryTabs = settings.splitView.primaryTabs || [];
-      state.splitView.secondaryTabs = settings.splitView.secondaryTabs || [];
-      state._savedPrimaryActiveTabPath = settings.splitView.primaryActiveTabPath;
-      state._savedSecondaryActiveTabPath = settings.splitView.secondaryActiveTabPath;
-    }
 
     state._savedOpenTabs = settings.openTabs || [];
     state._savedActiveTabPath = settings.activeTabPath || null;
@@ -244,18 +232,7 @@ export async function saveSettings() {
       fileTreeCompact: state.fileTreeCompact,
       fileTreeShowIcons: state.fileTreeShowIcons,
       recentFilesLimit: state.recentFilesLimit,
-      enableSplitView: state.enableSplitView,
       rememberWorkspace: state.rememberWorkspace,
-      // Split view settings
-      splitView: state.splitView ? {
-        enabled: state.splitView.enabled,
-        orientation: state.splitView.orientation,
-        primaryPaneSize: state.splitView.primaryPaneSize,
-        primaryTabs: state.splitView.primaryTabs || [],
-        secondaryTabs: state.splitView.secondaryTabs || [],
-        primaryActiveTabPath: state.splitView.primaryActiveTab?.path || null,
-        secondaryActiveTabPath: state.splitView.secondaryActiveTab?.path || null,
-      } : null
     };
 
     // Save to server

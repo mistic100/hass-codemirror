@@ -155,11 +155,8 @@ export function applySyntaxColors() {
     styleEl.textContent = css;
 
     // Refresh both editors to apply the new colors immediately
-    if (state.primaryEditor) {
-      state.primaryEditor.refresh();
-    }
-    if (state.secondaryEditor) {
-      state.secondaryEditor.refresh();
+    if (state.editor) {
+      state.editor.refresh();
     }
 }
 
@@ -599,43 +596,11 @@ export function initElements() {
 }
 
 export function applyEditorSettings() {
-    if (!state.editor && !state.primaryEditor) return;
-
     // Apply font settings directly to editor instances (more efficient than querySelectorAll)
-    if (state.primaryEditor) {
-      const primaryWrapper = state.primaryEditor.getWrapperElement();
-      if (primaryWrapper) {
-        primaryWrapper.style.fontSize = state.fontSize + 'px';
-      }
-      state.primaryEditor.setOption('lineNumbers', state.showLineNumbers);
-      state.primaryEditor.setOption('lineWrapping', state.wordWrap);
-
-      state.primaryEditor.removeOverlay("show-whitespace");
-      if (state.showWhitespace) {
-        state.primaryEditor.addOverlay("show-whitespace");
-      }
-    }
-
-    // Apply settings to secondary editor if it exists
-    if (state.secondaryEditor) {
-      const secondaryWrapper = state.secondaryEditor.getWrapperElement();
-      if (secondaryWrapper) {
-        secondaryWrapper.style.fontSize = state.fontSize + 'px';
-      }
-      state.secondaryEditor.setOption('lineNumbers', state.showLineNumbers);
-      state.secondaryEditor.setOption('lineWrapping', state.wordWrap);
-
-      state.secondaryEditor.removeOverlay("show-whitespace");
-      if (state.showWhitespace) {
-        state.secondaryEditor.addOverlay("show-whitespace");
-      }
-    }
-
-    // Apply to state.editor for backward compatibility (if it's different from primary/secondary)
-    if (state.editor && state.editor !== state.primaryEditor && state.editor !== state.secondaryEditor) {
-      const editorWrapper = state.editor.getWrapperElement();
-      if (editorWrapper) {
-        editorWrapper.style.fontSize = state.fontSize + 'px';
+    if (state.editor) {
+      const wrapper = state.editor.getWrapperElement();
+      if (wrapper) {
+        wrapper.style.fontSize = state.fontSize + 'px';
       }
       state.editor.setOption('lineNumbers', state.showLineNumbers);
       state.editor.setOption('lineWrapping', state.wordWrap);

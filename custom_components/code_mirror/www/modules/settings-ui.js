@@ -236,19 +236,6 @@ export async function showAppSettings() {
 
             <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="flex: 1;">
-                <div style="font-weight: 500; margin-bottom: 4px;">
-                  Split View
-                </div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Enable VS Code-style split view to edit multiple files side-by-side</div>
-              </div>
-              <label class="toggle-switch" style="margin-left: 16px;">
-                <input type="checkbox" id="split-view-toggle" ${state.enableSplitView ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
-              <div style="flex: 1;">
                 <div style="font-weight: 500; margin-bottom: 4px;">Enable Auto-Save</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">Automatically save files after a delay</div>
               </div>
@@ -450,8 +437,7 @@ export async function showAppSettings() {
         }
 
         // Refresh all editors
-        if (state.primaryEditor) state.primaryEditor.refresh();
-        if (state.secondaryEditor) state.secondaryEditor.refresh();
+        if (state.editor) state.editor.refresh();
 
         await saveSettingsImpl();
         showToast(`Font size set to ${state.fontSize}px`, "success");
@@ -465,13 +451,9 @@ export async function showAppSettings() {
         state.tabSize = parseInt(e.target.value);
 
         // Apply to all editors immediately
-        if (state.primaryEditor) {
-          state.primaryEditor.setOption("indentUnit", state.tabSize);
-          state.primaryEditor.setOption("tabSize", state.tabSize);
-        }
-        if (state.secondaryEditor) {
-          state.secondaryEditor.setOption("indentUnit", state.tabSize);
-          state.secondaryEditor.setOption("tabSize", state.tabSize);
+        if (state.editor) {
+          state.editor.setOption("indentUnit", state.tabSize);
+          state.editor.setOption("tabSize", state.tabSize);
         }
 
         await saveSettingsImpl();
@@ -621,23 +603,6 @@ export async function showAppSettings() {
         showToast(`Syntax theme: ${SYNexpTAX_THEMES[themeKey].name}`, "success");
       });
     });
-
-    // Handle Split View toggle
-    const splitViewToggle = document.getElementById("split-view-toggle");
-    if (splitViewToggle) {
-      splitViewToggle.addEventListener("change", async (e) => {
-        state.enableSplitView = e.target.checked;
-        await saveSettingsImpl();
-        showToast(state.enableSplitView ? "Split View enabled (Beta)" : "Split View disabled", "success");
-
-        // Update split view buttons visibility
-        // This will be handled by the updateSplitViewButtons function in split-view.js
-        const event = new CustomEvent('splitViewSettingChanged', {
-          detail: { enabled: state.enableSplitView }
-        });
-        window.dispatchEvent(event);
-      });
-    }
   }
 
 // Helper function for confirmation dialogs with list items (local variant)

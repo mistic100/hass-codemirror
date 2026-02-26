@@ -132,58 +132,12 @@ let callbacks = {
     showCommandPalette: null,
     restartHomeAssistant: null, // If we decide to keep it in app.js, otherwise we export it
     debouncedContentSearch: null,
-    debouncedFilenameSearch: null,
-    // Split view callbacks
-    enableSplitView: null,
-    disableSplitView: null,
-    moveToPrimaryPane: null,
-    moveToSecondaryPane: null,
-    setActivePaneFromPosition: null,
+    debouncedFilenameSearch: null
 };
 
 export function registerEventHandlerCallbacks(cb) {
     callbacks = { ...callbacks, ...cb };
 }
-
-/**
- * Updates split view button visibility based on split view state
- */
-export function updateSplitViewButtons() {
-    const btnSplitVertical = document.getElementById("btn-split-vertical");
-    const btnSplitClose = document.getElementById("btn-split-close");
-
-    // Check if split view feature is enabled in settings
-    if (!state.enableSplitView) {
-        // Hide all split view buttons if feature is disabled
-        if (btnSplitVertical) btnSplitVertical.style.display = "none";
-        if (btnSplitClose) btnSplitClose.style.display = "none";
-        return;
-    }
-
-    // Hide all split buttons if less than 2 tabs are open
-
-    // Need at least 2 tabs to enable split view
-    if (state.openTabs.length < 2) {
-        if (btnSplitVertical) btnSplitVertical.style.display = "none";
-        if (btnSplitClose) btnSplitClose.style.display = "none";
-        return;
-    }
-
-    if (state.splitView && state.splitView.enabled) {
-        // Split is active - hide enable button, show close button
-        if (btnSplitVertical) btnSplitVertical.style.display = "none";
-        if (btnSplitClose) btnSplitClose.style.display = "inline-flex";
-    } else {
-        // Split is not active - show enable button, hide close button
-        if (btnSplitVertical) btnSplitVertical.style.display = "inline-flex";
-        if (btnSplitClose) btnSplitClose.style.display = "none";
-    }
-}
-
-// Listen for split view setting changes from settings UI
-window.addEventListener('splitViewSettingChanged', (e) => {
-    updateSplitViewButtons();
-});
 
 export function insertUUID() {
     if (!state.editor || !state.editor.hasFocus()) return;
@@ -517,30 +471,6 @@ export function initEventListeners() {
       });
     }
 
-    // Split View buttons
-    // Split View: Toggle vertical split
-    const btnSplitVertical = document.getElementById("btn-split-vertical");
-    if (btnSplitVertical) {
-      btnSplitVertical.addEventListener("click", () => {
-        if (callbacks.enableSplitView) {
-          callbacks.enableSplitView('vertical');
-          updateSplitViewButtons();
-        }
-      });
-    }
-
-    // Split View: Close split
-    const btnSplitClose = document.getElementById("btn-split-close");
-    if (btnSplitClose) {
-      btnSplitClose.addEventListener("click", () => {
-        if (callbacks.disableSplitView) {
-          callbacks.disableSplitView();
-          updateSplitViewButtons();
-        }
-      });
-    }
-
-
     // Validate YAML
     if (elements.btnValidate) {
       elements.btnValidate.addEventListener("click", async () => {
@@ -854,24 +784,6 @@ export function initEventListeners() {
                         navigator.clipboard.writeText(tab.path);
                         showToast("Path copied to clipboard", "success");
                     }
-                } else if (action === "move_to_left") {
-                    if (callbacks.moveToPrimaryPane && typeof tabIndex === 'number') {
-                        callbacks.moveToPrimaryPane(tabIndex);
-                    }
-                } else if (action === "move_to_right") {
-                    if (callbacks.moveToSecondaryPane && typeof tabIndex === 'number') {
-                        callbacks.moveToSecondaryPane(tabIndex);
-                    }
-                } else if (action === "open_to_right") {
-                    if (callbacks.enableSplitView && callbacks.moveToSecondaryPane && typeof tabIndex === 'number') {
-                        callbacks.enableSplitView('vertical');
-                        callbacks.moveToSecondaryPane(tabIndex);
-                    }
-                } else if (action === "open_below") {
-                    if (callbacks.enableSplitView && callbacks.moveToSecondaryPane && typeof tabIndex === 'number') {
-                        callbacks.enableSplitView('horizontal');
-                        callbacks.moveToSecondaryPane(tabIndex);
-                    }
                 }
             });
         });
@@ -920,34 +832,6 @@ export function initEventListeners() {
             callbacks.closeTab(state.activeTab);
         }
         return false;
-      }
-
-      // Ctrl/Cmd + 1 - Focus Primary Pane (Split View)
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "1" || e.code === "Digit1")) {
-        if (state.enableSplitView && state.splitView && state.splitView.enabled) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          if (callbacks.setActivePaneFromPosition) {
-            callbacks.setActivePaneFromPosition('primary');
-            if (state.primaryEditor) state.primaryEditor.focus();
-          }
-          return false;
-        }
-      }
-
-      // Ctrl/Cmd + 2 - Focus Secondary Pane (Split View)
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "2" || e.code === "Digit2")) {
-        if (state.enableSplitView && state.splitView && state.splitView.enabled) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-          if (callbacks.setActivePaneFromPosition) {
-            callbacks.setActivePaneFromPosition('secondary');
-            if (state.secondaryEditor) state.secondaryEditor.focus();
-          }
-          return false;
-        }
       }
 
       // Ctrl/Cmd + E - Quick Switcher
@@ -1025,32 +909,6 @@ export function initEventListeners() {
       if ((e.ctrlKey || e.metaKey) && e.key === "h") {
         e.preventDefault();
         openSearchWidget(true);
-      }
-
-      // Ctrl/Cmd + 1 - Focus Primary Pane
-      if ((e.ctrlKey || e.metaKey) && e.key === "1") {
-        if (state.splitView && state.splitView.enabled) {
-          e.preventDefault();
-          if (callbacks.setActivePaneFromPosition) {
-            callbacks.setActivePaneFromPosition('primary');
-          }
-          if (state.primaryEditor) {
-            state.primaryEditor.focus();
-          }
-        }
-      }
-
-      // Ctrl/Cmd + 2 - Focus Secondary Pane
-      if ((e.ctrlKey || e.metaKey) && e.key === "2") {
-        if (state.splitView && state.splitView.enabled) {
-          e.preventDefault();
-          if (callbacks.setActivePaneFromPosition) {
-            callbacks.setActivePaneFromPosition('secondary');
-          }
-          if (state.secondaryEditor) {
-            state.secondaryEditor.focus();
-          }
-        }
       }
 
       // F1 - Show Keyboard Shortcuts

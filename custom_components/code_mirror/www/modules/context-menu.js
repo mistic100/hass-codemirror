@@ -64,65 +64,6 @@ export function showTabContextMenu(x, y, tab, tabIndex) {
   const menu = elements.tabContextMenu;
   if (!menu) return;
 
-  // Update menu items visibility based on split view state
-  const moveToLeft = document.getElementById('tab-menu-move-to-left');
-  const moveToRight = document.getElementById('tab-menu-move-to-right');
-  const openRight = document.getElementById('tab-menu-open-right');
-  const openBelow = document.getElementById('tab-menu-open-below');
-  const splitDivider = document.getElementById('tab-menu-split-divider');
-
-  // Check if split view feature is enabled in settings
-  if (!state.enableSplitView) {
-    // Feature is disabled - hide all split view options
-    if (moveToLeft) moveToLeft.style.display = 'none';
-    if (moveToRight) moveToRight.style.display = 'none';
-    if (openRight) openRight.style.display = 'none';
-    if (openBelow) openBelow.style.display = 'none';
-    if (splitDivider) splitDivider.style.display = 'none';
-  } else if (state.splitView && state.splitView.enabled) {
-    // Split view is enabled - show move options based on current pane
-    const pane = state.splitView.primaryTabs.includes(tabIndex) ? 'primary' :
-                 state.splitView.secondaryTabs.includes(tabIndex) ? 'secondary' : null;
-
-    if (pane === 'primary') {
-      // In left/top pane - show "Move to Right/Bottom"
-      if (moveToLeft) moveToLeft.style.display = 'none';
-      if (moveToRight) {
-        moveToRight.style.display = 'flex';
-        moveToRight.querySelector('.material-icons').textContent =
-          state.splitView.orientation === 'vertical' ? 'arrow_forward' : 'arrow_downward';
-        moveToRight.innerHTML = `
-          <span class="material-icons">${state.splitView.orientation === 'vertical' ? 'arrow_forward' : 'arrow_downward'}</span>
-          Move to ${state.splitView.orientation === 'vertical' ? 'Right' : 'Bottom'} Pane
-        `;
-      }
-      if (splitDivider) splitDivider.style.display = 'block';
-    } else if (pane === 'secondary') {
-      // In right/bottom pane - show "Move to Left/Top"
-      if (moveToRight) moveToRight.style.display = 'none';
-      if (moveToLeft) {
-        moveToLeft.style.display = 'flex';
-        moveToLeft.querySelector('.material-icons').textContent =
-          state.splitView.orientation === 'vertical' ? 'arrow_back' : 'arrow_upward';
-        moveToLeft.innerHTML = `
-          <span class="material-icons">${state.splitView.orientation === 'vertical' ? 'arrow_back' : 'arrow_upward'}</span>
-          Move to ${state.splitView.orientation === 'vertical' ? 'Left' : 'Top'} Pane
-        `;
-      }
-      if (splitDivider) splitDivider.style.display = 'block';
-    }
-    // Hide "open" options when split is already enabled
-    if (openRight) openRight.style.display = 'none';
-    if (openBelow) openBelow.style.display = 'none';
-  } else {
-    // Split view is disabled - show "Open to Right/Below" options
-    if (moveToLeft) moveToLeft.style.display = 'none';
-    if (moveToRight) moveToRight.style.display = 'none';
-    if (openRight) openRight.style.display = 'flex';
-    if (openBelow) openBelow.style.display = 'flex';
-    if (splitDivider) splitDivider.style.display = 'block';
-  }
-
   menu.classList.add("visible");
 
   // Position menu

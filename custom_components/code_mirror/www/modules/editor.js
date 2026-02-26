@@ -129,7 +129,6 @@
 import { state, elements } from './state.js';
 import { validateYaml } from './file-operations.js';
 import { homeAssistantHint } from './ha-autocomplete.js';
-import { enableSplitView, disableSplitView, setActivePaneFromPosition } from './split-view.js';
 
 // CodeMirror is loaded globally via script tags
 
@@ -160,15 +159,14 @@ export function registerEditorCallbacks(cb) {
 
 /**
  * Creates and initializes the CodeMirror editor
- * @param {HTMLElement} container - Optional container element (defaults to primary editor container)
- * @param {boolean} isPrimary - Whether this is the primary editor (default: true)
+ * @param {HTMLElement} container - Optional container element (defaults to editor container)
  */
-export function createEditor(container = null, isPrimary = true) {
+export function createEditor(container = null) {
   const targetContainer = container || elements.editorContainer;
   const wrapper = document.createElement("div");
   wrapper.style.height = "100%";
   wrapper.style.width = "100%";
-  wrapper.id = isPrimary ? "codemirror-wrapper" : "codemirror-wrapper-secondary";
+  wrapper.id = "codemirror-wrapper";
   targetContainer.appendChild(wrapper);
 
   const cmTheme = state.theme === "dark" ? "material-darker" : "default";
@@ -246,28 +244,16 @@ export function createEditor(container = null, isPrimary = true) {
         if (callbacks.showCommandPalette) callbacks.showCommandPalette();
       },
       "Ctrl-G": () => {
-        const activeEditor = state.splitView.enabled ?
-          (state.splitView.activePane === 'primary' ? state.primaryEditor : state.secondaryEditor) :
-          editor;
-        if (activeEditor) activeEditor.execCommand("jumpToLine");
+        if (editor) editor.execCommand("jumpToLine");
       },
       "Cmd-G": () => {
-        const activeEditor = state.splitView.enabled ?
-          (state.splitView.activePane === 'primary' ? state.primaryEditor : state.secondaryEditor) :
-          editor;
-        if (activeEditor) activeEditor.execCommand("jumpToLine");
+        if (editor) editor.execCommand("jumpToLine");
       },
       "Ctrl-/": () => {
-        const activeEditor = state.splitView.enabled ?
-          (state.splitView.activePane === 'primary' ? state.primaryEditor : state.secondaryEditor) :
-          editor;
-        if (activeEditor) activeEditor.execCommand("toggleComment");
+        if (editor) editor.execCommand("toggleComment");
       },
       "Cmd-/": () => {
-        const activeEditor = state.splitView.enabled ?
-          (state.splitView.activePane === 'primary' ? state.primaryEditor : state.secondaryEditor) :
-          editor;
-        if (activeEditor) activeEditor.execCommand("toggleComment");
+        if (editor) editor.execCommand("toggleComment");
       },
       // Line Operations
       "Alt-Up": (cm) => moveLines(cm, -1),
@@ -298,37 +284,12 @@ export function createEditor(container = null, isPrimary = true) {
           cm.replaceSelection("  ", "end");
         }
       },
-
-      // Split View shortcuts
-      "Cmd-\\": () => {
-        if (!state.enableSplitView) return; // Feature must be enabled
-        if (state.openTabs.length < 2) return; // Need at least 2 tabs
-        if (state.splitView.enabled) {
-          disableSplitView();
-        } else {
-          enableSplitView('vertical');
-        }
-      },
-      "Ctrl-\\": () => {
-        if (!state.enableSplitView) return;
-        if (state.openTabs.length < 2) return;
-        if (state.splitView.enabled) {
-          disableSplitView();
-        } else {
-          enableSplitView('vertical');
-        }
-      },
     },
     inputStyle: "contenteditable",
   });
 
   // Set state references
-  if (isPrimary) {
-    state.primaryEditor = editor;
-    state.editor = editor; // state.editor always points to primary initially
-  } else {
-    state.secondaryEditor = editor;
-  }
+  state.editor = editor;
 
   // Apply font settings to the editor
   if (callbacks.applyEditorSettings) {
@@ -340,90 +301,82 @@ export function createEditor(container = null, isPrimary = true) {
   }
 
   // Aggressive Global Capture Listener for Shortcuts (Move/Duplicate Lines)
-  // Only set up once for primary editor
-  if (isPrimary) {
-    // GLOBAL TAB HANDLER - Bypass CodeMirror's keymap system
-    const handleGlobalTab = (e) => {
-      // Only handle Tab key
-      if (e.key !== "Tab" && e.keyCode !== 9) return;
+  // GLOBAL TAB HANDLER - Bypass CodeMirror's keymap system
+  const handleGlobalTab = (e) => {
+    // Only handle Tab key
+    if (e.key !== "Tab" && e.keyCode !== 9) return;
 
-      // Get active editor (primary or secondary)
-      const activeEditor = state.splitView?.enabled && state.splitView?.activePane === 'secondary'
-        ? state.secondaryEditor
-        : state.primaryEditor;
+    // Only handle if editor has focus
+    if (!state.editor || !state.editor.hasFocus()) return;
 
-      // Only handle if editor has focus
-      if (!activeEditor || !activeEditor.hasFocus()) return;
+    e.preventDefault();
+    e.stopPropagation();
 
+    const spaces = state.editor.getOption("indentUnit");
+    const useTab = state.editor.getOption("indentWithTabs");
+
+    if (e.shiftKey) {
+      // Shift+Tab = unindent
+      if (state.editor.somethingSelected()) {
+        state.editor.indentSelection("subtract");
+      }
+    } else {
+      // Tab = indent
+      if (state.editor.somethingSelected()) {
+        state.editor.indentSelection("add");
+      } else {
+        const indent = useTab ? "\t" : " ".repeat(spaces);
+        state.editor.replaceSelection(indent);
+      }
+    }
+  };
+
+  document.addEventListener("keydown", handleGlobalTab, true); // Use capture phase
+
+  const handleGlobalShortcuts = (e) => {
+    if (!state.editor || !state.editor.hasFocus()) return;
+
+    const isUp = e.key === "ArrowUp" || e.keyCode === 38;
+    const isDown = e.key === "ArrowDown" || e.keyCode === 40;
+
+    if (!isUp && !isDown) return;
+
+    let handled = false;
+
+    // Move Line: Alt/Option + Arrow
+    if (e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      moveLines(state.editor, isUp ? -1 : 1);
+      handled = true;
+    }
+
+    // Duplicate Line: Shift + Alt/Option + Arrow
+    else if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      duplicateLines(state.editor, isUp ? "up" : "down");
+      handled = true;
+    }
+
+    // Backup: Cmd + Shift + Arrow (Mac override)
+    else if (e.metaKey && e.shiftKey) {
+      moveLines(state.editor, isUp ? -1 : 1);
+      handled = true;
+    }
+
+    if (handled) {
       e.preventDefault();
       e.stopPropagation();
-
-      const spaces = activeEditor.getOption("indentUnit");
-      const useTab = activeEditor.getOption("indentWithTabs");
-
-      if (e.shiftKey) {
-        // Shift+Tab = unindent
-        if (activeEditor.somethingSelected()) {
-          activeEditor.indentSelection("subtract");
-        }
-      } else {
-        // Tab = indent
-        if (activeEditor.somethingSelected()) {
-          activeEditor.indentSelection("add");
-        } else {
-          const indent = useTab ? "\t" : " ".repeat(spaces);
-          activeEditor.replaceSelection(indent);
-        }
-      }
-    };
-
-    document.addEventListener("keydown", handleGlobalTab, true); // Use capture phase
-
-    const handleGlobalShortcuts = (e) => {
-      if (!state.editor || !state.editor.hasFocus()) return;
-
-      const isUp = e.key === "ArrowUp" || e.keyCode === 38;
-      const isDown = e.key === "ArrowDown" || e.keyCode === 40;
-
-      if (!isUp && !isDown) return;
-
-      let handled = false;
-
-      // Move Line: Alt/Option + Arrow
-      if (e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        moveLines(state.editor, isUp ? -1 : 1);
-        handled = true;
-      }
-
-      // Duplicate Line: Shift + Alt/Option + Arrow
-      else if (e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        duplicateLines(state.editor, isUp ? "up" : "down");
-        handled = true;
-      }
-
-      // Backup: Cmd + Shift + Arrow (Mac override)
-      else if (e.metaKey && e.shiftKey) {
-        moveLines(state.editor, isUp ? -1 : 1);
-        handled = true;
-      }
-
-      if (handled) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-      }
-    };
-
-    // Remove previous listener if exists
-    if (state._globalShortcutHandler) {
-      window.removeEventListener("keydown", state._globalShortcutHandler, true);
+      e.stopImmediatePropagation();
     }
-    state._globalShortcutHandler = handleGlobalShortcuts;
-    window.addEventListener("keydown", handleGlobalShortcuts, true);
+  };
+
+  // Remove previous listener if exists
+  if (state._globalShortcutHandler) {
+    window.removeEventListener("keydown", state._globalShortcutHandler, true);
   }
+  state._globalShortcutHandler = handleGlobalShortcuts;
+  window.addEventListener("keydown", handleGlobalShortcuts, true);
 
   // Track changes
-  editor.on("change", () => handleEditorChange(editor));
+  editor.on("change", () => handleEditorChange());
 
   // Track cursor position
   editor.on("cursorActivity", () => {
@@ -442,23 +395,6 @@ export function createEditor(container = null, isPrimary = true) {
       const timer = callbacks.getWorkspaceSaveTimer();
       if (timer) clearTimeout(timer);
       callbacks.setWorkspaceSaveTimer(setTimeout(() => callbacks.saveSettings(), 2000));
-    }
-  });
-
-  // Focus handler - set active pane when editor is focused
-  editor.on("focus", () => {
-    if (state.splitView.enabled) {
-      if (isPrimary) {
-        state.splitView.activePane = 'primary';
-        state.editor = state.primaryEditor;
-      } else {
-        state.splitView.activePane = 'secondary';
-        state.editor = state.secondaryEditor;
-      }
-      // Update pane active state (visual outline)
-      if (callbacks.updatePaneActiveState) {
-        callbacks.updatePaneActiveState();
-      }
     }
   });
 
@@ -587,32 +523,6 @@ export function createEditor(container = null, isPrimary = true) {
 }
 
 /**
- * Creates secondary editor instance
- */
-export function createSecondaryEditor() {
-  const container = document.getElementById('secondary-editor-container');
-  if (!container) {
-    console.error('Secondary editor container not found');
-    return null;
-  }
-
-  return createEditor(container, false);
-}
-
-/**
- * Destroys secondary editor instance
- */
-export function destroySecondaryEditor() {
-  if (state.secondaryEditor) {
-    const wrapper = state.secondaryEditor.getWrapperElement();
-    if (wrapper && wrapper.parentNode) {
-      wrapper.parentNode.removeChild(wrapper);
-    }
-    state.secondaryEditor = null;
-  }
-}
-
-/**
  * YAML linter function
  */
 export function yamlLinter(content, updateLinting) {
@@ -686,26 +596,16 @@ export function detectIndentation(content) {
 
 /**
  * Handles editor content changes
- * @param {CodeMirror} editor - The editor that changed (optional, defaults to state.editor)
  */
 export function handleEditorChange(editor = null) {
-  const targetEditor = editor || state.editor;
-  if (!targetEditor) return;
+  if (!state.editor) return;
 
   // Determine which tab to update based on which editor changed
   let targetTab = state.activeTab;
 
-  if (state.splitView.enabled) {
-    if (targetEditor === state.primaryEditor) {
-      targetTab = state.splitView.primaryActiveTab;
-    } else if (targetEditor === state.secondaryEditor) {
-      targetTab = state.splitView.secondaryActiveTab;
-    }
-  }
-
   if (!targetTab) return;
 
-  const currentContent = targetEditor.getValue();
+  const currentContent = state.editor.getValue();
   targetTab.content = currentContent;
   targetTab.modified = currentContent !== targetTab.originalContent;
 

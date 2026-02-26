@@ -170,7 +170,6 @@ export const state = {
   recentFilesLimit: 10,
   rememberWorkspace: true,
   showToasts: true,
-  enableSplitView: false,
   // Internal tracking
   _wsUpdateTimer: null,
   _savedOpenTabs: null,
@@ -184,22 +183,6 @@ export const state = {
   searchWholeWord: false,     // Editor search: match whole word
   searchUseRegex: false,      // Editor search: use regular expression
   syntaxTheme: 'dracula',     // Pre-defined syntax highlighting theme
-
-  // Split view configuration
-  splitView: {
-    enabled: false,           // Is split view active?
-    orientation: 'vertical',  // 'vertical' or 'horizontal'
-    primaryPaneSize: 50,      // Percentage (for resize)
-    activePane: 'primary',    // 'primary' or 'secondary'
-    primaryTabs: [],          // Tab indices in primary pane
-    secondaryTabs: [],        // Tab indices in secondary pane
-    primaryActiveTab: null,   // Active tab in primary pane
-    secondaryActiveTab: null  // Active tab in secondary pane
-  },
-
-  // Secondary editor instance (for split view)
-  primaryEditor: null,
-  secondaryEditor: null,
 };
 
 export const elements = {};

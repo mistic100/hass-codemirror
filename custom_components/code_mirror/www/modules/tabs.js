@@ -103,58 +103,21 @@ export function registerTabsCallbacks(cb) {
  * Optimized with DocumentFragment for better performance
  */
 export function renderTabs() {
-  const primaryContainer = document.getElementById('primary-tabs-container');
-  const secondaryContainer = document.getElementById('secondary-tabs-container');
+  const container = document.getElementById('tabs-container');
 
-  if (!primaryContainer) return;
+  if (!container) return;
 
   // Clear both containers
-  primaryContainer.innerHTML = "";
-  if (secondaryContainer) {
-    secondaryContainer.innerHTML = "";
-  }
+  container.innerHTML = "";
 
-  if (state.splitView && state.splitView.enabled) {
-    // Split view mode - render tabs separately for each pane
-
-    // Use DocumentFragment for batch DOM insertion (performance optimization)
-    const primaryFragment = document.createDocumentFragment();
-    const secondaryFragment = document.createDocumentFragment();
-
-    // Render primary pane tabs
-    state.splitView.primaryTabs.forEach((tabIndex) => {
-      if (tabIndex >= 0 && tabIndex < state.openTabs.length) {
-        const tab = state.openTabs[tabIndex];
-        const isActive = tab === state.splitView.primaryActiveTab;
-        const tabEl = createTabElement(tab, tabIndex, isActive, 'primary');
-        primaryFragment.appendChild(tabEl);
-      }
-    });
-    primaryContainer.appendChild(primaryFragment); // Single DOM operation
-
-    // Render secondary pane tabs
-    if (secondaryContainer) {
-      state.splitView.secondaryTabs.forEach((tabIndex) => {
-        if (tabIndex >= 0 && tabIndex < state.openTabs.length) {
-          const tab = state.openTabs[tabIndex];
-          const isActive = tab === state.splitView.secondaryActiveTab;
-          const tabEl = createTabElement(tab, tabIndex, isActive, 'secondary');
-          secondaryFragment.appendChild(tabEl);
-        }
-      });
-      secondaryContainer.appendChild(secondaryFragment); // Single DOM operation
-    }
-  } else {
-    // Normal single pane mode - render all tabs in primary container
-    // Use DocumentFragment for batch DOM insertion (performance optimization)
-    const fragment = document.createDocumentFragment();
-    state.openTabs.forEach((tab, tabIndex) => {
-      const isActive = tab === state.activeTab;
-      const tabEl = createTabElement(tab, tabIndex, isActive, null);
-      fragment.appendChild(tabEl);
-    });
-    primaryContainer.appendChild(fragment); // Single DOM operation instead of N operations
-  }
+  // Use DocumentFragment for batch DOM insertion (performance optimization)
+  const fragment = document.createDocumentFragment();
+  state.openTabs.forEach((tab, tabIndex) => {
+    const isActive = tab === state.activeTab;
+    const tabEl = createTabElement(tab, tabIndex, isActive, null);
+    fragment.appendChild(tabEl);
+  });
+  container.appendChild(fragment); // Single DOM operation instead of N operations
 }
 
 /**
@@ -164,7 +127,6 @@ function createTabElement(tab, tabIndex, isActive, pane) {
   const tabEl = document.createElement("div");
   tabEl.className = `tab ${isActive ? "active" : ""}`;
   tabEl.setAttribute('data-tab-index', tabIndex);
-  tabEl.setAttribute('draggable', 'true');
 
   if (pane) {
     tabEl.setAttribute('data-pane', pane);
@@ -183,29 +145,11 @@ function createTabElement(tab, tabIndex, isActive, pane) {
 
   tabEl.addEventListener("click", (e) => {
     if (!e.target.closest(".tab-close")) {
-      // Set active pane if split view is enabled
-      if (state.splitView && state.splitView.enabled && pane && callbacks.setActivePaneFromPosition) {
-        callbacks.setActivePaneFromPosition(pane);
-      }
       if (callbacks.activateTab) callbacks.activateTab(tab);
       renderTabs();
       if (callbacks.renderFileTree) callbacks.renderFileTree();
     }
   });
-
-  // Drag-drop handlers
-  if (callbacks.handleTabDragStart) {
-    tabEl.addEventListener('dragstart', callbacks.handleTabDragStart);
-  }
-  if (callbacks.handleTabDragOver) {
-    tabEl.addEventListener('dragover', callbacks.handleTabDragOver);
-  }
-  if (callbacks.handleTabDrop) {
-    tabEl.addEventListener('drop', callbacks.handleTabDrop);
-  }
-  if (callbacks.handleTabDragEnd) {
-    tabEl.addEventListener('dragend', callbacks.handleTabDragEnd);
-  }
 
   tabEl.addEventListener("contextmenu", (e) => {
     e.preventDefault();
@@ -361,17 +305,8 @@ export async function closeTabsToRight(tab, force = false) {
 export function nextTab() {
   if (state.openTabs.length === 0) return;
 
-  // Get available tabs based on split view state
-  let availableTabs;
-  if (state.splitView && state.splitView.enabled) {
-    const activePane = state.splitView.activePane;
-    const tabIndices = activePane === 'primary'
-      ? state.splitView.primaryTabs
-      : state.splitView.secondaryTabs;
-    availableTabs = tabIndices.map(idx => state.openTabs[idx]).filter(t => t);
-  } else {
-    availableTabs = state.openTabs;
-  }
+  // Get available tabs
+  const availableTabs = state.openTabs;
 
   if (availableTabs.length <= 1) return; // No other tab to switch to
 
@@ -395,17 +330,8 @@ export function nextTab() {
 export function previousTab() {
   if (state.openTabs.length === 0) return;
 
-  // Get available tabs based on split view state
-  let availableTabs;
-  if (state.splitView && state.splitView.enabled) {
-    const activePane = state.splitView.activePane;
-    const tabIndices = activePane === 'primary'
-      ? state.splitView.primaryTabs
-      : state.splitView.secondaryTabs;
-    availableTabs = tabIndices.map(idx => state.openTabs[idx]).filter(t => t);
-  } else {
-    availableTabs = state.openTabs;
-  }
+  // Get available tabs
+  const availableTabs = state.openTabs;
 
   if (availableTabs.length <= 1) return; // No other tab to switch to
 
