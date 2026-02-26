@@ -1407,54 +1407,6 @@
       font-size: 14px;
     }
 
-    .welcome-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      margin-bottom: 24px;
-    }
-    .welcome-actions .btn-primary,
-    .welcome-actions .btn-secondary {
-      padding: 12px 24px;
-      font-size: 15px;
-      font-weight: 500;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border: none;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .welcome-actions .btn-primary {
-      background: var(--accent-color);
-      color: white;
-    }
-    .welcome-actions .btn-primary:hover {
-      background: var(--accent-hover);
-    }
-    .welcome-actions .btn-secondary {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
-    .welcome-actions .btn-secondary:hover {
-      background: var(--bg-hover);
-    }
-
-    .welcome-shortcuts {
-      margin-top: 24px;
-      text-align: left;
-    }
-
-    .welcome-shortcuts h3 {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-      color: var(--text-secondary);
-    }
-
     .shortcut-item {
       display: flex;
       align-items: center;
@@ -3983,37 +3935,7 @@
           <div class="welcome-screen" id="welcome-screen">
             <span class="material-icons">edit_note</span>
             <h2>CodeMirror</h2>
-                  <p>Get started by opening an existing file, or:</p>
-                  <div class="welcome-actions">
-                      <button class="btn-primary" id="btn-welcome-new-file">
-                          <span class="material-icons">add_circle_outline</span>
-                          Create New File
-                      </button>
-                      <button class="btn-secondary" id="btn-welcome-upload-file">
-                          <span class="material-icons">upload_file</span>
-                          Upload File
-                      </button>
-                  </div>
-                  <!-- Existing shortcuts section -->
-                  <div class="welcome-shortcuts">
-              <h3>Keyboard Shortcuts</h3>
-              <div class="shortcut-item">
-                <span class="shortcut-key">Ctrl+S</span>
-                <span>Save file</span>
-              </div>
-              <div class="shortcut-item">
-                <span class="shortcut-key">Ctrl+F</span>
-                <span>Search</span>
-              </div>
-              <div class="shortcut-item">
-                <span class="shortcut-key">Ctrl+G</span>
-                <span>Go to line</span>
-              </div>
-              <div class="shortcut-item">
-                <span class="shortcut-key">Ctrl+/</span>
-                <span>Toggle comment</span>
-              </div>
-            </div>
+            <p>Modern file editor for Home Assistant.</p>
           </div>
         </div>
       </div>

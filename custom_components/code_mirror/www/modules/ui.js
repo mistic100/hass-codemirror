@@ -568,8 +568,6 @@ export function initElements() {
     elements.loadingText = document.getElementById("loading-text");
     elements.shortcutsOverlay = document.getElementById("shortcuts-overlay");
     elements.shortcutsClose = document.getElementById("shortcuts-close");
-    elements.btnWelcomeNewFile = document.getElementById("btn-welcome-new-file");
-    elements.btnWelcomeUploadFile = document.getElementById("btn-welcome-upload-file");
     
     elements.commandPaletteOverlay = document.getElementById("command-palette-overlay");
     elements.commandPaletteInput = document.getElementById("command-palette-input");
