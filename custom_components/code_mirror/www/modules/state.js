@@ -84,7 +84,6 @@
  * - indentWithTabs: Use tabs vs spaces
  * - wordWrap: Line wrapping
  * - showLineNumbers: Show line numbers
- * - showMinimap: Show minimap
  * - showWhitespace: Show whitespace
  * - autoSave: Auto-save enabled
  * - autoSaveDelay: Auto-save delay (ms)
@@ -92,7 +91,6 @@
  * UI CUSTOMIZATION:
  * - theme: Theme name
  * - sidebarWidth: Sidebar width (px)
- * - tabPosition: Tab bar position
  * - fileTreeCompact: Compact file tree
  * - fileTreeShowIcons: Show file icons
  * - showToasts: Show toast notifications
@@ -162,10 +160,8 @@ export const state = {
   tabSize: 2,
   indentWithTabs: false,
   sidebarWidth: 320,
-  tabPosition: "top",
   wordWrap: true,
   showLineNumbers: true,
-  showMinimap: false,
   showWhitespace: false,
   autoSave: false,
   autoSaveDelay: 1000,

@@ -62,12 +62,11 @@
  * 1. UI Customization:
  *    - theme
  *    - fontSize, sidebarWidth
- *    - tabPosition
  *    - showToasts, showHidden, showRecentFiles
  *
  * 2. Editor Settings:
  *    - tabSize, indentWithTabs
- *    - wordWrap, showLineNumbers, showMinimap, showWhitespace
+ *    - wordWrap, showLineNumbers, showWhitespace
  *    - autoSave, autoSaveDelay
  *
  * 3. File Tree Settings:
@@ -141,7 +140,6 @@ export async function loadSettings() {
     // 4. Apply to State
     state.theme = settings.theme || "dark";
     state.showHidden = settings.showHidden || false;
-    state.sshHosts = settings.sshHosts || [];
     state.showRecentFiles = settings.showRecentFiles !== false;
     state.favoriteFiles = settings.favoriteFiles || [];
     state.recentFiles = settings.recentFiles || [];
@@ -152,10 +150,8 @@ export async function loadSettings() {
     state.tabSize = parseInt(settings.tabSize) || 2;
     state.indentWithTabs = settings.indentWithTabs || false;
     state.sidebarWidth = parseInt(settings.sidebarWidth) || 320;
-    state.tabPosition = settings.tabPosition || "top";
     state.wordWrap = settings.wordWrap !== false; // default true
     state.showLineNumbers = settings.showLineNumbers !== false; // default true
-    state.showMinimap = settings.showMinimap || false;
     state.showWhitespace = settings.showWhitespace || false;
     state.autoSave = settings.autoSave || false;
     state.autoSaveDelay = parseInt(settings.autoSaveDelay) || 1000;
@@ -229,7 +225,6 @@ export async function saveSettings() {
     const settings = {
       theme: state.theme,
       showHidden: state.showHidden,
-      sshHosts: state.sshHosts,
       showRecentFiles: state.showRecentFiles,
       favoriteFiles: state.favoriteFiles,
       recentFiles: state.recentFiles,
@@ -241,10 +236,8 @@ export async function saveSettings() {
       tabSize: state.tabSize,
       indentWithTabs: state.indentWithTabs,
       sidebarWidth: state.sidebarWidth,
-      tabPosition: state.tabPosition,
       wordWrap: state.wordWrap,
       showLineNumbers: state.showLineNumbers,
-      showMinimap: state.showMinimap,
       showWhitespace: state.showWhitespace,
       autoSave: state.autoSave,
       autoSaveDelay: state.autoSaveDelay,

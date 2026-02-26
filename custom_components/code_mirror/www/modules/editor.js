@@ -70,7 +70,6 @@
  * - indentWithTabs: Use tabs vs spaces
  * - wordWrap: Enable line wrapping
  * - showLineNumbers: Show line numbers
- * - showMinimap: Show minimap (future)
  * - showWhitespace: Show whitespace characters
  * - autoSave: Enable auto-save
  * - autoSaveDelay: Auto-save delay in ms

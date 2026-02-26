@@ -125,26 +125,6 @@
       display: none;
     }
 
-    /* Tab Position Left */
-    body[data-tab-position="left"] .tabs-container {
-      flex-direction: column;
-      width: 150px;
-      height: 100%;
-      border-right: 1px solid var(--border-color);
-      border-bottom: none;
-    }
-
-    body[data-tab-position="left"] .editor-area {
-      flex-direction: row;
-    }
-
-    body[data-tab-position="left"] .tab {
-      border-right: none;
-      border-bottom: 1px solid var(--border-color);
-      min-width: unset;
-      max-width: unset;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -469,10 +449,6 @@
         animation: pulse-opacity 1.5s infinite ease-in-out;
         pointer-events: none; /* Prevent clicking while pulsing */
         cursor: wait !important;
-    }
-
-    /* Loading States */
-      border-color: var(--accent-color);
     }
 
     .search-input::placeholder {

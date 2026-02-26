@@ -645,19 +645,13 @@ export function applyEditorSettings() {
         state.editor.addOverlay("show-whitespace");
       }
     }
-
-    const minimapEl = document.getElementById('minimap');
-    if (minimapEl) {
-      minimapEl.style.display = state.showMinimap ? 'block' : 'none';
-    }
 }
 
 export function applyLayoutSettings() {
     if (elements.sidebar) {
       elements.sidebar.style.width = state.sidebarWidth + 'px';
     }
-    
-    document.body.setAttribute('data-tab-position', state.tabPosition);
+
     document.body.classList.toggle('file-tree-compact', state.fileTreeCompact);
     document.body.classList.toggle('file-tree-no-icons', !state.fileTreeShowIcons);
 }
