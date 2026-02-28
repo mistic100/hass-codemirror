@@ -16,7 +16,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/merge/merge.min.css">
 
   <!-- Themes -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
@@ -252,17 +251,6 @@
       min-width: 8px;
     }
 
-    .file-path-display {
-      font-size: 12px;
-      color: var(--text-secondary);
-      padding: 0 8px;
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      flex-shrink: 1;
-    }
-
     /* Main container */
     .main-container {
       display: flex;
@@ -430,25 +418,6 @@
       color: var(--text-primary);
       font-size: 14px;
       outline: none;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
-    }
-
-    /* Pulsing Animation - Used for all loading indicators */
-    @keyframes pulse-opacity {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-
-    .pulsing {
-        animation: pulse-opacity 1.5s infinite ease-in-out;
-        pointer-events: none; /* Prevent clicking while pulsing */
-        cursor: wait !important;
     }
 
     .search-input::placeholder {
@@ -633,57 +602,6 @@
 
     .tree-item.modified .tree-item-actions {
       display: none;
-    }
-
-    /* Folder Navigation Bar */
-    .folder-navigation {
-      display: flex;
-      align-items: center;
-      padding: 8px;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-color);
-      gap: 8px;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      min-height: 48px; /* Ensure consistent height */
-    }
-
-    .nav-back-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      width: 32px;
-      height: 32px;
-      padding: 0;
-      background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      cursor: pointer;
-      color: var(--text-primary);
-      transition: all 0.1s;
-      flex-shrink: 0; /* Don't shrink */
-    }
-
-    .nav-back-btn:hover:not(:disabled) {
-      background: var(--bg-hover);
-      border-color: var(--accent-color);
-    }
-
-    .nav-back-btn:active:not(:disabled) {
-      transform: scale(0.95);
-    }
-
-    .nav-back-btn:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-      border-color: var(--border-color);
-    }
-
-    .nav-back-btn .material-icons {
-      font-size: 18px;
-      line-height: 1;
     }
 
     .tree-action-btn {
@@ -879,38 +797,6 @@
       flex: 1;
     }
 
-    /* Tab Pane Badges */
-    .tab-pane-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      margin-left: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      border-radius: 3px;
-      background: var(--bg-secondary);
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
-      transition: all 0.2s ease;
-      line-height: 1;
-    }
-
-    .tab-pane-badge.primary {
-      background: rgba(var(--accent-color-rgb, 99, 102, 241), 0.1);
-      border-color: var(--accent-color);
-      color: var(--accent-color);
-    }
-
-    .tab-pane-badge.secondary {
-      background: rgba(var(--warning-color-rgb, 245, 158, 11), 0.1);
-      border-color: var(--warning-color);
-      color: var(--warning-color);
-    }
-
-    .tab.active .tab-pane-badge {
-      font-weight: 700;
-      transform: scale(1.05);
-    }
-
     /* Tab drag and drop */
     .tab.dragging {
       opacity: 0.5;
@@ -956,23 +842,6 @@
             linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%);
         background-size: 20px 20px;
         background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-    }
-
-    .asset-info {
-        margin-top: 20px;
-        text-align: center;
-        color: var(--text-secondary);
-    }
-
-    .asset-name {
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 4px;
-    }
-
-    .asset-details {
-        font-size: 12px;
-        font-family: monospace;
     }
     
     .image-viewer-toolbar,
@@ -1413,18 +1282,6 @@
       margin-bottom: 8px;
       font-size: 13px;
       color: var(--text-primary);
-    }
-
-    .shortcut-key {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-family: monospace;
-      margin-right: 12px;
-      min-width: 70px;
-      text-align: center;
-      font-size: 12px;
     }
 
     /* Status bar */
@@ -1906,15 +1763,6 @@
         max-width: 180px;
       }
 
-      /* Split view adjustments */
-      .split-container {
-        flex-direction: column;
-      }
-
-      .split-container.split-vertical {
-        flex-direction: row;
-      }
-
       .editor-pane {
         min-height: 200px;
       }
@@ -1922,11 +1770,6 @@
       /* Modal adjustments for tablet */
       .modal {
         max-width: 500px;
-      }
-
-      /* Settings modal wider on tablet */
-      .settings-modal .modal {
-        max-width: 600px;
       }
 
       /* Quick switcher adjustments */
@@ -1992,14 +1835,6 @@
       .CodeMirror {
         height: 100% !important;
         width: 100% !important;
-      }
-
-      /* Split container fills available space */
-      .split-container {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
       }
 
       .editor-pane {
@@ -2093,10 +1928,6 @@
         display: none;
       }
 
-      .file-path-display {
-        display: none;
-      }
-
       /* Sidebar as overlay drawer on mobile */
       .sidebar {
         position: fixed;
@@ -2175,13 +2006,6 @@
       .tab-close .material-icons {
         font-size: 16px;
       }
-
-      /* Tab pane badges smaller on mobile */
-      .tab-pane-badge {
-        font-size: 9px;
-        padding: 1px 4px;
-        margin-left: 4px;
-      }
       
       /* Mobile Touch Optimizations */
       .tree-item {
@@ -2211,18 +2035,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-
-      /* Folder navigation bar adjustments */
-      .folder-navigation {
-        min-height: 44px;
-        padding: 6px 8px;
-      }
-
-      .nav-back-btn {
-        min-width: 36px;
-        width: 36px;
-        height: 36px;
       }
       
       /* Improve scrolling on mobile */
@@ -2377,17 +2189,6 @@
           margin: 0 !important;
       }
 
-      /* Split view - stack vertically on mobile */
-      .split-container {
-        flex-direction: column !important;
-      }
-
-      /* Hide resize handles on mobile */
-      .resize-handle,
-      .split-resize-handle {
-        display: none !important;
-      }
-
       /* Quick switcher mobile */
       .quick-switcher-overlay {
         padding-top: 20px;
@@ -2403,11 +2204,6 @@
       .quick-switcher-input {
         font-size: 16px;
         padding: 14px 16px;
-      }
-
-      /* Settings modal mobile */
-      .settings-modal .modal {
-        max-height: 90vh;
       }
 
       .settings-tabs {
@@ -2434,11 +2230,6 @@
       .asset-preview img {
         max-width: 100%;
         border-radius: 8px;
-      }
-
-      .asset-info {
-        margin-top: 16px;
-        padding: 0 12px;
       }
 
       /* Ensure tabs don't take too much space */
@@ -2830,11 +2621,6 @@
       to { transform: rotate(360deg); }
     }
 
-    @keyframes spin-centered {
-      from { transform: translateY(-50%) rotate(0deg); }
-      to { transform: translateY(-50%) rotate(360deg); }
-    }
-
     /* Pulsing Animation - Used for all loading indicators */
     @keyframes pulse-opacity {
         0% { opacity: 1; }
@@ -2842,18 +2628,8 @@
         100% { opacity: 1; }
     }
 
-    .pulsing {
-        animation: pulse-opacity 1.5s infinite ease-in-out;
-        pointer-events: none; /* Prevent clicking while pulsing */
-        cursor: wait !important;
-    }
-
     .spinning {
       animation: spin 1s linear infinite;
-    }
-
-    .spinning-centered {
-      animation: spin-centered 1s linear infinite;
     }
 
     /* Loading States */
@@ -3213,25 +2989,6 @@
       text-align: center;
     }
 
-    .shortcuts-footer {
-      padding: 16px 24px;
-      border-top: 1px solid var(--border-color);
-      flex-shrink: 0;
-    }
-
-    .shortcuts-hint {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    .shortcuts-hint .material-icons {
-      font-size: 16px;
-      color: var(--accent-color);
-    }
-
     /* Mobile shortcuts overlay - additional mobile styles */
     @media (max-width: 768px) {
       .shortcuts-modal {
@@ -3264,12 +3021,6 @@
 
     /* Connection / Edit dialog — reuses standard .modal-overlay / .modal classes */
     /* ─────────────────────────────────────────────────────────────────────── */
-    .git-settings-content {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
     .git-settings-section {
       display: flex;
       flex-direction: column;
@@ -3349,57 +3100,6 @@
     .git-settings-input:focus {
       outline: none;
       border-color: var(--accent-color);
-    }
-
-    .git-settings-buttons {
-      display: flex;
-      gap: 8px;
-    }
-
-    .git-settings-buttons button {
-      flex: 1;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background 0.15s;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .git-settings-buttons .btn-primary {
-      background: var(--accent-color);
-      color: white;
-    }
-
-    .git-settings-buttons .btn-primary:hover {
-      background: var(--accent-hover);
-    }
-
-    .git-settings-buttons .btn-secondary {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
-
-    .git-settings-buttons .btn-secondary:hover {
-      background: var(--bg-hover);
-    }
-
-    .git-settings-info {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px;
-      background: var(--bg-tertiary);
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    .git-settings-info .material-icons {
-      font-size: 16px;
-      color: var(--accent-color);
     }
 
     /* Quick Switcher */
@@ -3492,47 +3192,6 @@
       border-radius: 3px;
       padding: 1px 4px;
       font-family: monospace;
-    }
-
-    /* Merge View Styles */
-    .CodeMirror-merge {
-        height: 100%;
-        border: none;
-    }
-    .CodeMirror-merge-pane {
-        height: 100%;
-    }
-    .CodeMirror-merge .CodeMirror {
-        height: 100%;
-    }
-    /* Hide the "connect" arrows/canvas if they are distracting or broken layout */
-    /* .CodeMirror-merge-gap canvas { display: none; } */
-
-    /* Dark Mode Merge View Contrast Fixes */
-    body[data-theme='dark'] .CodeMirror-merge-l-chunk { background: rgba(255, 80, 80, 0.2); }
-    body[data-theme='dark'] .CodeMirror-merge-l-chunk-start { border-top: 1px solid rgba(255, 80, 80, 0.4); }
-    body[data-theme='dark'] .CodeMirror-merge-l-chunk-end { border-bottom: 1px solid rgba(255, 80, 80, 0.4); }
-    
-    body[data-theme='dark'] .CodeMirror-merge-r-chunk { background: rgba(80, 255, 80, 0.2); }
-    body[data-theme='dark'] .CodeMirror-merge-r-chunk-start { border-top: 1px solid rgba(80, 255, 80, 0.4); }
-    body[data-theme='dark'] .CodeMirror-merge-r-chunk-end { border-bottom: 1px solid rgba(80, 255, 80, 0.4); }
-    
-    body[data-theme='dark'] .CodeMirror-merge-l-connect { fill: rgba(255, 80, 80, 0.2); stroke: rgba(255, 80, 80, 0.4); }
-    body[data-theme='dark'] .CodeMirror-merge-r-connect { fill: rgba(80, 255, 80, 0.2); stroke: rgba(80, 255, 80, 0.4); }
-
-    /* Merge Gap Dark Mode */
-    body[data-theme='dark'] .CodeMirror-merge-gap {
-        background-color: var(--bg-primary);
-        border-left: 1px solid var(--border-color);
-        border-right: 1px solid var(--border-color);
-    }
-
-    /* Scroll Lock Icon Size */
-    .CodeMirror-merge-scrolllock {
-        font-size: 20px !important;
-        width: 24px !important;
-        height: 24px !important;
-        cursor: pointer;
     }
 
     /* Search Widget */
