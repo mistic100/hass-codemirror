@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="color-scheme" content="light dark">
+  <title>CodeMirror</title>
+
+  <link rel="stylesheet" href="/local/code_mirror/style.css">
+
+  <!-- CodeMirror -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+
+  <!-- Themes -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+  <!-- Note: "default" theme is built into codemirror.min.css, no separate file needed -->
+
+  <!-- Local Material Icons -->
+  <link rel="stylesheet" href="/local/code_mirror/fonts/material-icons.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+
+  <!-- Marked.js for GitHub Flavored Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-gfm-heading-id@3.1.3/lib/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-mangle@1.1.7/lib/index.umd.js"></script>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-menu" title="Toggle Files">
+        <span class="material-icons">menu</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn primary" id="btn-save" title="Save (Ctrl+S)" disabled>
+        <span class="material-icons">save</span>
+      </button>
+      <button class="toolbar-btn" id="btn-save-all" title="Save All (Ctrl+Shift+S)" disabled>
+        <span class="material-icons">save_alt</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>
+        <span class="material-icons">undo</span>
+      </button>
+      <button class="toolbar-btn" id="btn-redo" title="Redo (Ctrl+Y)" disabled>
+        <span class="material-icons">redo</span>
+      </button>
+      <button class="toolbar-btn" id="btn-format" title="Format Code (Shift+Alt+F)">
+        <span class="material-icons">format_align_left</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-search" title="Search (Ctrl+F)">
+        <span class="material-icons">search</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-new-file" title="New File">
+        <span class="material-icons">note_add</span>
+      </button>
+      <button class="toolbar-btn" id="btn-new-folder" title="New Folder">
+        <span class="material-icons">create_new_folder</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-show-hidden" title="Show hidden folders">
+        <span class="material-icons">visibility_off</span>
+      </button>
+      <button class="toolbar-btn" id="btn-toggle-select" title="Select Files">
+        <span class="material-icons">checklist</span>
+      </button>
+      <button class="toolbar-btn" id="btn-collapse-all-folders" title="Collapse All Folders">
+        <span class="material-icons">unfold_less</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-upload" title="Upload File">
+        <span class="material-icons">upload_file</span>
+      </button>
+      <button class="toolbar-btn" id="btn-download" title="Download File" disabled>
+        <span class="material-icons">download</span>
+      </button>
+      <button class="toolbar-btn" id="btn-upload-folder" title="Upload Folder (ZIP)">
+        <span class="material-icons">drive_folder_upload</span>
+      </button>
+      <button class="toolbar-btn" id="btn-download-folder" title="Download Folder (ZIP)">
+        <span class="material-icons">folder_zip</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-validate" title="Validate YAML">
+        <span class="material-icons">check_circle</span>
+      </button>
+    </div>
+
+    <div class="toolbar-spacer"></div>
+
+    <div class="toolbar-group" id="group-markdown" style="display: none;">
+      <button class="toolbar-btn" id="btn-markdown-preview" title="Toggle Markdown Preview">
+        <span class="material-icons">visibility</span>
+      </button>
+    </div>
+
+    <div class="toolbar-group">
+      <button class="toolbar-btn" id="btn-support" title="Help & Support">
+        <span class="material-icons">help_outline</span>
+      </button>
+      <button class="toolbar-btn" id="btn-restart-ha" title="Restart Home Assistant">
+        <span class="material-icons" style="color: #3ea589;">restart_alt</span>
+      </button>
+      <button class="toolbar-btn" id="btn-app-settings" title="Settings">
+        <span class="material-icons">settings</span>
+      </button>
+      <button class="toolbar-btn" id="btn-refresh" title="Refresh">
+        <span class="material-icons">refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Hidden file input for upload -->
+  <input type="file" id="file-upload-input" style="display: none" multiple accept=".yaml,.yml,.json,.py,.js,.css,.html,.txt,.md,.conf,.cfg,.ini,.sh,.log,.jpg,.jpeg,.png,.gif,.bmp,.svg,.webp,.ico,.pdf,.zip">
+  <!-- Hidden file input for folder (ZIP) upload -->
+  <input type="file" id="folder-upload-input" style="display: none" accept=".zip">
+
+  <!-- Main container -->
+  <div class="main-container">
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <!-- Activity Bar -->
+      <div class="activity-bar">
+          <div class="activity-item active" id="activity-explorer" title="Explorer">
+              <span class="material-icons">folder_open</span>
+          </div>
+          <div class="activity-item" id="activity-search" title="Search">
+              <span class="material-icons">search</span>
+          </div>
+          <div style="flex: 1"></div>
+          <div class="activity-item" id="btn-close-sidebar-bar" title="Close Sidebar">
+            <span class="material-icons">chevron_left</span>
+          </div>
+      </div>
+
+      <div class="sidebar-content">
+        <div id="view-explorer" class="sidebar-view">
+      <div class="search-container" style="display: flex; gap: 8px;">
+        <input type="text" class="search-input" id="file-search" placeholder="Search all files..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 1;">
+        <button id="btn-content-search" title="Match File Content" style="width: 32px; height: 32px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <span class="material-icons" style="font-size: 18px;">text_snippet</span>
+        </button>
+      </div>
+      <div class="selection-toolbar" id="selection-toolbar" style="display: none;">
+        <span class="selection-count" id="selection-count">0 selected</span>
+        <div class="selection-actions">
+            <button class="selection-btn" id="btn-download-selected" title="Download Selected">
+                <span class="material-icons">download</span>
+            </button>
+            <button class="selection-btn" id="btn-delete-selected" title="Delete Selected">
+                <span class="material-icons">delete</span>
+            </button>
+            <button class="selection-btn" id="btn-cancel-selection" title="Cancel Selection">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+      </div>
+
+      <!-- Favorites Panel -->
+      <div class="favorites-panel" id="favorites-panel" style="display: none;">
+        <div class="favorites-header">FAVORITES</div>
+        <div class="file-tree" id="favorites-tree" style="flex: none; min-height: 0; max-height: 200px;"></div>
+      </div>
+
+      <!-- Recent Files Panel -->
+      <div class="recent-files-panel" id="recent-files-panel" style="display: none;">
+        <div class="recent-files-header">RECENT</div>
+        <div class="recent-files-list" id="recent-files-list"></div>
+      </div>
+
+      <div class="favorites-header">FILES</div>
+      <div class="file-tree" id="file-tree"></div>
+
+      </div> <!-- End View Explorer -->
+
+      <!-- SEARCH VIEW -->
+      <div id="view-search" class="sidebar-view hidden" style="display: none;">
+          <div class="sidebar-header">
+            <span>Search</span>
+            <div class="sidebar-header-actions">
+                <button class="sidebar-header-btn" id="btn-refresh-search" title="Refresh">
+                    <span class="material-icons">refresh</span>
+                </button>
+                <button class="sidebar-header-btn" id="btn-collapse-search" title="Collapse All">
+                    <span class="material-icons">unfold_less</span>
+                </button>
+            </div>
+          </div>
+          <div class="search-container" style="padding: 12px; border-bottom: 1px solid var(--border-color);">
+              <!-- Search Row -->
+              <div style="position: relative; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+                  <span class="material-icons" id="btn-toggle-replace-all" style="font-size: 18px; cursor: pointer; color: var(--text-secondary); transition: transform 0.2s;">chevron_right</span>
+                  <div style="position: relative; flex: 1;">
+                      <input type="text" class="search-input" id="global-search-input" placeholder="Search" autocomplete="off" style="width: 100%; padding-right: 30px;">
+                      <span id="global-search-loading" class="material-icons spinning-centered" style="position: absolute; right: 8px; top: 50%; font-size: 16px; color: var(--text-secondary); display: none;">sync</span>
+                  </div>
+                  <div style="display: flex; gap: 2px;">
+                      <button class="toolbar-btn small-btn" id="btn-match-case" title="Match Case">Aa</button>
+                      <button class="toolbar-btn small-btn" id="btn-match-word" title="Match Whole Word">ab</button>
+                      <button class="toolbar-btn small-btn" id="btn-use-regex" title="Use Regular Expression">.*</button>
+                  </div>
+              </div>
+
+              <!-- Replace Row (Initially Hidden) -->
+              <div id="global-replace-container" style="display: none; margin-bottom: 8px; margin-left: 22px; align-items: center; gap: 4px;">
+                  <input type="text" class="search-input" id="global-replace-input" placeholder="Replace" autocomplete="off" style="flex: 1;">
+                  <button class="toolbar-btn" id="btn-global-replace-all" title="Replace All" style="width: 32px; height: 32px;">
+                      <span class="material-icons" style="font-size: 18px;">find_replace</span>
+                  </button>
+              </div>
+
+              <!-- Patterns Row Toggle -->
+              <div style="margin-left: 22px; margin-bottom: 4px;">
+                  <span id="btn-toggle-patterns" style="font-size: 11px; cursor: pointer; color: var(--accent-color); font-weight: 600;">Files to include / exclude</span>
+              </div>
+
+              <!-- Patterns Container (Initially Hidden) -->
+              <div id="global-patterns-container" style="display: none; margin-left: 22px; flex-direction: column; gap: 4px;">
+                  <input type="text" class="search-input" id="global-search-include" placeholder="files to include (e.g. *.yaml)" autocomplete="off" style="font-size: 12px; padding: 4px 8px;">
+                  <input type="text" class="search-input" id="global-search-exclude" placeholder="files to exclude (e.g. !secrets.yaml)" autocomplete="off" style="font-size: 12px; padding: 4px 8px;">
+              </div>
+          </div>
+          <div id="global-search-results" style="flex: 1; overflow-y: auto; padding: 0;">
+              <div class="search-empty-state" style="padding: 40px 20px; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center;">
+                  <span class="material-icons" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px;">search</span>
+                  <p style="margin: 0; font-size: 14px;">Type to search across all files</p>
+              </div>
+          </div>
+      </div>
+    </div> <!-- End Sidebar Content -->
+  </div> <!-- End Sidebar -->
+
+    <!-- Resize handle -->
+    <div class="resize-handle" id="resize-handle"></div>
+
+    <!-- Editor area -->
+    <div class="editor-area">
+      <div class="editor-pane">
+        <div class="tabs-container" id="tabs-container"></div>
+        <div class="editor-container" id="editor-container">
+          <div class="asset-preview" id="asset-preview"></div>
+          <div class="search-widget" id="search-widget">
+              <div class="search-row">
+                  <span class="material-icons search-toggle-icon" id="search-toggle-replace" title="Toggle Replace">expand_more</span>
+                  <div class="search-input-wrapper">
+                      <input type="text" id="search-find-input" placeholder="Find">
+                      <span id="search-results-count" class="search-count"></span>
+                  </div>
+                  <button class="search-case-btn" id="search-case-sensitive" title="Match Case (Exact Match)">Aa</button>
+                  <button class="search-case-btn" id="search-whole-word" title="Match Whole Word">ab|</button>
+                  <button class="search-case-btn" id="search-use-regex" title="Use Regular Expression">.*</button>
+                  <div class="search-actions">
+                      <button id="search-prev" title="Previous Match (Shift+Enter)"><span class="material-icons">arrow_upward</span></button>
+                      <button id="search-next" title="Next Match (Enter)"><span class="material-icons">arrow_downward</span></button>
+                      <button id="search-close" title="Close (Esc)"><span class="material-icons">close</span></button>
+                  </div>
+              </div>
+              <div class="search-row replace-row" id="search-replace-row" style="display: none;">
+                  <span class="material-icons search-spacer"></span>
+                  <div class="search-input-wrapper">
+                      <input type="text" id="search-replace-input" placeholder="Replace">
+                  </div>
+                  <div class="search-actions">
+                      <button id="search-replace" title="Replace">
+                          <span class="material-icons" style="font-size: 16px;">find_replace</span>
+                      </button>
+                      <button id="search-replace-all" title="Replace All">
+                          <span class="material-icons" style="font-size: 16px;">done_all</span>
+                      </button>
+                  </div>
+              </div>
+          </div>
+
+          <div class="welcome-screen" id="welcome-screen">
+            <span class="material-icons">edit_note</span>
+            <h2>CodeMirror</h2>
+            <p>Modern file editor for Home Assistant.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-item" id="status-connection">
+      <span class="material-icons">cloud_done</span>
+      <span>Connected</span>
+    </div>
+    <div class="status-spacer"></div>
+    <div class="status-item" id="status-position">
+      <span>Ln 1, Col 1</span>
+    </div>
+    <div class="status-item" id="status-indent">
+      <span>Spaces: 2</span>
+    </div>
+    <div class="status-item" id="status-encoding">
+      <span>UTF-8</span>
+    </div>
+    <div class="status-item" id="status-language">
+      <span>-</span>
+    </div>
+    <div class="status-item theme-dropdown" id="theme-toggle">
+      <span class="material-icons" id="theme-icon">dark_mode</span>
+      <span id="theme-label">Dark</span>
+      <div class="theme-menu" id="theme-menu">
+        <div class="theme-menu-item" data-theme="dark">
+          <span class="material-icons">dark_mode</span>
+          Dark
+        </div>
+        <div class="theme-menu-item" data-theme="light">
+          <span class="material-icons">light_mode</span>
+          Light
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command Palette Overlay -->
+  <div class="command-palette-overlay" id="command-palette-overlay">
+    <div class="command-palette">
+      <div class="command-palette-search">
+        <input type="text" class="command-palette-input" id="command-palette-input" placeholder="Type a command..." autocomplete="off">
+      </div>
+      <div class="command-palette-results" id="command-palette-results"></div>
+    </div>
+  </div>
+
+  <!-- Git History Modal (Shared with main modal system or separate?) -->
+  <!-- We'll use the existing modal system but add a specific body structure if needed -->
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Modal overlay -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Modal Title</span>
+        <button class="modal-close" id="modal-close">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <input type="text" class="modal-input" id="modal-input" placeholder="">
+        <div class="modal-hint" id="modal-hint"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn secondary" id="modal-cancel">Cancel</button>
+        <button class="modal-btn primary" id="modal-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Switcher Overlay -->
+  <div class="quick-switcher-overlay" id="quick-switcher-overlay">
+    <div class="quick-switcher">
+      <input type="text" class="quick-switcher-input" id="quick-switcher-input" placeholder="Search files by name..." autocomplete="off">
+      <div class="quick-switcher-results" id="quick-switcher-results"></div>
+      <div class="quick-switcher-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> to navigate</span>
+        <span><kbd>Enter</kbd> to open</span>
+        <span><kbd>Esc</kbd> to close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div class="context-menu" id="context-menu">
+    <div class="context-menu-item" data-action="new_file">
+      <span class="material-icons">note_add</span>
+      New File
+    </div>
+    <div class="context-menu-item" data-action="new_folder">
+      <span class="material-icons">create_new_folder</span>
+      New Folder
+    </div>
+    <div class="context-menu-divider"></div>
+          <div class="context-menu-item" data-action="rename">      <span class="material-icons">edit</span>
+      Rename
+    </div>
+    <div class="context-menu-item" data-action="move">
+      <span class="material-icons">drive_file_move</span>
+      Move
+    </div>
+    <div class="context-menu-item" data-action="copy">
+      <span class="material-icons">content_copy</span>
+      Copy
+    </div>
+    <div class="context-menu-item" data-action="duplicate">
+      <span class="material-icons">content_paste</span>
+      Duplicate
+    </div>
+    <div class="context-menu-item" data-action="download">
+      <span class="material-icons">download</span>
+      Download
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item danger" data-action="delete">
+      <span class="material-icons">delete</span>
+      Delete
+    </div>
+  </div>
+
+  <div class="context-menu" id="tab-context-menu">
+    <div class="context-menu-divider" id="tab-menu-split-divider" style="display: none;"></div>
+    <div class="context-menu-item" data-action="close_others">
+      <span class="material-icons">close_fullscreen</span>
+      Close Others
+    </div>
+    <div class="context-menu-item" data-action="close_saved">
+      <span class="material-icons">save</span>
+      Close Saved
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" data-action="copy_path">
+      <span class="material-icons">content_copy</span>
+      Copy Path
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay visible" id="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loading-text">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Support Modal -->
+  <div class="modal-overlay" id="modal-support-overlay">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title">Help & Support</div>
+        <button class="modal-close" id="btn-close-support">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="support-options" style="display: flex; flex-direction: column; gap: 12px;">
+          
+          <button class="support-btn" id="btn-support-shortcuts" style="display: flex; align-items: center; padding: 16px; border: 1px solid var(--border-color); background: var(--bg-primary); border-radius: 8px; cursor: pointer; text-align: left; transition: background 0.15s;">
+            <div class="support-icon" style="width: 40px; height: 40px; background: var(--bg-tertiary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px;">
+              <span class="material-icons" style="color: var(--accent-color);">keyboard</span>
+            </div>
+            <div class="support-text">
+              <div style="font-weight: 600; font-size: 15px; margin-bottom: 4px;">Keyboard Shortcuts</div>
+              <div style="font-size: 13px; color: var(--text-secondary);">View a list of all available key bindings</div>
+            </div>
+          </button>
+
+        </div>
+        
+        <div style="margin-top: 24px; text-align: center; color: var(--text-muted); font-size: 12px;">
+          CodeMirror <span id="app-version-display">v1.0.0</span> • mistic100<br>
+          based on Blueprint Studio <span id="app-version-display">v2.3.0</span> • Soulripper13
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Overlay -->
+  <div class="shortcuts-overlay" id="shortcuts-overlay">
+    <div class="shortcuts-modal">
+      <div class="shortcuts-header">
+        <h2>Keyboard Shortcuts</h2>
+        <button class="shortcuts-close" id="shortcuts-close">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <div class="shortcuts-body">
+        <div class="shortcuts-section">
+          <h3>File Operations</h3>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></span>
+            <span class="shortcut-desc">Save current file</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></span>
+            <span class="shortcut-desc">Save all files</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys">Right-Click</span>
+            <span class="shortcut-desc">Create New File/Folder</span>
+          </div>
+        </div>
+
+        <div class="shortcuts-section">
+          <h3>Editor</h3>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Z</kbd></span>
+            <span class="shortcut-desc">Undo</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Y</kbd></span>
+            <span class="shortcut-desc">Redo</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Search in file</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Search in all files</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>H</kbd></span>
+            <span class="shortcut-desc">Find and replace</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd</kbd> + <kbd>Option</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Find and replace (macOS alternative)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>G</kbd></span>
+            <span class="shortcut-desc">Jump to line</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>/</kbd></span>
+            <span class="shortcut-desc">Toggle comment</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>D</kbd></span>
+            <span class="shortcut-desc">Select next occurrence (multi-cursor)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Space</kbd></span>
+            <span class="shortcut-desc">Autocomplete</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Tab</kbd></span>
+            <span class="shortcut-desc">Indent selection or insert spaces</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Tab</kbd></span>
+            <span class="shortcut-desc">Unindent selection</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Move line up/down</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Cmd/Ctrl</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Move line up/down (alternative)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Duplicate line up/down</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Cmd/Ctrl</kbd> + <kbd>Alt/Opt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></span>
+            <span class="shortcut-desc">Duplicate line up/down (alternative)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></span>
+            <span class="shortcut-desc">Format code</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd></span>
+            <span class="shortcut-desc">Insert UUID</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>[</kbd></span>
+            <span class="shortcut-desc">Fold All</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>]</kbd></span>
+            <span class="shortcut-desc">Unfold All</span>
+          </div>
+        </div>
+
+        <div class="shortcuts-section">
+          <h3>Navigation</h3>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>K</kbd></span>
+            <span class="shortcut-desc">Command Palette</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>E</kbd></span>
+            <span class="shortcut-desc">Quick File Switcher</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl/Cmd</kbd> + <kbd>B</kbd></span>
+            <span class="shortcut-desc">Toggle Sidebar</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>]</kbd></span>
+            <span class="shortcut-desc">Next Tab</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>[</kbd></span>
+            <span class="shortcut-desc">Previous Tab</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Alt/Option</kbd> + <kbd>W</kbd></span>
+            <span class="shortcut-desc">Close Tab</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>Esc</kbd></span>
+            <span class="shortcut-desc">Close modal/menu or hide sidebar (mobile)</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-keys"><kbd>F1</kbd></span>
+            <span class="shortcut-desc">Show this keyboard shortcuts help</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/local/code_mirror/modules/main.js?v=1.0.0"></script></script>
+</body>
+</html>

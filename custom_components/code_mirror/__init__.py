@@ -57,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register Static Paths with fallback for different HA versions
     url_path = f"/local/{DOMAIN}"
-    path_on_disk = str(hass.config.path("custom_components", DOMAIN))
+    path_on_disk = str(hass.config.path("custom_components", DOMAIN, "www"))
     
     if hasattr(hass.http, "async_register_static_paths"):
         await hass.http.async_register_static_paths([
@@ -78,7 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         sidebar_title=NAME,
         sidebar_icon="mdi:file-document-edit",
         frontend_url_path=DOMAIN,
-        config={"url": f"/local/{DOMAIN}/panels/panel_custom.html"},
+        config={"url": f"/local/{DOMAIN}/index.html"},
         require_admin=True,
     )
 
