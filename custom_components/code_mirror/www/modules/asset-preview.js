@@ -4,7 +4,7 @@
  * ============================================================================
  *
  * PURPOSE:
- * Handles preview rendering for non-code files including images, videos,
+ * Handles preview rendering for non-code files including images, PDFs, videos,
  * and markdown files. Provides specialized viewers for each file type with
  * appropriate controls and navigation.
  *
@@ -16,7 +16,7 @@
  * REQUIRED CALLBACKS (from app.js):
  * - openFile: Open a file
  * - closeTab: Close a tab
- * - downloadContent: Download file content
+ * - downloadFile: Download file content
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -25,13 +25,17 @@
  *    - Create new renderXXXPreview(tab, filename) function
  *    - Build HTML for the preview with toolbar and viewer
  *    - Add event listeners for controls
- *    - Follow existing patterns (image/video)
+ *    - Follow existing patterns (image/PDF/video)
  *
  * 2. Adding image navigation controls:
  *    - Already implemented: previous/next buttons
  *    - Modify renderImagePreview() to add new controls
  *    - Filter files in same directory by extension
  *    - Use callbacks.openFile() to switch images
+ *
+ * 3. Adding PDF controls:
+ *    - Modify renderPdfPreview() function
+ *    - Update page rendering logic
  *
  * 4. Enhancing markdown rendering:
  *    - Modify renderMarkdown() function
@@ -53,6 +57,7 @@
  * SUPPORTED FILE TYPES:
  * - Images: PNG, JPG, JPEG, GIF, BMP, WEBP, SVG, ICO
  * - Videos: MP4, WEBM, MOV, AVI, MKV, FLV, WMV, M4V
+ * - PDFs: PDF files
  * - Markdown: .md files (custom renderer)
  *
  * ARCHITECTURE NOTES:
@@ -66,7 +71,7 @@
  * - Set base64 data URL: `data:${tab.mimeType};base64,${tab.content}`
  * - Build toolbar HTML with controls
  * - Add event listeners with getElementById()
- * - Download: callbacks.downloadContent(filename, content, isBase64, mimeType)
+ * - Download: callbacks.downloadFile(url, filename)
  * - Navigation: Find neighbors, add prev/next buttons
  *
  * MARKDOWN PREVIEW:
@@ -95,7 +100,7 @@ import { state, elements } from './state.js';
 let callbacks = {
   openFile: null,
   closeTab: null,
-  downloadContent: null
+  downloadFile: null
 };
 
 export function registerAssetPreviewCallbacks(cb) {
@@ -103,7 +108,7 @@ export function registerAssetPreviewCallbacks(cb) {
 }
 
 /**
- * Renders preview for binary assets (images, videos)
+ * Renders preview for binary assets (images, PDFs, videos)
  * @param {Object} tab - The tab object containing file data
  * @param {HTMLElement} container - The preview container element (optional, defaults to elements.assetPreview)
  */
@@ -119,6 +124,8 @@ export function renderAssetPreview(tab, container = null) {
 
   if (tab.isImage) {
     renderImagePreview(tab, filename);
+  } else if (tab.isPdf) {
+    renderPdfPreview(tab, filename);
   } else if (tab.isVideo) {
     renderVideoPreview(tab, filename);
   }
@@ -148,7 +155,6 @@ function renderImagePreview(tab, filename) {
   const nextImage = currentIndex < imageFiles.length - 1 ? imageFiles[currentIndex + 1] : null;
 
   elements.assetPreview.style.padding = "0";
-  const dataUrl = `data:${tab.mimeType};base64,${tab.content}`;
 
   elements.assetPreview.innerHTML = `
     <div class="image-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
@@ -156,7 +162,6 @@ function renderImagePreview(tab, filename) {
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="material-icons" style="color: var(--accent-color);">image</span>
           <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${filename}</span>
-          <span style="color: var(--text-secondary); font-size: 12px; margin-left: 8px;">${tab.mimeType}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <div style="display: flex; align-items: center; gap: 4px;">
@@ -176,7 +181,7 @@ function renderImagePreview(tab, filename) {
       </div>
       <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 20px; background: var(--bg-primary);">
         <div style="position: relative; max-width: 100%; max-height: 100%;">
-          <img src="${dataUrl}" alt="${filename}" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background-image: linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%), linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;">
+          <img src="${tab.content}" alt="${filename}" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background-image: linear-gradient(45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(-45deg, var(--bg-secondary) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--bg-secondary) 75%), linear-gradient(-45deg, transparent 75%, var(--bg-secondary) 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;">
         </div>
       </div>
     </div>
@@ -201,9 +206,8 @@ function renderImagePreview(tab, filename) {
   }
 
   document.getElementById("img-download").addEventListener("click", () => {
-    // Use downloadContent to download from tab content instead of server
-    if (callbacks.downloadContent) {
-      callbacks.downloadContent(filename, tab.content, true, tab.mimeType);
+    if (callbacks.downloadFile) {
+      callbacks.downloadFile(tab.content, filename);
     }
   });
 
@@ -229,11 +233,10 @@ function renderImagePreview(tab, filename) {
 }
 
 /**
- * Renders video preview with controls
+ * Renders PDF preview with page navigation
  */
-function renderVideoPreview(tab, filename) {
+function renderPdfPreview(tab, filename) {
   elements.assetPreview.style.padding = "0";
-  const dataUrl = `data:${tab.mimeType};base64,${tab.content}`;
 
   elements.assetPreview.innerHTML = `
     <div class="video-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
@@ -241,7 +244,38 @@ function renderVideoPreview(tab, filename) {
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="material-icons" style="color: var(--accent-color);">movie</span>
           <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px;">${filename}</span>
-          <span style="color: var(--text-secondary); font-size: 12px; margin-left: 8px;">${tab.mimeType}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button id="btn-download-pdf" class="toolbar-btn" title="Download PDF">
+            <span class="material-icons">download</span>
+          </button>
+        </div>
+      </div>
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 20px; background: var(--bg-primary);">
+        <iframe src="${tab.content}" type="application/pdf" style="border: none; width: 100%; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #000;">
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btn-download-pdf")?.addEventListener("click", () => {
+    if (callbacks.downloadFile) {
+      callbacks.downloadFile(tab.content, filename);
+    }
+  });
+}
+
+/**
+ * Renders video preview with controls
+ */
+function renderVideoPreview(tab, filename) {
+  elements.assetPreview.style.padding = "0";
+
+  elements.assetPreview.innerHTML = `
+    <div class="video-viewer-container" style="width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-tertiary);">
+      <div class="video-viewer-toolbar" style="padding: 8px 16px; background: var(--bg-secondary); border-bottom: 1px solid var(--borderColor); display: flex; justify-content: space-between; align-items: center; height: 48px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-icons" style="color: var(--accent-color);">movie</span>
+          <span style="font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px;">${filename}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <button id="video-download" class="toolbar-btn" title="Download Video">
@@ -254,7 +288,7 @@ function renderVideoPreview(tab, filename) {
           controls
           preload="metadata"
           style="max-width: 100%; max-height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: #000;">
-          <source src="${dataUrl}" type="${tab.mimeType}">
+          <source src="${tab.content}">
           Your browser does not support the video tag.
         </video>
       </div>
@@ -262,8 +296,8 @@ function renderVideoPreview(tab, filename) {
   `;
 
   document.getElementById("video-download").addEventListener("click", () => {
-    if (callbacks.downloadContent) {
-      callbacks.downloadContent(filename, tab.content, true, tab.mimeType);
+    if (callbacks.downloadFile) {
+      callbacks.downloadFile(tab.content, filename);
     }
   });
 }

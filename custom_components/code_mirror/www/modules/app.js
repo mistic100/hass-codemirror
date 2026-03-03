@@ -120,6 +120,7 @@ import {
 
 import { 
   fetchWithAuth, 
+  serveFileUrl,
   initWebSocketSubscription,
   registerUpdateCallbacks 
 } from './api.js';
@@ -248,6 +249,7 @@ import {
   downloadCurrentFile as downloadCurrentFileImpl,
   downloadFileByPath as downloadFileByPathImpl,
   downloadContent as downloadContentImpl,
+  downloadFile,
   downloadFolder as downloadFolderImpl,
   downloadSelectedItems as downloadSelectedItemsImpl,
   triggerUpload as triggerUploadImpl,
@@ -656,11 +658,12 @@ export async function openFile(path, forceReload = false, noActivate = false) {
     const filename = path.split("/").pop();
     const ext = filename.split(".").pop().toLowerCase();
     const isImage = ["png", "jpg", "jpeg", "gif", "bmp", "webp", "svg"].includes(ext);
+    const isPdf = ext === "pdf";
     const isVideo = ["mp4", "webm", "mov", "avi", "mkv", "flv", "wmv", "m4v"].includes(ext);
     const isBinary = !isTextFile(path);
 
-    // If it's a binary file that's not an image, or video, just download it
-    if (isBinary && !isImage && !isVideo) {
+    // If it's a binary file that's not an image, PDF, or video, just download it
+    if (isBinary && !isImage && !isPdf && !isVideo) {
       downloadFileByPath(path);
       return;
     }
@@ -675,10 +678,16 @@ export async function openFile(path, forceReload = false, noActivate = false) {
         }
 
         try {
-            const data = await loadFile(path);
-            tab.content = data.content;
-            tab.originalContent = data.content;
-            tab.mtime = data.mtime;
+            if (isImage || isVideo || isPdf) {
+                const url = await serveFileUrl(path);
+                tab.content = url;
+                tab.originalContent = url;
+            } else {
+                const data = await loadFile(path);
+                tab.content = data.content;
+                tab.originalContent = data.content;
+                tab.mtime = data.mtime;
+            }
             tab.modified = false;
             tab.history = null; 
         } catch (e) {
@@ -686,23 +695,32 @@ export async function openFile(path, forceReload = false, noActivate = false) {
         }
     } else if (!tab) {
       try {
-        const data = await loadFile(path);
-        const content = data.content;
-
         tab = {
           path,
-          content,
-          originalContent: content,
-          mtime: data.mtime,
           modified: false,
           history: null,
           cursor: null,
           scroll: null,
           isBinary: isBinary,
           isImage: isImage,
+          isPdf: isPdf,
           isVideo: isVideo,
-          mimeType: data.mime_type
         };
+
+        if (isImage || isVideo || isPdf) {
+            const url = await serveFileUrl(path);
+            tab.content = url;
+            tab.originalContent = url;
+            tab.mtime = null;
+            tab.mimeType = null;
+        } else {
+            const data = await loadFile(path);
+            tab.content = data.content;
+            tab.originalContent = data.content;
+            tab.mtime = data.mtime;
+            tab.mimeType = data.mime_type;
+        }
+
         state.openTabs.push(tab);
       } catch (error) {
         showToast(`Failed to open ${filename}: ${error.message}`, "error");
@@ -1340,7 +1358,7 @@ registerEditorCallbacks({
 registerAssetPreviewCallbacks({
   openFile,
   closeTab,
-  downloadContent
+  downloadFile
 });
 
 // Register command palette module callbacks

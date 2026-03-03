@@ -60,7 +60,7 @@ class CodeMirrorApiView(HomeAssistantView):
         self.syntax_checker.hass = hass
         self.file.hass = hass
 
-    async def get(self, request: web.Request) -> web.Response:
+    async def get(self, request: web.Request) -> web.StreamResponse:
         """Handle GET requests."""
         user = await self._authenticate(request)
         if not user:
@@ -108,7 +108,7 @@ class CodeMirrorApiView(HomeAssistantView):
         if action == "download_folder":
             path = params.get("path")
             if not path: return json_message("Missing path", status_code=400)
-            return await self.file.download_folder(path)
+            return await self.file.download_folder(path, request)
         if action == "get_settings":
             return json_response(self.data.get("settings", {}))
         if action == "get_version":

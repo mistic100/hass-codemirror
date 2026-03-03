@@ -21,7 +21,7 @@
  * ============================================================================
  */
 import { state, elements } from './state.js';
-import { fetchWithAuth } from './api.js';
+import { fetchWithAuth, serveFileUrl, urlWithToken } from './api.js';
 import { API_BASE } from './constants.js';
 import { showToast, showGlobalLoading, hideGlobalLoading, showConfirmDialog } from './ui.js';
 import { isTextFile, formatBytes } from './utils.js';
@@ -50,21 +50,8 @@ export function downloadCurrentFile() {
 
   const tab = state.activeTab;
   const filename = tab.path.split("/").pop();
-  const content = tab.content;
-  const isBinary = tab.isBinary || false;
-  const mimeType = tab.mimeType || "application/octet-stream";
 
-  // Debug logging
-  console.log("Download debug:", {
-    filename,
-    isBinary,
-    mimeType,
-    contentType: typeof content,
-    contentLength: content ? content.length : 0,
-    contentPreview: content ? content.substring(0, 100) : "empty"
-  });
-
-  downloadContent(filename, content, isBinary, mimeType);
+  downloadFile(tab.path, filename);
 }
 
 /**
@@ -73,53 +60,25 @@ export function downloadCurrentFile() {
  */
 export async function downloadFileByPath(path) {
   const filename = path.split("/").pop();
-  const ext = filename.split(".").pop().toLowerCase();
-  const LARGE_FILE_EXTENSIONS = ["db", "sqlite", "sqlite3", "bak", "tar", "gz", "zip", "tar.gz"];
-
-  // Check if we know the file size from state
-  let fileSizeInfo = "";
-  const fileInfo = state.files.find(f => f.path === path) ||
-    (() => {
-      for (const [, dir] of state.loadedDirectories) {
-        const f = dir.files?.find(f => f.path === path);
-        if (f) return f;
-      }
-      return null;
-    })();
-
-  if (fileInfo && typeof fileInfo.size === "number") {
-    fileSizeInfo = ` (${formatBytes(fileInfo.size)})`;
-  }
-
-  if (LARGE_FILE_EXTENSIONS.includes(ext)) {
-    const confirmed = await showConfirmDialog({
-      title: "Download Large File?",
-      message: `<b>${filename}</b>${fileSizeInfo} may be a very large file.<br><br>Are you sure you want to download it?`,
-      confirmText: "Download",
-      cancelText: "Cancel"
-    });
-    if (!confirmed) return;
-  }
 
   // Perform the actual download
   try {
-    showGlobalLoading(`Downloading ${filename}...`);
-    const data = await fetchWithAuth(
-      `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}&_t=${Date.now()}`
-    );
-    hideGlobalLoading();
+    const url = await serveFileUrl(path);
 
-    if (data && data.content !== undefined) {
-      const isBinary = data.is_base64 || false;
-      const mimeType = data.mime_type || "application/octet-stream";
-      downloadContent(filename, data.content, isBinary, mimeType);
-    } else {
-      showToast(`Failed to download ${filename}`, "error");
-    }
+    downloadFile(url, filename);
   } catch (error) {
     hideGlobalLoading();
     showToast(`Failed to download ${filename}: ${error.message}`, "error");
   }
+}
+
+export function downloadFile(url, filename) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 /**
@@ -177,36 +136,16 @@ export function downloadContent(filename, content, is_base64 = false, mimeType =
  */
 export async function downloadFolder(path) {
   try {
-    showGlobalLoading("Preparing download...");
-
-    const data = await fetchWithAuth(
+    const url = await urlWithToken(
       `${API_BASE}?action=download_folder&path=${encodeURIComponent(path)}`
     );
 
-    hideGlobalLoading();
-
-    if (data.success && data.data) {
-      // Decode base64 to binary
-      const binaryString = atob(data.data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Create blob and download
-      const blob = new Blob([bytes], { type: "application/zip" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.filename || `${path.split("/").pop()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      showToast(`Downloaded ${data.filename}`, "success");
-    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${path.split("/").pop()}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } catch (error) {
     showToast("Failed to download folder: " + error.message, "error");
   }

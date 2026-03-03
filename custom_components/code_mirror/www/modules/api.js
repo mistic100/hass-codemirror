@@ -101,6 +101,37 @@
  * ============================================================================
  */
 import { state } from './state.js';
+import { API_BASE } from './constants.js';
+
+export async function urlWithToken(url) {
+  let token = null;
+  let isHassEnvironment = false;
+
+  try {
+    if (window.parent && window.parent.hassConnection) {
+      isHassEnvironment = true;
+      const conn = await window.parent.hassConnection;
+      if (conn && conn.auth) {
+          if (conn.auth.expired) {
+              await conn.auth.refreshAccessToken();
+          }
+          token = conn.auth.accessToken;
+      }
+    }
+  } catch (e) {
+    console.error("❌ Auth Error:", e);
+    if (isHassEnvironment) {
+        throw new Error("Auth refresh failed: " + e.message);
+    }
+  }
+
+  if (!token) {
+      console.error("❌ No token available in Hass environment");
+      throw new Error("No authentication token available");
+  }
+
+  return `${url}&token=${token}`;
+}
 
 export async function fetchWithAuth(url, options = {}) {
   let headers = { ...options.headers };
@@ -170,6 +201,12 @@ export async function fetchWithAuth(url, options = {}) {
   }
 
   return response.json();
+}
+
+export async function serveFileUrl(path) {
+  return await urlWithToken(
+    `${API_BASE}?action=serve_file&path=${encodeURIComponent(path)}&_t=${Date.now()}`
+  );
 }
 
 // These functions will be defined in other modules but we need to trigger them here

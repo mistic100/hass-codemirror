@@ -397,22 +397,18 @@ class FileManager:
             return json_response({"content": content, "is_base64": False, "mime_type": mimetypes.guess_type(safe_path.name)[0] or "text/plain;charset=utf-8", "mtime": safe_path.stat().st_mtime})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def serve_file(self, path: str) -> web.Response:
+    async def serve_file(self, path: str) -> web.StreamResponse:
         """Serve raw file content with correct MIME type."""
         safe_path = get_safe_path(self._get_root_dir(), path)
         if not safe_path or not safe_path.is_file(): return web.Response(status=404, text="File not found")
         if not self._is_file_allowed(safe_path): return web.Response(status=403, text="Not allowed")
         try:
-            content = await self.hass.async_add_executor_job(safe_path.read_bytes)
             mime_type = mimetypes.guess_type(safe_path.name)[0] or "application/octet-stream"
-            
-            # Add Content-Disposition: inline to encourage browser preview
             headers = {
                 "Content-Type": mime_type,
                 "Content-Disposition": f'inline; filename="{safe_path.name}"'
             }
-            
-            return web.Response(body=content, headers=headers)
+            return web.FileResponse(safe_path, headers=headers)
         except Exception as e: return web.Response(status=500, text=str(e))
 
     async def get_file_stat(self, path: str) -> web.Response:
@@ -536,13 +532,21 @@ class FileManager:
             return json_response({"success": True, "path": destination})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def download_folder(self, path: str) -> web.Response:
+    async def download_folder(self, path: str, request: web.Request) -> web.StreamResponse:
         """Download folder as ZIP."""
         safe_path = get_safe_path(self._get_root_dir(), path)
         if not safe_path or not safe_path.is_dir(): return json_message("Not found", status_code=404)
         try:
+            headers = {
+                'Content-Type': 'application/zip',
+                "Content-Disposition": f'attachment; filename="{safe_path.name}.zip"'
+            }
+            response = web.StreamResponse(headers=headers)
+            await response.prepare(request)
             zip_data = await self.hass.async_add_executor_job(self._create_zip, safe_path)
-            return json_response({"success": True, "filename": f"{safe_path.name}.zip", "data": zip_data})
+            await response.write(zip_data.getvalue())
+            await response.write_eof()
+            return response
         except Exception as e: return json_message(str(e), status_code=500)
 
     async def download_multi(self, paths: list[str]) -> web.Response:
@@ -552,7 +556,7 @@ class FileManager:
             return json_response({"success": True, "filename": "download.zip", "data": zip_data})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    def _create_zip(self, folder_path: Path) -> str:
+    def _create_zip(self, folder_path: Path) -> io.BytesIO:
         """Create ZIP from folder."""
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -562,7 +566,7 @@ class FileManager:
                     if f.startswith(".") or not self._is_file_allowed(Path(root) / f): continue
                     zf.write(Path(root) / f, (Path(root) / f).relative_to(folder_path))
         buf.seek(0)
-        return base64.b64encode(buf.read()).decode()
+        return buf
 
     def _create_multi_zip(self, paths: list[str]) -> str:
         """Create ZIP from multiple paths."""
