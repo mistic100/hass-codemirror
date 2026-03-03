@@ -1,7 +1,5 @@
 # CodeMirror for Home Assistant
 
-**DRAFT**
-
 Simple yet powerful add-on to edit your configuration directly in the browser.
 
 This is a fork of [Blueprint Studio](https://github.com/soulripper13/blueprint-studio) with all heavy features removed.
@@ -21,6 +19,7 @@ The following features have been removed:
 - Extra themes other than light and dark
 - Custom colors and fonts
 - Split view
+- Multi selection
 
 ---
 

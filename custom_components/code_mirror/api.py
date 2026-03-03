@@ -179,9 +179,6 @@ class CodeMirrorApiView(HomeAssistantView):
         if action == "rename": return await self.file.rename(data.get("source"), data.get("destination"))
         if action == "upload_file": return await self.file.upload_file(data.get("path"), data.get("content"), data.get("overwrite", False), data.get("is_base64", False))
         if action == "upload_folder": return await self.file.upload_folder(data.get("path"), data.get("zip_data"))
-        if action == "download_multi": return await self.file.download_multi(data.get("paths", []))
-        if action == "delete_multi": return await self.file.delete_multi(data.get("paths", []))
-        if action == "move_multi": return await self.file.move_multi(data.get("paths", []), data.get("destination"))
         if action == "check_yaml":
             result = await hass.async_add_executor_job(self.syntax_checker.check_yaml, data.get("content", ""))
             return result

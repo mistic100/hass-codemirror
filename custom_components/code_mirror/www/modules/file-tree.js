@@ -36,12 +36,10 @@
  * - toggleFavorite: Toggle file favorite status
  * - renderRecentFilesPanel: Render recent files
  * - renderFavoritesPanel: Render favorites
- * - handleSelectionChange: Handle file selection change
  * - showContextMenu: Show context menu
  * - openFile: Open file
  * - hideSidebar: Hide sidebar
  * - loadFiles: Reload file list
- * - toggleSelectionMode: Toggle selection mode
  * - processUploads: Process file uploads
  *
  * HOW TO ADD NEW FEATURES:
@@ -152,12 +150,10 @@ let callbacks = {
   toggleFavorite: null,
   renderRecentFilesPanel: null,
   renderFavoritesPanel: null,
-  handleSelectionChange: null,
   showContextMenu: null,
   openFile: null,
   hideSidebar: null,
   loadFiles: null,
-  toggleSelectionMode: null,
   processUploads: null
 };
 
@@ -486,57 +482,6 @@ export function renderTreeLevel(tree, container, depth) {
 }
 
 /**
- * Handle dropping multiple files/folders
- */
-export async function handleFileDropMulti(sourcePaths, targetFolder) {
-  const targetFolderDisplay = targetFolder || "config folder";
-
-  // Filter out redundant moves (already in target folder)
-  const pathsToMove = sourcePaths.filter(path => {
-    const lastSlash = path.lastIndexOf("/");
-    const currentFolder = lastSlash === -1 ? "" : path.substring(0, lastSlash);
-    return currentFolder !== (targetFolder || "");
-  });
-
-  if (pathsToMove.length === 0) return;
-
-  const confirmed = await showConfirmDialog({
-    title: "Move Multiple Items?",
-    message: `Move <b>${pathsToMove.length} items</b> to <b>${targetFolderDisplay}</b>?`,
-    confirmText: "Move All",
-    cancelText: "Cancel"
-  });
-
-  if (confirmed) {
-    try {
-      showGlobalLoading(`Moving ${pathsToMove.length} items...`);
-
-      await fetchWithAuth(API_BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "move_multi",
-          paths: pathsToMove,
-          destination: targetFolder
-        }),
-      });
-
-      hideGlobalLoading();
-      showToast(`Moved ${pathsToMove.length} items`, "success");
-
-      // Exit selection mode and refresh
-      if (state.selectionMode && callbacks.toggleSelectionMode) {
-        callbacks.toggleSelectionMode();
-      }
-      if (callbacks.loadFiles) await callbacks.loadFiles();
-    } catch (error) {
-      hideGlobalLoading();
-      showToast("Failed to move items: " + error.message, "error");
-    }
-  }
-}
-
-/**
  * Handle dropping a single file/folder
  */
 export async function handleFileDrop(sourcePath, targetFolder) {
@@ -633,24 +578,6 @@ export function createTreeItem(name, depth, isFolder, isExpanded, itemPath = nul
   item.draggable = true;
   item.dataset.path = itemPath;
 
-  // Checkbox for selection mode
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.className = "tree-item-checkbox";
-  if (state.selectionMode) {
-    checkbox.classList.add("visible");
-    checkbox.checked = state.selectedItems.has(itemPath);
-  }
-
-  // Prevent item click when clicking checkbox
-  checkbox.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (callbacks.handleSelectionChange) {
-      callbacks.handleSelectionChange(itemPath, e.target.checked);
-    }
-  });
-  item.appendChild(checkbox);
-
   // show chevrons for folders (expand on click)
   if (isFolder) {
     const chevron = document.createElement("div");
@@ -730,18 +657,16 @@ export function createTreeItem(name, depth, isFolder, isExpanded, itemPath = nul
   actions.className = "tree-item-actions";
 
   // Pin Button (Favorites)
-  if (!state.selectionMode) {
-    const isPinned = state.favoriteFiles.includes(itemPath);
-    const pinBtn = document.createElement("button");
-    pinBtn.className = "tree-action-btn";
-    pinBtn.title = isPinned ? "Unpin" : "Pin to top";
-    pinBtn.innerHTML = `<span class="material-icons" style="font-size: 16px; ${isPinned ? 'color: var(--accent-color);' : ''}">push_pin</span>`;
-    pinBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (callbacks.toggleFavorite) callbacks.toggleFavorite(itemPath);
-    });
-    actions.appendChild(pinBtn);
-  }
+  const isPinned = state.favoriteFiles.includes(itemPath);
+  const pinBtn = document.createElement("button");
+  pinBtn.className = "tree-action-btn";
+  pinBtn.title = isPinned ? "Unpin" : "Pin to top";
+  pinBtn.innerHTML = `<span class="material-icons" style="font-size: 16px; ${isPinned ? 'color: var(--accent-color);' : ''}">push_pin</span>`;
+  pinBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (callbacks.toggleFavorite) callbacks.toggleFavorite(itemPath);
+  });
+  actions.appendChild(pinBtn);
 
   item.appendChild(actions);
 
@@ -762,12 +687,6 @@ export function handleDragStart(e) {
   if (!path || path === ".git" || path === ".gitignore") {
     e.preventDefault();
     return;
-  }
-
-  // If dragged item is selected, we move all selected items
-  if (state.selectionMode && state.selectedItems.has(path)) {
-    const paths = Array.from(state.selectedItems);
-    e.dataTransfer.setData("application/x-codemirror-multi", JSON.stringify(paths));
   }
 
   e.dataTransfer.setData("text/plain", path);
@@ -815,7 +734,6 @@ export async function handleDrop(e) {
   }
   elements.fileTree.classList.remove("drag-over-root");
 
-  const multiData = e.dataTransfer.getData("application/x-codemirror-multi");
   const sourcePath = e.dataTransfer.getData("text/plain");
   const itemPath = item ? item.dataset.path : null; // null means root
 
@@ -837,13 +755,6 @@ export async function handleDrop(e) {
     if (callbacks.processUploads) {
       await callbacks.processUploads(e.dataTransfer.files, targetFolder);
     }
-    return;
-  }
-
-  // Case 2: Internal Multi-Move
-  if (multiData) {
-    const paths = JSON.parse(multiData);
-    await handleFileDropMulti(paths, targetFolder);
     return;
   }
 

@@ -19,7 +19,7 @@
  * - performGlobalSearch, performGlobalReplace, showCommandPalette
  * - formatCode, toggleMarkdownPreview
  * - promptNewFile, promptNewFolder, saveSettings, loadSettings
- * - toggleSelectionMode, toggleFavorite, renderFileTree, openSearchWidget
+ * - toggleFavorite, renderFileTree, openSearchWidget
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -91,15 +91,11 @@ import {
     showQuickSwitcher, hideQuickSwitcher 
 } from './quick-switcher.js';
 import {
-    toggleSelectionMode, deleteSelectedItems
-} from './selection.js';
-import {
     triggerUpload, downloadCurrentFile, handleFileUpload,
     triggerFolderUpload, downloadFolder, handleFolderUpload,
-    processUploads, downloadFileByPath,
-    downloadSelectedItems
+    processUploads, downloadFileByPath
 } from './downloads-uploads.js';
-import { renderFileTree, debouncedRenderFileTree, handleFileDrop, cancelPendingSearch, collapseAllFolders } from './file-tree.js';
+import { renderFileTree, handleFileDrop, cancelPendingSearch, collapseAllFolders } from './file-tree.js';
 import { showAppSettings } from './settings-ui.js';
 import { saveSettings, updateShowHiddenButton } from './settings.js';
 import { hideContextMenu } from './context-menu.js';
@@ -119,7 +115,6 @@ let callbacks = {
     stageAllFiles: null,
     unstageAllFiles: null,
     commitStagedFiles: null,
-    toggleFileSelection: null,
     promptRename: null,
     promptMove: null,
     promptCopy: null,
@@ -425,27 +420,11 @@ export function initEventListeners() {
         });
     }
 
-    if (elements.btnToggleSelect) {
-      elements.btnToggleSelect.addEventListener("click", toggleSelectionMode);
-    }
-
     // Collapse All Folders
     if (elements.btnCollapseAllFolders) {
       elements.btnCollapseAllFolders.addEventListener("click", () => {
         collapseAllFolders();
       });
-    }
-
-    if (elements.btnDownloadSelected) {
-      elements.btnDownloadSelected.addEventListener("click", downloadSelectedItems);
-    }
-
-    if (elements.btnDeleteSelected) {
-      elements.btnDeleteSelected.addEventListener("click", deleteSelectedItems);
-    }
-
-    if (elements.btnCancelSelection) {
-      elements.btnCancelSelection.addEventListener("click", toggleSelectionMode);
     }
 
     // Refresh (Hard Refresh)

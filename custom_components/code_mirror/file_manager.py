@@ -469,47 +469,6 @@ class FileManager:
             return json_response({"success": True})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def delete_multi(self, paths: list[str]) -> web.Response:
-        """Delete multiple files or folders."""
-        for path in paths:
-            if self._is_protected(path): continue # Skip protected
-            safe_path = get_safe_path(self._get_root_dir(), path)
-            if not safe_path or not safe_path.exists() or safe_path == self._get_root_dir(): continue
-            try:
-                if safe_path.is_dir(): await self.hass.async_add_executor_job(shutil.rmtree, safe_path)
-                else: await self.hass.async_add_executor_job(safe_path.unlink)
-            except Exception as e:
-                _LOGGER.error("Error deleting %s: %s", path, e)
-        
-        self._fire_update("delete_multi")
-        return json_response({"success": True})
-
-    async def move_multi(self, paths: list[str], destination: str | None) -> web.Response:
-        """Move multiple files or folders to a destination."""
-        dest_folder = get_safe_path(self._get_root_dir(), destination or "")
-        if not dest_folder or not dest_folder.is_dir():
-            return json_message("Invalid destination", status_code=400)
-
-        for path in paths:
-            if self._is_protected(path): continue
-            src = get_safe_path(self._get_root_dir(), path)
-            if not src or not src.exists(): continue
-            
-            # Destination path: dest_folder / original_filename
-            dest = dest_folder / src.name
-            
-            if dest.exists():
-                _LOGGER.warning("Move skipped: %s already exists in %s", src.name, destination)
-                continue
-
-            try:
-                await self.hass.async_add_executor_job(src.rename, dest)
-            except Exception as e:
-                _LOGGER.error("Error moving %s to %s: %s", path, destination, e)
-
-        self._fire_update("move_multi")
-        return json_response({"success": True})
-
     async def copy(self, source: str, destination: str) -> web.Response:
         """Copy a file or folder."""
         src, dest = get_safe_path(self._get_root_dir(), source), get_safe_path(self._get_root_dir(), destination)
@@ -549,13 +508,6 @@ class FileManager:
             return response
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def download_multi(self, paths: list[str]) -> web.Response:
-        """Download multiple items as ZIP."""
-        try:
-            zip_data = await self.hass.async_add_executor_job(self._create_multi_zip, paths)
-            return json_response({"success": True, "filename": "download.zip", "data": zip_data})
-        except Exception as e: return json_message(str(e), status_code=500)
-
     def _create_zip(self, folder_path: Path) -> io.BytesIO:
         """Create ZIP from folder."""
         buf = io.BytesIO()
@@ -567,24 +519,6 @@ class FileManager:
                     zf.write(Path(root) / f, (Path(root) / f).relative_to(folder_path))
         buf.seek(0)
         return buf
-
-    def _create_multi_zip(self, paths: list[str]) -> str:
-        """Create ZIP from multiple paths."""
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            for p in paths:
-                safe = get_safe_path(self._get_root_dir(), p)
-                if not safe or not safe.exists(): continue
-                if safe.is_file():
-                    if self._is_file_allowed(safe): zf.write(safe, safe.name)
-                elif safe.is_dir():
-                    for root, dirs, files in os.walk(safe):
-                        dirs[:] = [d for d in dirs if d not in EXCLUDED_PATTERNS and not d.startswith(".")]
-                        for f in files:
-                            if f.startswith(".") or not self._is_file_allowed(Path(root) / f): continue
-                            zf.write(Path(root) / f, (Path(root) / f).relative_to(safe.parent))
-        buf.seek(0)
-        return base64.b64encode(buf.read()).decode()
 
     async def upload_file(self, path: str, content: str, overwrite: bool, is_base64: bool = False) -> web.Response:
         """Upload/create a file with content."""

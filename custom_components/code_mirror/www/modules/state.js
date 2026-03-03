@@ -153,8 +153,6 @@ export const state = {
   loadedDirectories: new Map(), // Cache: path -> {folders: [], files: []}
   loadingDirectories: new Set(), // Track which directories are currently loading
   editor: null,
-  selectionMode: false,
-  selectedItems: new Set(),
 
   fontSize: 14,
   tabSize: 2,

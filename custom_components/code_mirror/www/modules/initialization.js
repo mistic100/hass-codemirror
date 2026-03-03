@@ -166,10 +166,6 @@ import {
 } from './settings-ui.js';
 
 import {
-  registerSelectionCallbacks
-} from './selection.js';
-
-import {
   registerFileOperationsCallbacks
 } from './file-operations.js';
 
@@ -188,8 +184,8 @@ let loadFiles, openFile, saveFile, saveCurrentFile, renderTabs, renderFileTree;
 let closeTab, loadFile, setButtonLoading;
 let restoreOpenTabs, copyToClipboard;
 let updateToolbarState, updateStatusBar;
-let isTextFile, toggleSelectionMode, processUploads;
-let renderRecentFilesPanel, renderFavoritesPanel, handleSelectionChange;
+let isTextFile, processUploads;
+let renderRecentFilesPanel, renderFavoritesPanel;
 let showContextMenu, toggleFavorite, hideSidebar;
 
 /**
@@ -210,11 +206,9 @@ export function registerInitializationCallbacks(callbacks) {
   updateToolbarState = callbacks.updateToolbarState;
   updateStatusBar = callbacks.updateStatusBar;
   isTextFile = callbacks.isTextFile;
-  toggleSelectionMode = callbacks.toggleSelectionMode;
   processUploads = callbacks.processUploads;
   renderRecentFilesPanel = callbacks.renderRecentFilesPanel;
   renderFavoritesPanel = callbacks.renderFavoritesPanel;
-  handleSelectionChange = callbacks.handleSelectionChange;
   showContextMenu = callbacks.showContextMenu;
   toggleFavorite = callbacks.toggleFavorite;
   hideSidebar = callbacks.hideSidebar;
@@ -293,8 +287,7 @@ export async function init() {
       showConfirmDialog,
       showModal,
       loadFiles,
-      renderFileTree,
-      toggleSelectionMode
+      renderFileTree
     });
 
     registerSettingsCallbacks({
@@ -313,11 +306,6 @@ export async function init() {
       hideModal
     });
 
-    registerSelectionCallbacks({
-      renderFileTree,
-      loadFiles
-    });
-
     registerFileOperationsCallbacks({
       loadFiles,
       openFile,
@@ -331,12 +319,10 @@ export async function init() {
       toggleFavorite,
       renderRecentFilesPanel,
       renderFavoritesPanel,
-      handleSelectionChange,
       showContextMenu,
       openFile,
       hideSidebar,
       loadFiles,
-      toggleSelectionMode,
       processUploads
     });
 

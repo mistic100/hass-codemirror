@@ -248,10 +248,8 @@ import {
 import {
   downloadCurrentFile as downloadCurrentFileImpl,
   downloadFileByPath as downloadFileByPathImpl,
-  downloadContent as downloadContentImpl,
   downloadFile,
   downloadFolder as downloadFolderImpl,
-  downloadSelectedItems as downloadSelectedItemsImpl,
   triggerUpload as triggerUploadImpl,
   processUploads as processUploadsImpl,
   handleFileUpload as handleFileUploadImpl,
@@ -276,14 +274,6 @@ import {
 } from './settings-ui.js';
 
 import {
-  toggleSelectionMode as toggleSelectionModeImpl,
-  handleSelectionChange as handleSelectionChangeImpl,
-  updateSelectionCount as updateSelectionCountImpl,
-  deleteSelectedItems as deleteSelectedItemsImpl,
-  registerSelectionCallbacks
-} from './selection.js';
-
-import {
   createFile as createFileImpl,
   createFolder as createFolderImpl,
   deleteItem as deleteItemImpl,
@@ -301,7 +291,6 @@ import {
   buildFileTree as buildFileTreeImpl,
   renderFileTree as renderFileTreeImpl,
   renderTreeLevel as renderTreeLevelImpl,
-  handleFileDropMulti as handleFileDropMultiImpl,
   handleFileDrop as handleFileDropImpl,
   folderMatchesSearch as folderMatchesSearchImpl,
   createTreeItem as createTreeItemImpl,
@@ -1129,9 +1118,7 @@ export const checkFileUpdates = checkFileUpdatesImpl;
 // Re-export downloads-uploads module functions
 export const downloadCurrentFile = downloadCurrentFileImpl;
 export const downloadFileByPath = downloadFileByPathImpl;
-export const downloadContent = downloadContentImpl;
 export const downloadFolder = downloadFolderImpl;
-export const downloadSelectedItems = downloadSelectedItemsImpl;
 export const triggerUpload = triggerUploadImpl;
 export const processUploads = processUploadsImpl;
 export const handleFileUpload = handleFileUploadImpl;
@@ -1146,12 +1133,6 @@ export const loadSettings = loadSettingsImpl;
 export const saveSettings = saveSettingsImpl;
 
 export const updateShowHiddenButton = updateShowHiddenButtonImpl;
-
-// Re-export selection module functions
-export const toggleSelectionMode = toggleSelectionModeImpl;
-export const handleSelectionChange = handleSelectionChangeImpl;
-export const updateSelectionCount = updateSelectionCountImpl;
-export const deleteSelectedItems = deleteSelectedItemsImpl;
 
 // Re-export file-operations module functions
 export const createFile = createFileImpl;
@@ -1168,7 +1149,6 @@ export const debouncedRenderFileTree = debouncedRenderFileTreeImpl;
 export const buildFileTree = buildFileTreeImpl;
 export const renderFileTree = renderFileTreeImpl;
 export const renderTreeLevel = renderTreeLevelImpl;
-export const handleFileDropMulti = handleFileDropMultiImpl;
 export const handleFileDrop = handleFileDropImpl;
 export const folderMatchesSearch = folderMatchesSearchImpl;
 export const createTreeItem = createTreeItemImpl;
@@ -1316,11 +1296,9 @@ registerInitializationCallbacks({
   updateToolbarState,
   updateStatusBar,
   isTextFile,
-  toggleSelectionMode,
   processUploads,
   renderRecentFilesPanel,
   renderFavoritesPanel,
-  handleSelectionChange,
   showContextMenu,
   toggleFavorite,
   hideSidebar

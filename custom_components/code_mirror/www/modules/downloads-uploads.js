@@ -9,7 +9,6 @@
  * EXPORTED FUNCTIONS:
  * - downloadFile(path) - Download single file
  * - downloadFolder(path) - Download folder as ZIP
- * - downloadContent(filename, content, isBase64, mimeType) - Download from content
  * - uploadFiles(files, targetPath) - Upload multiple files
  *
  * HOW TO ADD FEATURES:
@@ -31,8 +30,7 @@ let callbacks = {
   showConfirmDialog: null,
   showModal: null,
   loadFiles: null,
-  renderFileTree: null,
-  toggleSelectionMode: null
+  renderFileTree: null
 };
 
 export function registerDownloadsUploadsCallbacks(cb) {
@@ -82,56 +80,6 @@ export function downloadFile(url, filename) {
 }
 
 /**
- * Generic download handler
- * Creates a blob and triggers browser download
- */
-export function downloadContent(filename, content, is_base64 = false, mimeType = "application/octet-stream") {
-  try {
-    let blobContent;
-    let blobType = mimeType;
-
-    if (is_base64) {
-      try {
-        const binaryString = atob(content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        blobContent = [bytes];
-      } catch (e) {
-        console.error("Failed to decode base64:", e);
-        showToast(`Failed to download ${filename}: Invalid base64 data`, "error");
-        return;
-      }
-    } else {
-      blobContent = [content];
-      if (!blobType || blobType === "application/octet-stream") {
-        blobType = "text/plain;charset=utf-8";
-      }
-    }
-
-    // Create blob and URL
-    const blob = new Blob(blobContent, { type: blobType });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    // Revoke after a longer delay to ensure download starts
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-    showToast(`Downloaded ${filename}`, "success");
-  } catch (error) {
-    console.error("Download failed:", error);
-    showToast(`Failed to download ${filename}: ${error.message}`, "error");
-  }
-}
-
-/**
  * Downloads a folder as a ZIP file
  */
 export async function downloadFolder(path) {
@@ -148,53 +96,6 @@ export async function downloadFolder(path) {
     document.body.removeChild(a);
   } catch (error) {
     showToast("Failed to download folder: " + error.message, "error");
-  }
-}
-
-/**
- * Downloads selected items (bulk download)
- * Single file downloads directly, multiple items are zipped
- */
-export async function downloadSelectedItems() {
-  if (state.selectedItems.size === 0) return;
-
-  const paths = Array.from(state.selectedItems);
-
-  // If only one item is selected, check if it's a file or folder
-  if (paths.length === 1) {
-    const path = paths[0];
-    const isFolder = state.folders.some(f => f.path === path);
-
-    if (!isFolder) {
-      // Single file selected - download directly
-      await downloadFileByPath(path);
-      if (callbacks.toggleSelectionMode) callbacks.toggleSelectionMode(); // Exit selection mode
-      return;
-    }
-    // Single folder selected - will be zipped by the logic below
-  }
-
-  try {
-    showGlobalLoading("Preparing bulk download...");
-
-    const response = await fetchWithAuth(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "download_multi", paths }),
-    });
-
-    hideGlobalLoading();
-
-    if (response.success && response.data) {
-      downloadContent(response.filename, response.data, true, "application/zip");
-      showToast(`Downloaded ${paths.length} items`, "success");
-
-      // Exit selection mode after download
-      if (callbacks.toggleSelectionMode) callbacks.toggleSelectionMode();
-    }
-  } catch (error) {
-    hideGlobalLoading();
-    showToast("Failed to download items: " + error.message, "error");
   }
 }
 
