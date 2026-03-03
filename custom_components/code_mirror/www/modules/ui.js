@@ -492,7 +492,6 @@ export function initElements() {
     elements.viewExplorer = document.getElementById("view-explorer");
     elements.viewSearch = document.getElementById("view-search");
     elements.globalSearchInput = document.getElementById("global-search-input");
-    elements.globalReplaceInput = document.getElementById("global-replace-input");
     elements.globalSearchInclude = document.getElementById("global-search-include");
     elements.globalSearchExclude = document.getElementById("global-search-exclude");
     elements.globalSearchResults = document.getElementById("global-search-results");
@@ -500,9 +499,6 @@ export function initElements() {
     elements.btnMatchCase = document.getElementById("btn-match-case");
     elements.btnMatchWord = document.getElementById("btn-match-word");
     elements.btnUseRegex = document.getElementById("btn-use-regex");
-    elements.btnToggleReplaceAll = document.getElementById("btn-toggle-replace-all");
-    elements.btnGlobalReplaceAll = document.getElementById("btn-global-replace-all");
-    elements.globalReplaceContainer = document.getElementById("global-replace-container");
     elements.btnTogglePatterns = document.getElementById("btn-toggle-patterns");
     elements.globalPatternsContainer = document.getElementById("global-patterns-container");
     elements.resizeHandle = document.getElementById("resize-handle");

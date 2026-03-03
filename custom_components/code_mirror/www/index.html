@@ -222,7 +222,6 @@
           <div class="search-container" style="padding: 12px; border-bottom: 1px solid var(--border-color);">
               <!-- Search Row -->
               <div style="position: relative; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
-                  <span class="material-icons" id="btn-toggle-replace-all" style="font-size: 18px; cursor: pointer; color: var(--text-secondary); transition: transform 0.2s;">chevron_right</span>
                   <div style="position: relative; flex: 1;">
                       <input type="text" class="search-input" id="global-search-input" placeholder="Search" autocomplete="off" style="width: 100%; padding-right: 30px;">
                       <span id="global-search-loading" class="material-icons spinning-centered" style="position: absolute; right: 8px; top: 50%; font-size: 16px; color: var(--text-secondary); display: none;">sync</span>
@@ -232,14 +231,6 @@
                       <button class="toolbar-btn small-btn" id="btn-match-word" title="Match Whole Word">ab</button>
                       <button class="toolbar-btn small-btn" id="btn-use-regex" title="Use Regular Expression">.*</button>
                   </div>
-              </div>
-
-              <!-- Replace Row (Initially Hidden) -->
-              <div id="global-replace-container" style="display: none; margin-bottom: 8px; margin-left: 22px; align-items: center; gap: 4px;">
-                  <input type="text" class="search-input" id="global-replace-input" placeholder="Replace" autocomplete="off" style="flex: 1;">
-                  <button class="toolbar-btn" id="btn-global-replace-all" title="Replace All" style="width: 32px; height: 32px;">
-                      <span class="material-icons" style="font-size: 18px;">find_replace</span>
-                  </button>
               </div>
 
               <!-- Patterns Row Toggle -->

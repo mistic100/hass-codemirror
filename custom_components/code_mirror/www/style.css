@@ -2247,8 +2247,7 @@ body {
         padding: 12px;
     }
 
-    #global-search-input,
-    #global-replace-input {
+    #global-search-input {
         font-size: 16px;
     }
 

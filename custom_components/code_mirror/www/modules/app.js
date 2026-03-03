@@ -349,7 +349,6 @@ import {
 import {
   registerGlobalSearchCallbacks,
   performGlobalSearch as performGlobalSearchImpl,
-  performGlobalReplace as performGlobalReplaceImpl,
   initGlobalSearchHandlers
 } from './global-search.js';
 
@@ -586,10 +585,6 @@ export function showCommandPalette() {
 
 export async function performGlobalSearch(query, options = {}) {
   return await performGlobalSearchImpl(query, options);
-}
-
-export async function performGlobalReplace() {
-  return await performGlobalReplaceImpl();
 }
 
 
@@ -1188,7 +1183,6 @@ registerEventHandlerCallbacks({
   saveCurrentFile,
   saveAllFiles,
   formatCode,
-  performGlobalReplace,
   performGlobalSearch,
   toggleMarkdownPreview,
   promptNewFile: (path) => promptNewFile(path),

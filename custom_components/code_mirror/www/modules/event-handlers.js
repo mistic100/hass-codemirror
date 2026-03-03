@@ -16,7 +16,7 @@
  * REQUIRED CALLBACKS (from app.js):
  * - saveCurrentFile, openFile, closeTab, activateTab, nextTab, previousTab
  * - closeAllTabs, closeOtherTabs, closeTabsToRight
- * - performGlobalSearch, performGlobalReplace, showCommandPalette
+ * - performGlobalSearch, showCommandPalette
  * - formatCode, toggleMarkdownPreview
  * - promptNewFile, promptNewFolder, saveSettings, loadSettings
  * - toggleFavorite, renderFileTree, openSearchWidget
@@ -106,7 +106,6 @@ let callbacks = {
     saveCurrentFile: null,
     saveAllFiles: null,
     formatCode: null,
-    performGlobalReplace: null,
     performGlobalSearch: null,
     toggleMarkdownPreview: null,
     promptNewFile: null,
@@ -213,8 +212,7 @@ export function initEventListeners() {
     }
 
     // Global Search Toolbar
-    ['btnMatchCase', 'btnMatchWord', 'btnUseRegex'].forEach(id => {
-        const btn = document.getElementById(id);
+    [elements.btnMatchCase, elements.btnMatchWord, elements.btnUseRegex].forEach(btn => {
         if (btn) {
             btn.addEventListener("click", () => {
                 btn.classList.toggle("active");
@@ -222,14 +220,6 @@ export function initEventListeners() {
             });
         }
     });
-
-    if (elements.btnToggleReplaceAll) {
-        elements.btnToggleReplaceAll.addEventListener("click", () => {
-            const isVisible = elements.globalReplaceContainer.style.display === "flex";
-            elements.globalReplaceContainer.style.display = isVisible ? "none" : "flex";
-            elements.btnToggleReplaceAll.classList.toggle("rotated", !isVisible);
-        });
-    }
 
     if (elements.btnTogglePatterns) {
         elements.btnTogglePatterns.addEventListener("click", () => {
@@ -257,12 +247,6 @@ export function initEventListeners() {
         elements.globalSearchExclude.addEventListener("input", () => {
             if (state._patternTimer) clearTimeout(state._patternTimer);
             state._patternTimer = setTimeout(() => triggerGlobalSearch(), 800);
-        });
-    }
-
-    if (elements.btnGlobalReplaceAll) {
-        elements.btnGlobalReplaceAll.addEventListener("click", () => {
-            if (callbacks.performGlobalReplace) callbacks.performGlobalReplace();
         });
     }
 

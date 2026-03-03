@@ -216,17 +216,5 @@ class CodeMirrorApiView(HomeAssistantView):
                 data.get("exclude", "")
             )
             return json_response(results)
-        if action == "global_replace":
-            results = await hass.async_add_executor_job(
-                self.file.global_replace,
-                data.get("query"),
-                data.get("replacement"),
-                data.get("case_sensitive", False),
-                data.get("use_regex", False),
-                data.get("match_word", False),
-                data.get("include", ""),
-                data.get("exclude", "")
-            )
-            return json_response(results)
 
         return json_message("Unknown action", status_code=400)

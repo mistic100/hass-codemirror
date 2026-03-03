@@ -13,7 +13,6 @@
  * - initGlobalSearchHandlers() - Initialize global search UI handlers
  * - setupGlobalSearch() - Setup global search sidebar
  * - performGlobalSearch(query, options) - Execute global search
- * - performGlobalReplace(searchQuery, replaceText, options) - Execute replace
  *
  * REQUIRED CALLBACKS (from app.js):
  * - fetchWithAuth: Make authenticated API calls
@@ -78,7 +77,6 @@
  * - Execute search: const results = await performGlobalSearch(query, options)
  * - Results format: [{ path, line, content, matches }]
  * - Open result: await callbacks.openFile(result.path, line)
- * - Replace: await performGlobalReplace(search, replace, options)
  * - Show results: Render in sidebar with file grouping
  *
  * RESULT DISPLAY:
@@ -97,7 +95,6 @@
  *
  * GLOBAL API:
  * - window.haCodeMirror.performGlobalSearch()
- * - window.haCodeMirror.performGlobalReplace()
  * - Allows external scripts to trigger search
  *
  * ============================================================================
@@ -170,75 +167,6 @@ export async function performGlobalSearch(query, options = {}) {
       if (elements.globalSearchResults) {
           elements.globalSearchResults.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--error-color);">Search failed: ${e.message}</div>`;
       }
-  }
-}
-
-/**
- * Performs global replace across all files
- */
-export async function performGlobalReplace() {
-  const query = elements.globalSearchInput.value;
-  const replacement = elements.globalReplaceInput.value;
-  const results = state._lastGlobalSearchResults || [];
-
-  if (!query || results.length === 0) return;
-
-  // Group results by file for the message
-  const grouped = {};
-  results.forEach(res => {
-      if (!grouped[res.path]) grouped[res.path] = 0;
-      grouped[res.path]++;
-  });
-  const fileCount = Object.keys(grouped).length;
-
-  const confirmed = await callbacks.showConfirmDialog({
-      title: "Global Replace",
-      message: `Replace all occurrences of <b>"${escapeHtml(query)}"</b> with <b>"${escapeHtml(replacement)}"</b>?<br><br>This will affect <b>${results.length} occurrences</b> across <b>${fileCount} files</b>.`,
-      confirmText: "Replace All",
-      cancelText: "Cancel",
-      isDanger: true
-  });
-
-  if (!confirmed) return;
-
-  try {
-      callbacks.showGlobalLoading(`Replacing in ${fileCount} files...`);
-
-      const API_BASE = callbacks.getApiBase ? callbacks.getApiBase() : "";
-      const response = await callbacks.fetchWithAuth(API_BASE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-              action: "global_replace",
-              query: query,
-              replacement: replacement,
-              case_sensitive: elements.btnMatchCase?.classList.contains("active"),
-              use_regex: elements.btnUseRegex?.classList.contains("active"),
-              match_word: elements.btnMatchWord?.classList.contains("active"),
-              include: elements.globalSearchInclude.value,
-              exclude: elements.globalSearchExclude.value
-          }),
-      });
-
-      callbacks.hideGlobalLoading();
-
-      if (response.success) {
-          callbacks.showToast(`Successfully replaced in ${response.files_updated} files`, "success");
-          // Refresh files and search
-          await callbacks.loadFiles(true);
-          performGlobalSearch(query, {
-              caseSensitive: elements.btnMatchCase?.classList.contains("active"),
-              useRegex: elements.btnUseRegex?.classList.contains("active"),
-              matchWord: elements.btnMatchWord?.classList.contains("active"),
-              include: elements.globalSearchInclude.value,
-              exclude: elements.globalSearchExclude.value
-          });
-      } else {
-          callbacks.showToast("Replace failed: " + response.message, "error");
-      }
-  } catch (e) {
-      callbacks.hideGlobalLoading();
-      callbacks.showToast("Error during replace: " + e.message, "error");
   }
 }
 
