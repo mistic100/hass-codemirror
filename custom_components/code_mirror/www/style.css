@@ -59,6 +59,11 @@ body.file-tree-compact .tree-name {
     font-size: 13px;
 }
 
+body.file-tree-compact .tree-action-btn {
+    width: 20px;
+    height: 20px;
+}
+
 /* File Tree No Icons */
 body.file-tree-no-icons .tree-icon {
     display: none;

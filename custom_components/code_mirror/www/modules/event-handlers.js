@@ -125,7 +125,6 @@ let callbacks = {
     previousTab: null,
     showCommandPalette: null,
     restartHomeAssistant: null, // If we decide to keep it in app.js, otherwise we export it
-    debouncedContentSearch: null,
     debouncedFilenameSearch: null
 };
 
@@ -546,58 +545,20 @@ export function initEventListeners() {
           return;
         }
 
-        if (state.contentSearchEnabled) {
-          // Search file content across all files
-          if (callbacks.debouncedContentSearch) callbacks.debouncedContentSearch();
-        } else {
-          // Search filenames across all files
-          if (callbacks.debouncedFilenameSearch) callbacks.debouncedFilenameSearch();
-        }
+        // Search filenames across all files
+        if (callbacks.debouncedFilenameSearch) callbacks.debouncedFilenameSearch();
       });
     }
-    
-    // Content Search Toggle
-    if (elements.btnContentSearch) {
-        // Update UI to match current state (from settings)
-        if (state.contentSearchEnabled) {
-            elements.btnContentSearch.style.background = "var(--accent-color)";
-            elements.btnContentSearch.style.color = "white";
-            elements.btnContentSearch.style.borderColor = "var(--accent-color)";
-            elements.fileSearch.placeholder = "Search all files...";
-        }
 
-        elements.btnContentSearch.addEventListener("click", () => {
-            state.contentSearchEnabled = !state.contentSearchEnabled;
-
-            // UI Toggle
-            if (state.contentSearchEnabled) {
-                elements.btnContentSearch.style.background = "var(--accent-color)";
-                elements.btnContentSearch.style.color = "white";
-                elements.btnContentSearch.style.borderColor = "var(--accent-color)";
-                elements.fileSearch.placeholder = "Search all files...";
-                // Re-run search with content mode
-                if (state.searchQuery && callbacks.debouncedContentSearch) {
-                    callbacks.debouncedContentSearch();
-                }
-            } else {
-                elements.btnContentSearch.style.background = "var(--bg-tertiary)";
-                elements.btnContentSearch.style.color = "var(--text-secondary)";
-                elements.btnContentSearch.style.borderColor = "var(--border-color)";
-                elements.fileSearch.placeholder = "Search all files...";
-                // Re-run search with filename mode (or clear if lazy loading disabled)
-                if (state.searchQuery) {
-                    if (callbacks.debouncedFilenameSearch) {
-                        callbacks.debouncedFilenameSearch();
-                    } else {
-                        state.contentSearchResults = null;
-                        renderFileTree();
-                    }
-                } else {
-                    state.contentSearchResults = null;
-                    renderFileTree();
-                }
-            }
-        });
+    // Clear search button
+    if (elements.btnClearFileSearch) {
+      elements.btnClearFileSearch.addEventListener("click", () => {
+        cancelPendingSearch(); // Cancel any in-flight debounced search
+        elements.fileSearch.value = '';
+        state.searchQuery = '';
+        state.contentSearchResults = null;
+        renderFileTree();
+      });
     }
 
     // Welcome screen actions

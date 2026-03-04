@@ -299,9 +299,7 @@ import {
   handleDragLeave as handleDragLeaveImpl,
   handleDrop as handleDropImpl,
   toggleFolder as toggleFolderImpl,
-  debouncedContentSearch as debouncedContentSearchImpl,
   debouncedFilenameSearch as debouncedFilenameSearchImpl,
-  performContentSearch as performContentSearchImpl,
   registerFileTreeCallbacks
 } from './file-tree.js';
 
@@ -631,9 +629,7 @@ export async function promptDelete(path, isFolder) {
   // Content Search (Sidebar) - wrapped from file-tree.js
   // ============================================
 
-export const debouncedContentSearch = debouncedContentSearchImpl;
 export const debouncedFilenameSearch = debouncedFilenameSearchImpl;
-export const performContentSearch = performContentSearchImpl;
 
   // Tab Management
   // ============================================
@@ -1197,7 +1193,6 @@ registerEventHandlerCallbacks({
   nextTab: nextTabImpl,
   previousTab: previousTabImpl,
   showCommandPalette,
-  debouncedContentSearch,
   debouncedFilenameSearch
 });
 

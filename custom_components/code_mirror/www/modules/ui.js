@@ -483,7 +483,7 @@ export function initElements() {
     elements.welcomeScreen = document.getElementById("welcome-screen");
     elements.filePath = document.getElementById("file-path");
     elements.fileSearch = document.getElementById("file-search");
-    elements.btnContentSearch = document.getElementById("btn-content-search");
+    elements.btnClearFileSearch = document.getElementById("btn-clear-file-search");
     elements.toastContainer = document.getElementById("toast-container");
     elements.sidebar = document.getElementById("sidebar");
     elements.sidebarOverlay = document.getElementById("sidebar-overlay");

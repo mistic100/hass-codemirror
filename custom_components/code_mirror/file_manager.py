@@ -78,8 +78,10 @@ class FileManager:
                 "timestamp": time.time()
             })
 
-    def list_files(self, show_hidden: bool = False) -> list[dict]:
-        """List files recursively."""
+    def search_files(self, query: str, show_hidden: bool = False) -> list[str]:
+        """Search files recursively."""
+        if not query:
+            return []
         res = []
         root_dir = self._get_root_dir()
         for root, dirs, files in os.walk(root_dir):
@@ -89,8 +91,10 @@ class FileManager:
             for name in sorted(files):
                 file_path = Path(root) / name
                 if (not show_hidden and name.startswith(".")) or not self._is_file_allowed(file_path): continue
-                res.append({"path": str(rel_root / name if str(rel_root) != "." else name), "name": name, "type": "file"})
-        return sorted(res, key=lambda x: x["path"])
+                rel_path = str(rel_root / name if str(rel_root) != "." else name)
+                if query in rel_path.lower():
+                    res.append(rel_path)
+        return sorted(res)
 
     def list_directory(self, path: str = "", show_hidden: bool = False) -> dict:
         """

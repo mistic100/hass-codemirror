@@ -131,20 +131,16 @@ export async function performGlobalSearch(query, options = {}) {
   if (elements.globalSearchResults) elements.globalSearchResults.innerHTML = "";
 
   try {
+      const params = new URLSearchParams();
+      params.append("action", "global_search");
+      params.append("query", query);
+      params.append("case_sensitive", options.caseSensitive ?? false);
+      params.append("use_regex", options.useRegex ?? false);
+      params.append("match_word", options.matchWord ?? false);
+      params.append("include", options.include ?? '');
+      params.append("exclude", options.exclude ?? '');
       const API_BASE = callbacks.getApiBase ? callbacks.getApiBase() : "";
-      const data = await callbacks.fetchWithAuth(API_BASE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-              action: "global_search",
-              query: query,
-              case_sensitive: options.caseSensitive || false,
-              use_regex: options.useRegex || false,
-              match_word: options.matchWord || false,
-              include: options.include || "",
-              exclude: options.exclude || ""
-          }),
-      });
+      const data = await callbacks.fetchWithAuth(`${API_BASE}?${params}`);
 
       if (elements.globalSearchLoading) elements.globalSearchLoading.style.display = "none";
 

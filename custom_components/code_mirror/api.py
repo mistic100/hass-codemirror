@@ -73,9 +73,10 @@ class CodeMirrorApiView(HomeAssistantView):
         hass = request.app["hass"]
         self._update_hass(hass)
 
-        if action == "list_files":
+        if action == "search_files":
+            query = params.get("query", "")
             show_hidden = params.get("show_hidden", "false").lower() == "true"
-            files = await hass.async_add_executor_job(self.file.list_files, show_hidden)
+            files = await hass.async_add_executor_job(self.file.search_files, query, show_hidden)
             return json_response(files)
         if action == "list_directory":
             path = params.get("path", "")  # Empty string = root
@@ -129,6 +130,21 @@ class CodeMirrorApiView(HomeAssistantView):
                 "ha_version": ha_version_const,
                 "integration_version": integration_version
             })
+        if action == "get_entities":
+            query = params.get("query", "").lower()
+            entities = []
+            for s in hass.states.async_all():
+                eid = s.entity_id.lower()
+                fname = str(s.attributes.get("friendly_name", "")).lower()
+                if not query or query in eid or query in fname:
+                    entities.append({
+                        "entity_id": s.entity_id,
+                        "friendly_name": s.attributes.get("friendly_name"), 
+                        "icon": s.attributes.get("icon"),
+                        "state": s.state
+                    })
+            # Limit results to avoid massive payloads if query is empty/broad
+            return json_response({"entities": entities[:1000]})
         
         return json_message("Unknown action", status_code=400)
 
@@ -190,31 +206,5 @@ class CodeMirrorApiView(HomeAssistantView):
         if action == "restart_home_assistant":
             await hass.services.async_call("homeassistant", "restart")
             return json_response({"success": True, "message": "Restarting..."})
-        if action == "get_entities":
-            query = data.get("query", "").lower()
-            entities = []
-            for s in hass.states.async_all():
-                eid = s.entity_id.lower()
-                fname = str(s.attributes.get("friendly_name", "")).lower()
-                if not query or query in eid or query in fname:
-                    entities.append({
-                        "entity_id": s.entity_id,
-                        "friendly_name": s.attributes.get("friendly_name"), 
-                        "icon": s.attributes.get("icon"),
-                        "state": s.state
-                    })
-            # Limit results to avoid massive payloads if query is empty/broad
-            return json_response({"entities": entities[:1000]})
-        if action == "global_search":
-            results = await hass.async_add_executor_job(
-                self.file.global_search, 
-                data.get("query"), 
-                data.get("case_sensitive", False), 
-                data.get("use_regex", False),
-                data.get("match_word", False),
-                data.get("include", ""),
-                data.get("exclude", "")
-            )
-            return json_response(results)
 
         return json_message("Unknown action", status_code=400)

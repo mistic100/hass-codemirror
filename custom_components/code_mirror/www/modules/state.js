@@ -63,7 +63,6 @@
  *
  * SEARCH:
  * - searchQuery: File tree search query
- * - contentSearchEnabled: Whether content search is active
  * - contentSearchResults: Set of matching file paths
  *
  * UI STATE:
@@ -140,7 +139,6 @@ export const state = {
   favoriteFiles: [],
   recentFiles: [],
   searchQuery: "",
-  contentSearchEnabled: false,
   contentSearchResults: null,
   isMobile: window.innerWidth <= MOBILE_BREAKPOINT,
   sidebarVisible: window.innerWidth > MOBILE_BREAKPOINT,

@@ -15,10 +15,6 @@
  * - buildFileTree(items) - Build tree structure from flat file list
  * - renderTreeLevel(tree, container, depth) - Recursively render tree levels
  *
- * Content Search:
- * - debouncedContentSearch() - Debounced content search (500ms)
- * - performContentSearch() - Search file contents and filter tree
- *
  * File Operations:
  * - createTreeItem(item, depth) - Create file/folder tree item element
  * - toggleFolder(path) - Expand/collapse folder
@@ -64,12 +60,6 @@
  *    - Modify handleDrop() to support new drop types
  *    - Add data to handleDragStart() for new drag sources
  *    - Update drop zones in handleDragOver()
- *
- * 5. Enhancing content search:
- *    - Modify performContentSearch() API call
- *    - Add options: case_sensitive, use_regex, file_types
- *    - Update UI to show search options
- *    - Add search highlighting in results
  *
  * INTEGRATION POINTS:
  * - state.js: state.files, state.folders, state.expandedFolders, state.contentSearchResults
@@ -172,22 +162,6 @@ export function debouncedRenderFileTree() {
 }
 
 /**
- * Debounced content search in file tree
- */
-export function debouncedContentSearch() {
-  if (contentSearchTimer) clearTimeout(contentSearchTimer);
-
-  // Show loading state
-  if (elements.fileSearch) {
-    elements.fileSearch.style.opacity = "0.7";
-  }
-
-  contentSearchTimer = setTimeout(() => {
-    performContentSearch();
-  }, 500); // 500ms debounce
-}
-
-/**
  * Debounced filename search in file tree
  */
 export function debouncedFilenameSearch() {
@@ -201,51 +175,6 @@ export function debouncedFilenameSearch() {
   contentSearchTimer = setTimeout(() => {
     performFilenameSearch();
   }, 300); // 300ms debounce (faster for filename search)
-}
-
-/**
- * Perform content search across all files
- */
-export async function performContentSearch() {
-  const query = state.searchQuery.trim();
-
-  if (!query) {
-    state.contentSearchResults = null;
-    if (elements.fileSearch) elements.fileSearch.style.opacity = "1";
-    renderFileTree();
-    return;
-  }
-
-  try {
-    const results = await fetchWithAuth(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "global_search",
-        query: query,
-        case_sensitive: false,
-        use_regex: false
-      }),
-    });
-
-    // If query changed while fetching (e.g. user cleared the box), discard results
-    if (state.searchQuery.trim() !== query) return;
-
-    if (results && Array.isArray(results)) {
-      state.contentSearchResults = new Set(results.map(r => r.path));
-    } else {
-      state.contentSearchResults = new Set();
-    }
-  } catch (e) {
-    console.error("Content search failed", e);
-    state.contentSearchResults = new Set();
-  } finally {
-    if (elements.fileSearch) elements.fileSearch.style.opacity = "1";
-    // Only render if query still matches (user hasn't cleared)
-    if (state.searchQuery.trim() === query) {
-      renderFileTree();
-    }
-  }
 }
 
 /**
@@ -263,15 +192,16 @@ export async function performFilenameSearch() {
 
   try {
     // Load all files from backend
-    const allFiles = await fetchWithAuth(API_BASE + "?action=list_files&show_hidden=" + state.showHidden);
+    const params = new URLSearchParams();
+    params.append("action", "search_files");
+    params.append("show_hidden", state.showHidden);
+    params.append("query", query);
+    const matchingPaths = await fetchWithAuth(`${API_BASE}?${params}`);
 
     // If query changed while fetching (e.g. user cleared the box), discard results
     if (state.searchQuery.trim().toLowerCase() !== query) return;
 
-    if (allFiles && Array.isArray(allFiles)) {
-      const matchingPaths = allFiles
-        .filter(file => file.name.toLowerCase().includes(query))
-        .map(file => file.path);
+    if (matchingPaths && Array.isArray(matchingPaths)) {
       state.contentSearchResults = new Set(matchingPaths);
     } else {
       state.contentSearchResults = new Set();
@@ -576,6 +506,7 @@ export function createTreeItem(name, depth, isFolder, isExpanded, itemPath = nul
   item.className = "tree-item";
   item.style.setProperty("--depth", depth);
   item.draggable = true;
+  item.title = itemPath;
   item.dataset.path = itemPath;
 
   // show chevrons for folders (expand on click)

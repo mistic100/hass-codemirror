@@ -26,11 +26,7 @@ export let HA_ENTITIES = [];
 
 export async function loadEntities() {
   try {
-    const data = await fetchWithAuth(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "get_entities" }),
-    });
+    const data = await fetchWithAuth(`${API_BASE}?action=get_entities`);
     if (data.entities) {
       HA_ENTITIES = data.entities;
     }
