@@ -19,7 +19,6 @@
  *
  * Tab Operations:
  * - renderTabs() - Render tab bar
- * - nextTab(), previousTab() - Navigate tabs
  * - closeAllTabs(), closeOtherTabs(), closeTabsToRight() - Bulk tab operations
  *
  * Editor Operations:
@@ -302,8 +301,7 @@ import {
 
 import {
   registerEventHandlerCallbacks,
-  restartHomeAssistant as restartHomeAssistantImpl,
-  insertUUID
+  restartHomeAssistant as restartHomeAssistantImpl
 } from './event-handlers.js';
 
 import {
@@ -311,9 +309,7 @@ import {
   renderTabs as renderTabsImpl,
   closeAllTabs as closeAllTabsImpl,
   closeOtherTabs as closeOtherTabsImpl,
-  closeTabsToRight as closeTabsToRightImpl,
-  nextTab as nextTabImpl,
-  previousTab as previousTabImpl
+  closeTabsToRight as closeTabsToRightImpl
 } from './tabs.js';
 
 import {
@@ -933,14 +929,6 @@ export async function closeTabsToRight(tab, force = false) {
   return await closeTabsToRightImpl(tab, force);
 }
 
-export function nextTab() {
-  return nextTabImpl();
-}
-
-export function previousTab() {
-  return previousTabImpl();
-}
-
 export function closeTab(tab, force = false) {
     if (tab.modified && !force) {
       if (!confirm(`${tab.path.split("/").pop()} has unsaved changes. Close anyway?`)) {
@@ -1175,8 +1163,6 @@ registerEventHandlerCallbacks({
   promptDelete,
   closeTab,
   activateTab,
-  nextTab: nextTabImpl,
-  previousTab: previousTabImpl,
   showCommandPalette,
   debouncedFilenameSearch
 });
@@ -1270,8 +1256,6 @@ registerEditorCallbacks({
   showCommandPalette,
   openFile,
   closeTab,
-  nextTab,
-  previousTab,
   updateToolbarState,
   updateStatusBar,
   renderTabs,
@@ -1298,7 +1282,6 @@ registerCommandPaletteCallbacks({
   showQuickSwitcher,
   promptNewFile,
   promptNewFolder,
-  insertUUID,
   validateYaml,
   restartHomeAssistant,
   toggleSidebar,

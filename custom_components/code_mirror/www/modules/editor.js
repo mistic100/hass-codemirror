@@ -22,8 +22,6 @@
  * - showCommandPalette: Open command palette
  * - openFile: Open file
  * - closeTab: Close current tab
- * - nextTab: Switch to next tab
- * - previousTab: Switch to previous tab
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -139,8 +137,6 @@ let callbacks = {
   showCommandPalette: null,
   openFile: null,
   closeTab: null,
-  nextTab: null,
-  previousTab: null,
   updateToolbarState: null,
   updateStatusBar: null,
   renderTabs: null,

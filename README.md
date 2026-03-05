@@ -15,7 +15,6 @@ The following features have been removed:
 - Git integration 
 - AI agents
 - Terminal panel
-- PDF viewer
 - Extra themes other than light and dark
 - Custom colors and fonts
 - Split view

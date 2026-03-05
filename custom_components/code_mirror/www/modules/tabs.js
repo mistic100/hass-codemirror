@@ -13,8 +13,6 @@
  * - closeAllTabs() - Close all open tabs
  * - closeOtherTabs(tab) - Close all tabs except the specified one
  * - closeTabsToRight(tab) - Close all tabs to the right of specified tab
- * - nextTab() - Switch to next tab
- * - previousTab() - Switch to previous tab
  *
  * REQUIRED CALLBACKS (from app.js):
  * - activateTab: Switch to a specific tab
@@ -183,18 +181,6 @@ export function getTabIndex(tab) {
 }
 
 /**
- * Gets the next tab after closing current one
- */
-export function getNextTab(closingTab) {
-  const index = getTabIndex(closingTab);
-  if (state.openTabs.length > 1) {
-    const newIndex = Math.min(index, state.openTabs.length - 2); // -2 because we're about to remove one
-    return state.openTabs[newIndex === index ? newIndex + 1 : newIndex];
-  }
-  return null;
-}
-
-/**
  * Checks if any tabs have unsaved changes
  */
 export function hasUnsavedTabs() {
@@ -297,54 +283,4 @@ export async function closeTabsToRight(tab, force = false) {
   if (callbacks.renderFileTree) callbacks.renderFileTree();
 
   return true;
-}
-
-/**
- * Moves to next tab (with split view support)
- */
-export function nextTab() {
-  if (state.openTabs.length === 0) return;
-
-  // Get available tabs
-  const availableTabs = state.openTabs;
-
-  if (availableTabs.length <= 1) return; // No other tab to switch to
-
-  const currentIndex = availableTabs.indexOf(state.activeTab);
-  if (currentIndex === -1) {
-    // Active tab not in available tabs, activate first available
-    if (callbacks.activateTab) callbacks.activateTab(availableTabs[0]);
-  } else {
-    // Move to next tab (wrap around)
-    const nextIndex = (currentIndex + 1) % availableTabs.length;
-    if (callbacks.activateTab) callbacks.activateTab(availableTabs[nextIndex]);
-  }
-
-  renderTabs();
-  if (callbacks.renderFileTree) callbacks.renderFileTree();
-}
-
-/**
- * Moves to previous tab (with split view support)
- */
-export function previousTab() {
-  if (state.openTabs.length === 0) return;
-
-  // Get available tabs
-  const availableTabs = state.openTabs;
-
-  if (availableTabs.length <= 1) return; // No other tab to switch to
-
-  const currentIndex = availableTabs.indexOf(state.activeTab);
-  if (currentIndex === -1) {
-    // Active tab not in available tabs, activate last available
-    if (callbacks.activateTab) callbacks.activateTab(availableTabs[availableTabs.length - 1]);
-  } else {
-    // Move to previous tab (wrap around)
-    const prevIndex = (currentIndex - 1 + availableTabs.length) % availableTabs.length;
-    if (callbacks.activateTab) callbacks.activateTab(availableTabs[prevIndex]);
-  }
-
-  renderTabs();
-  if (callbacks.renderFileTree) callbacks.renderFileTree();
 }

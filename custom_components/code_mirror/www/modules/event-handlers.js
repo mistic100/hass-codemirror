@@ -11,10 +11,9 @@
  * - registerEventHandlerCallbacks(cb) - Register dependencies from app.js
  * - setupEventListeners() - Initialize all event listeners (called on app init)
  * - restartHomeAssistant() - Restart HA server
- * - insertUUID() - Insert UUID at cursor position
  *
  * REQUIRED CALLBACKS (from app.js):
- * - saveCurrentFile, openFile, closeTab, activateTab, nextTab, previousTab
+ * - saveCurrentFile, openFile, closeTab, activateTab
  * - closeAllTabs, closeOtherTabs, closeTabsToRight
  * - performGlobalSearch, showCommandPalette
  * - formatCode, toggleMarkdownPreview
@@ -121,8 +120,6 @@ let callbacks = {
     promptDelete: null,
     closeTab: null,
     activateTab: null,
-    nextTab: null,
-    previousTab: null,
     showCommandPalette: null,
     restartHomeAssistant: null, // If we decide to keep it in app.js, otherwise we export it
     debouncedFilenameSearch: null
@@ -130,18 +127,6 @@ let callbacks = {
 
 export function registerEventHandlerCallbacks(cb) {
     callbacks = { ...callbacks, ...cb };
-}
-
-export function insertUUID() {
-    if (!state.editor || !state.editor.hasFocus()) return;
-    
-    // Generate UUID v4
-    const uuid = crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-    
-    state.editor.replaceSelection(uuid);
 }
 
 export async function restartHomeAssistant() {
@@ -719,34 +704,6 @@ export function initEventListeners() {
     // Keyboard shortcuts - using capture phase to intercept before browser
     window.addEventListener("keydown", (e) => {
 
-      // Ctrl + Shift + ] - Next Tab (all platforms, including macOS)
-      // Check both e.key and e.code for better compatibility
-      const isNextTabShortcut =
-        (e.key === "]" || e.key === "}" || e.code === "BracketRight") &&
-        e.ctrlKey && e.shiftKey && !e.metaKey;
-
-      if (isNextTabShortcut) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        if (callbacks.nextTab) callbacks.nextTab();
-        return false;
-      }
-
-      // Ctrl + Shift + [ - Previous Tab (all platforms, including macOS)
-      // Check both e.key and e.code for better compatibility
-      const isPrevTabShortcut =
-        (e.key === "[" || e.key === "{" || e.code === "BracketLeft") &&
-        e.ctrlKey && e.shiftKey && !e.metaKey;
-
-      if (isPrevTabShortcut) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        if (callbacks.previousTab) callbacks.previousTab();
-        return false;
-      }
-
       // Alt/Option + W - Close Tab
       if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key.toLowerCase() === "w" || e.code === "KeyW")) {
         e.preventDefault();
@@ -795,12 +752,6 @@ export function initEventListeners() {
       if ((e.ctrlKey || e.metaKey) && e.key === "b") {
         e.preventDefault();
         toggleSidebar();
-      }
-
-      // Ctrl/Cmd + Shift + U - Generate UUID
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "u") {
-        e.preventDefault();
-        insertUUID();
       }
 
       // Ctrl/Cmd + Shift + F - Global Search
