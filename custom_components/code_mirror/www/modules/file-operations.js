@@ -173,6 +173,13 @@ export async function deleteItem(path) {
       callbacks.closeTab(tab, true);
     }
 
+    // Remove from expanded folders if present
+    for (const folder of state.expandedFolders) {
+      if (folder.startsWith(path)) {
+        state.expandedFolders.delete(folder);
+      }
+    }
+
     if (callbacks.loadFiles) await callbacks.loadFiles();
 
     return true;

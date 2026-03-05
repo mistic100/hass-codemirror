@@ -167,7 +167,6 @@ export const state = {
   rememberWorkspace: true,
   showToasts: true,
   // Internal tracking
-  _wsUpdateTimer: null,
   _savedOpenTabs: null,
   _savedActiveTabPath: null,
   // Quick switcher

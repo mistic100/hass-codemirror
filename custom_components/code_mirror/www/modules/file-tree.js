@@ -740,6 +740,7 @@ export async function loadDirectory(path) {
 
     if (result.error) {
       console.error(`Failed to load directory ${path}:`, result.error);
+      state.expandedFolders.delete(path);
       showToast(`Failed to load folder: ${result.error}`, "error");
       return;
     }
@@ -756,6 +757,7 @@ export async function loadDirectory(path) {
 
   } catch (error) {
     console.error(`Error loading directory ${path}:`, error);
+    state.expandedFolders.delete(path);
     showToast(`Error loading folder: ${error.message}`, "error");
   } finally {
     state.loadingDirectories.delete(path);

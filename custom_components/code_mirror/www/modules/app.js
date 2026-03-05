@@ -120,9 +120,7 @@ import {
 
 import { 
   fetchWithAuth, 
-  serveFileUrl,
-  initWebSocketSubscription,
-  registerUpdateCallbacks 
+  serveFileUrl
 } from './api.js';
 
 import {
@@ -239,11 +237,6 @@ import {
   saveAllFiles as saveAllFilesImpl,
   registerAutoSaveCallbacks
 } from './autosave.js';
-
-import {
-  checkFileUpdates as checkFileUpdatesImpl,
-  registerPollingCallbacks
-} from './polling.js';
 
 import {
   downloadCurrentFile as downloadCurrentFileImpl,
@@ -451,12 +444,7 @@ export async function loadFiles() {
       // Restore expanded folders
       const toExpand = Array.from(state.expandedFolders).sort();
       for (const path of toExpand) {
-        try {
-          await loadDirectory(path);
-        } catch (e) {
-          console.warn("Failed to reload preserved path:", e);
-          state.expandedFolders.delete(path);
-        }
+        await loadDirectory(path);
       }
 
       renderFileTree();
@@ -1102,9 +1090,6 @@ export const renderRecentFilesPanel = renderRecentFilesPanelImpl;
 // Re-export autosave module functions
 export { autoSaveTimer };
 export const saveAllFiles = saveAllFilesImpl;
-
-// Re-export polling module functions
-export const checkFileUpdates = checkFileUpdatesImpl;
 
 // Re-export downloads-uploads module functions
 export const downloadCurrentFile = downloadCurrentFileImpl;

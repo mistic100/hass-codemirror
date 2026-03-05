@@ -26,11 +26,15 @@ export function registerPollingCallbacks(cb) {
   callbacks = { ...callbacks, ...cb };
 }
 
+export function startPolling() {
+  setInterval(() => checkFileUpdates(), 10000);
+}
+
 /**
  * Checks if the active file has been modified externally
  * Auto-reloads the file if it hasn't been modified locally
  */
-export async function checkFileUpdates() {
+async function checkFileUpdates() {
   // Only check if window is focused to save resources
   if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
 

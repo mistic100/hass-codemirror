@@ -5,7 +5,7 @@
  *
  * PURPOSE:
  * Handles complete application initialization including DOM element caching,
- * module setup, onboarding flow, and WebSocket subscriptions. This is called
+ * module setup, onboarding flow. This is called
  * during app startup to prepare the application for use.
  *
  * EXPORTED FUNCTIONS:
@@ -13,7 +13,6 @@
  * - initializeApp() - Main initialization function
  * - setupOnboarding() - Setup onboarding flow for new users
  * - cacheElements() - Cache DOM element references
- * - setupWebSocket() - Initialize real-time updates
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -43,7 +42,6 @@
  *
  * INTEGRATION POINTS:
  * - state.js: Updates elements object with DOM references
- * - api.js: WebSocket subscriptions
  * - settings.js: Load saved settings
  * - All modules: Initialize each module
  * - main.js: Called from app entry point
@@ -54,9 +52,7 @@
  * 3. Initialize modules (editor, file tree, etc.)
  * 4. Setup event listeners
  * 5. Load initial data (files)
- * 6. Setup WebSocket for real-time updates
- * 7. Show onboarding if first time
- * 8. Hide loading, show app
+ * 6. Hide loading, show app
  *
  * ARCHITECTURE NOTES:
  * - Single initialization call from main.js
@@ -82,9 +78,7 @@
 import { API_BASE } from './constants.js';
 
 import {
-  fetchWithAuth,
-  initWebSocketSubscription,
-  registerUpdateCallbacks
+  fetchWithAuth
 } from './api.js';
 
 import {
@@ -146,8 +140,8 @@ import {
 } from './autosave.js';
 
 import {
-  checkFileUpdates,
-  registerPollingCallbacks
+  registerPollingCallbacks,
+  startPolling
 } from './polling.js';
 
 import {
@@ -326,12 +320,6 @@ export async function init() {
       processUploads
     });
 
-    // Register WebSocket update callbacks for real-time updates
-    registerUpdateCallbacks({
-      checkFileUpdates,
-      loadFiles,
-    });
-
     // Set initial sidebar state
     if (isMobile()) {
       elements.sidebar.classList.remove("visible");
@@ -344,11 +332,6 @@ export async function init() {
       fetchWithAuth(`${API_BASE}?action=get_version`).catch(e => {
         console.warn("Failed to fetch version for display");
         return null;
-      }),
-
-      // Initialize WebSocket (independent)
-      initWebSocketSubscription().catch(e => {
-        console.warn("Failed to init WebSocket:", e);
       }),
 
       // Load entities for autocomplete (independent)
@@ -374,6 +357,7 @@ export async function init() {
 
     updateToolbarState();
     updateStatusBar();
+    startPolling();
   } catch (error) {
     console.error("CodeMirror: Critical initialization error:", error);
     // Even if it fails, try to show the UI

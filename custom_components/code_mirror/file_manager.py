@@ -68,16 +68,6 @@ class FileManager:
         except (OSError, PermissionError): pass
         return total
 
-    def _fire_update(self, action: str, path: str | None = None):
-        """Fire a websocket update event."""
-
-        if self.hass:
-            self.hass.bus.async_fire("code_mirror_update", {
-                "action": action,
-                "path": path,
-                "timestamp": time.time()
-            })
-
     def search_files(self, query: str, show_hidden: bool = False) -> list[str]:
         """Search files recursively."""
         if not query:
@@ -359,7 +349,6 @@ class FileManager:
         if not safe_path or not self._is_file_allowed(safe_path): return json_message("Not allowed", status_code=403)
         try:
             await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
-            self._fire_update("write", path)
             return json_response({"success": True, "mtime": safe_path.stat().st_mtime})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -375,7 +364,6 @@ class FileManager:
 
             if is_base64: await self.hass.async_add_executor_job(safe_path.write_bytes, base64.b64decode(content))
             else: await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
-            self._fire_update("create", path)
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -385,7 +373,6 @@ class FileManager:
         if not safe_path or safe_path.exists(): return json_message("Not allowed or exists", status_code=403)
         try:
             await self.hass.async_add_executor_job(safe_path.mkdir, 0o755, True, True)
-            self._fire_update("create_folder", path)
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -397,7 +384,6 @@ class FileManager:
         try:
             if safe_path.is_dir(): await self.hass.async_add_executor_job(shutil.rmtree, safe_path)
             else: await self.hass.async_add_executor_job(safe_path.unlink)
-            self._fire_update("delete", path)
             return json_response({"success": True})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -408,7 +394,6 @@ class FileManager:
         try:
             if src.is_dir(): await self.hass.async_add_executor_job(shutil.copytree, src, dest)
             else: await self.hass.async_add_executor_job(shutil.copy2, src, dest)
-            self._fire_update("copy", destination)
             return json_response({"success": True, "path": destination})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -419,7 +404,6 @@ class FileManager:
         if not src or not dest or not src.exists() or dest.exists(): return json_message("Invalid path or exists", status_code=403)
         try:
             await self.hass.async_add_executor_job(src.rename, dest)
-            self._fire_update("rename", destination)
             return json_response({"success": True, "path": destination})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -460,7 +444,6 @@ class FileManager:
         try:
             if is_base64: await self.hass.async_add_executor_job(safe_path.write_bytes, base64.b64decode(content))
             else: await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
-            self._fire_update("upload", path)
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -485,6 +468,5 @@ class FileManager:
                     if not member.endswith("/") and self._is_file_allowed(safe_path / member):
                         zf.extract(member, safe_path)
                         files_extracted += 1
-            self._fire_update("upload_folder", path)
             return json_response({"success": True, "files_extracted": files_extracted})
         except Exception as e: return json_message(str(e), status_code=500)

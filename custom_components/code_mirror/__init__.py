@@ -23,7 +23,6 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, NAME
 from .api import CodeMirrorApiView
-from .websocket import async_register_websockets, async_stop_watcher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,9 +50,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     config_dir = Path(hass.config.config_dir)
     api_view = CodeMirrorApiView(config_dir, store, data)
     hass.http.register_view(api_view)
-    
-    # Register WebSocket commands
-    async_register_websockets(hass)
 
     # Register Static Paths with fallback for different HA versions
     url_path = f"/local/{DOMAIN}"
@@ -87,6 +83,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     frontend.async_remove_panel(hass, DOMAIN)
-    async_stop_watcher(hass)
     hass.data[DOMAIN].pop(entry.entry_id, None)
     return True

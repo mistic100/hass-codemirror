@@ -5,13 +5,11 @@
  *
  * PURPOSE:
  * Provides the core API communication layer for CodeMirror. Handles
- * authenticated requests to the backend server and WebSocket connections for
- * real-time updates. This is the foundation for all server communication.
+ * authenticated requests to the backend server.
+ * This is the foundation for all server communication.
  *
  * EXPORTED FUNCTIONS:
  * - fetchWithAuth(url, options) - Make authenticated API request
- * - initWebSocket() - Initialize WebSocket connection for real-time updates
- * - closeWebSocket() - Close WebSocket connection
  *
  * HOW TO ADD NEW FEATURES:
  *
@@ -21,13 +19,6 @@
  *    - Handle response: const data = await fetchWithAuth(...)
  *    - Add error handling with try/catch
  *    - Example: { action: "get_file", path: "..." }
- *
- * 2. Adding WebSocket message handling:
- *    - Modify initWebSocket() message handler
- *    - Add case for new message type
- *    - Update relevant state
- *    - Trigger UI updates
- *    - Example: case 'new_event': handleEvent(data); break;
  *
  * 3. Adding authentication methods:
  *    - Modify fetchWithAuth() auth detection
@@ -63,7 +54,6 @@
  * ARCHITECTURE NOTES:
  * - All API calls go through fetchWithAuth (never use raw fetch)
  * - Handles HA iframe integration automatically
- * - WebSocket provides real-time updates from server
  * - Responses are JSON by default
  * - Errors are thrown and should be caught by callers
  *
@@ -86,11 +76,6 @@
  *   message: "Success/error message",
  *   data: { ... response data ... }
  * }
- *
- * WEBSOCKET MESSAGES:
- * - file_changed: File was modified
- * - server_reload: Server restarted
- * - Custom messages can be added
  *
  * ERROR HANDLING:
  * - Network errors: Thrown as exceptions
@@ -207,57 +192,4 @@ export async function serveFileUrl(path) {
   return await urlWithToken(
     `${API_BASE}?action=serve_file&path=${encodeURIComponent(path)}&_t=${Date.now()}`
   );
-}
-
-// These functions will be defined in other modules but we need to trigger them here
-// We'll use a registry pattern or global event bus if needed, but for now we'll 
-// just import them when main.js ties everything together.
-let updateCallbacks = {
-    checkFileUpdates: null,
-    loadFiles: null
-};
-
-export function registerUpdateCallbacks(callbacks) {
-    updateCallbacks = { ...updateCallbacks, ...callbacks };
-}
-
-export async function initWebSocketSubscription(retries = 0) {
-  try {
-    if (window.parent && window.parent.hassConnection) {
-      const result = await window.parent.hassConnection;
-      const conn = result.conn || (typeof result.subscribeMessage === 'function' ? result : null);
-      
-      if (!conn || typeof conn.subscribeMessage !== 'function') {
-          throw new Error("WebSocket connection not found");
-      }
-
-      // Try to subscribe
-      try {
-          await conn.subscribeMessage(
-            (event) => {
-              if (state._wsUpdateTimer) clearTimeout(state._wsUpdateTimer);
-              state._wsUpdateTimer = setTimeout(() => {
-                  if (updateCallbacks.checkFileUpdates) updateCallbacks.checkFileUpdates();
-                  
-                  if (event && ["create", "delete", "rename", "create_folder", "upload", "upload_folder"].includes(event.action)) {
-                      if (updateCallbacks.loadFiles) updateCallbacks.loadFiles();
-                  }
-              }, 500);
-            },
-            { type: "code_mirror/subscribe_updates" }
-          );
-          console.log("CodeMirror: Real-time updates active");
-      } catch (subError) {
-          // If the integration is still loading, it might not know the command yet
-          if (subError.code === 'unknown_command' && retries < 5) {
-              console.warn(`CodeMirror: Backend not ready yet (retry ${retries + 1}/5)...`);
-              setTimeout(() => initWebSocketSubscription(retries + 1), 2000);
-              return;
-          }
-          throw subError;
-      }
-    }
-  } catch (e) {
-    console.error("CodeMirror: WebSocket subscription failed", e);
-  }
 }
