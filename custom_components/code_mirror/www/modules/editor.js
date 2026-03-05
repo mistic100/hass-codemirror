@@ -381,21 +381,6 @@ export function createEditor(container = null) {
   // Track cursor position
   editor.on("cursorActivity", () => {
     if (callbacks.updateStatusBar) callbacks.updateStatusBar();
-
-    // Debounce saving workspace state (cursor/scroll)
-    if (state.rememberWorkspace && callbacks.saveSettings && callbacks.getWorkspaceSaveTimer && callbacks.setWorkspaceSaveTimer) {
-      const timer = callbacks.getWorkspaceSaveTimer();
-      if (timer) clearTimeout(timer);
-      callbacks.setWorkspaceSaveTimer(setTimeout(() => callbacks.saveSettings(), 2000));
-    }
-  });
-
-  editor.on("scroll", () => {
-    if (state.rememberWorkspace && callbacks.saveSettings && callbacks.getWorkspaceSaveTimer && callbacks.setWorkspaceSaveTimer) {
-      const timer = callbacks.getWorkspaceSaveTimer();
-      if (timer) clearTimeout(timer);
-      callbacks.setWorkspaceSaveTimer(setTimeout(() => callbacks.saveSettings(), 2000));
-    }
   });
 
   // Block Scope Highlighting Logic

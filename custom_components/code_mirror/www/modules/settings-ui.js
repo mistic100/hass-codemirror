@@ -87,7 +87,7 @@ export async function showAppSettings() {
             <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--divider-color);">
               <div style="flex: 1;">
                 <div style="font-weight: 500; margin-bottom: 4px;">Remember Workspace</div>
-                <div style="font-size: 12px; color: var(--text-secondary);">Restore open tabs and editor state on reload</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">Restore open tabs on reload</div>
               </div>
               <label class="toggle-switch" style="margin-left: 16px;">
                 <input type="checkbox" id="remember-workspace-toggle" ${state.rememberWorkspace !== false ? 'checked' : ''}>

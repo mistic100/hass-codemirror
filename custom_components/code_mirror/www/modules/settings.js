@@ -178,35 +178,14 @@ export async function loadSettings() {
  */
 export async function saveSettings() {
   try {
-    // Update current active tab's cursor/scroll before saving
-    if (state.activeTab && state.editor) {
-      state.activeTab.cursor = state.editor.getCursor();
-      state.activeTab.scroll = state.editor.getScrollInfo();
-    }
-
     // Save open tabs state
     let openTabsState = [];
     let activeTabPath = null;
 
     if (state.rememberWorkspace) {
-      openTabsState = state.openTabs.map(tab => {
-        // If this is the active tab, it already has the latest cursor/scroll from above.
-        // Other tabs have their cursor/scroll preserved from when they were last active.
-        const tabState = {
-          path: tab.path,
-          modified: tab.modified,
-          cursor: tab.cursor,
-          scroll: tab.scroll
-        };
-
-        // Save modified content so it can be restored
-        if (tab.modified && tab.content) {
-          tabState.content = tab.content;
-          tabState.originalContent = tab.originalContent;
-        }
-
-        return tabState;
-      });
+      openTabsState = state.openTabs.map(tab => ({
+        path: tab.path,
+      }));
       activeTabPath = state.activeTab ? state.activeTab.path : null;
     }
 

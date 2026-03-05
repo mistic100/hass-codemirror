@@ -1213,29 +1213,7 @@ export async function restoreOpenTabs() {
 
     // Restore tabs
     for (const tabState of state._savedOpenTabs) {
-      // Local file - check if it exists
-      const fileExists = state.files.some(f => f.path === tabState.path);
-      if (fileExists) {
-        const tab = await openFile(tabState.path, false, true);
-        if (tab) {
-          tab.cursor = tabState.cursor || null;
-          tab.scroll = tabState.scroll || null;
-
-          // Restore modified state and content if it was modified before
-          if (tabState.modified && tabState.content) {
-            tab.modified = true;
-            tab.content = tabState.content;
-            if (tabState.originalContent) {
-              tab.originalContent = tabState.originalContent;
-            }
-
-            // Update editor if this is the active tab
-            if (state.editor && state.activeTab === tab) {
-              state.editor.setValue(tab.content);
-            }
-          }
-        }
-      }
+      await openFile(tabState.path, false, true);
     }
 
     // Restore active tab

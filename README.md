@@ -21,6 +21,7 @@ The following features have been removed:
 - Split view
 - Multi selection
 - Global search & replace
+- Full workspace restore (only restore open tabs)
 
 ---
 
