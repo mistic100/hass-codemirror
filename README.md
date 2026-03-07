@@ -22,38 +22,36 @@ The following features have been removed:
 - Global search & replace
 - Full workspace restore (only restore open tabs)
 
----
 
 ## Installation
-This integration is best installed via the [Home Assistant Community Store (HACS)](https://hacs.xyz/).
 
-### HACS (Recommended)
+### HACS
 
-1. **Add the Custom Repository**:
-    * Ensure HACS is installed.
-    * Go to **HACS > Integrations > ... (three dots) > Custom repositories**.
-    * Add this repository's URL: `https://github.com/mistic100/hass-codemirror`
-    * Select the category **Integration** and click **Add**.
+The integration is available in [HACS](https://hacs.xyz/).
       
-2. **Install the Integration**:
-    * In HACS, search for "CodeMirror" and click **Download**.
-    * Follow the prompts to complete the download.
+1. **Install the Integration**:
 
-3. **Restart Home Assistant**:
-    * Go to **Settings > System** and click the **Restart** button.
+    Simply click on the button to open the repository in HACS or search for "CodeMirror" and download it through the UI.
 
-4. **Add the Integration**:
-    * Go to **Settings > Devices & Services > Add Integration**.
-    * Search for and select **CodeMirror**.
-    * The setup wizard will guide you through the final configuration steps.
+    [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mistic100&repository=hass-codemirror&category=integration)
 
-### Manual Installation
+2. **Restart Home Assistant**:
+
+    * Go to **Settings > System** and click the **Restart** button
+
+3. **Add the Integration**:
+
+    * Go to **Settings > Devices & Services > Add Integration**
+    * Search for and select **CodeMirror**
+
+### Manual
+
 1. Download the latest release from the [releases page](https://github.com/mistic100/hass-codemirror/releases)
 2. Extract the `code_mirror` folder to your `custom_components` directory
 3. Restart Home Assistant
-4. Go to Settings → Devices & Services → Add Integration → CodeMirror
+4. Go to **Settings > Devices & Services > Add Integration**
+5. Search for and select **CodeMirror**.
 
----
 
 ## License
 
