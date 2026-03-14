@@ -25,6 +25,12 @@ The following features have been removed:
 - Global search & replace
 - Full workspace restore (only restore open tabs)
 
+Improvements:
+- Lazy loaded treeview
+- Streamed file upload/download (no base64)
+- Native PDF viewer
+- Optimized files search (server-side)
+
 
 ## Installation
 
