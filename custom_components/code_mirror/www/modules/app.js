@@ -246,7 +246,6 @@ import {
   processUploads as processUploadsImpl,
   handleFileUpload as handleFileUploadImpl,
   readFileAsText as readFileAsTextImpl,
-  readFileAsBase64 as readFileAsBase64Impl,
   uploadFile as uploadFileImpl,
   triggerFolderUpload as triggerFolderUploadImpl,
   handleFolderUpload as handleFolderUploadImpl,
@@ -508,7 +507,7 @@ export async function loadFile(path) {
         `${API_BASE}?action=read_file&path=${encodeURIComponent(path)}&_t=${Date.now()}`
       );
       // loadFile must now return the full data object, not just data.content
-      return data; // returns {content: ..., is_base64: ...}
+      return data; // returns {content: ...}
     } catch (error) {
       showToast("Failed to load file: " + error.message, "error");
       throw error;
@@ -1087,7 +1086,6 @@ export const triggerUpload = triggerUploadImpl;
 export const processUploads = processUploadsImpl;
 export const handleFileUpload = handleFileUploadImpl;
 export const readFileAsText = readFileAsTextImpl;
-export const readFileAsBase64 = readFileAsBase64Impl;
 export const uploadFile = uploadFileImpl;
 export const triggerFolderUpload = triggerFolderUploadImpl;
 export const handleFolderUpload = handleFolderUploadImpl;

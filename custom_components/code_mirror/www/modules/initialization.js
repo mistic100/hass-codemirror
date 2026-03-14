@@ -280,8 +280,7 @@ export async function init() {
     registerDownloadsUploadsCallbacks({
       showConfirmDialog,
       showModal,
-      loadFiles,
-      renderFileTree
+      loadFiles
     });
 
     registerSettingsCallbacks({

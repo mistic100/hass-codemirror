@@ -22,15 +22,13 @@
 import { state, elements } from './state.js';
 import { fetchWithAuth, serveFileUrl, urlWithToken } from './api.js';
 import { API_BASE } from './constants.js';
-import { showToast, showGlobalLoading, hideGlobalLoading, showConfirmDialog } from './ui.js';
-import { isTextFile, formatBytes } from './utils.js';
+import { showToast, showGlobalLoading, hideGlobalLoading } from './ui.js';
 
 // Callbacks for cross-module functions
 let callbacks = {
   showConfirmDialog: null,
   showModal: null,
   loadFiles: null,
-  renderFileTree: null
 };
 
 export function registerDownloadsUploadsCallbacks(cb) {
@@ -40,7 +38,7 @@ export function registerDownloadsUploadsCallbacks(cb) {
 /**
  * Downloads the currently active file
  */
-export function downloadCurrentFile() {
+export async function downloadCurrentFile() {
   if (!state.activeTab) {
     showToast("No file open", "warning");
     return;
@@ -48,8 +46,9 @@ export function downloadCurrentFile() {
 
   const tab = state.activeTab;
   const filename = tab.path.split("/").pop();
+  const url = await serveFileUrl(tab.path);
 
-  downloadFile(tab.path, filename);
+  downloadFile(url, filename);
 }
 
 /**
@@ -127,14 +126,6 @@ export async function processUploads(files, targetFolder = null) {
     showGlobalLoading(`Uploading ${processedCount} of ${totalFiles} file(s): ${file.name}...`);
 
     try {
-      const isBinaryFile = !isTextFile(file.name);
-      let content;
-      if (isBinaryFile) {
-        content = await readFileAsBase64(file);
-      } else {
-        content = await readFileAsText(file);
-      }
-
       let filePath = basePath ? `${basePath}/${file.name}` : file.name;
 
       // Check if file exists
@@ -152,11 +143,11 @@ export async function processUploads(files, targetFolder = null) {
           if (!overwrite) {
             continue; // Skip this file - don't increment successCount
           }
-          await uploadFile(filePath, content, true, isBinaryFile);
+          await uploadFile(filePath, file, true);
           successCount++; // Only increment on successful upload
         }
       } else {
-        await uploadFile(filePath, content, false, isBinaryFile);
+        await uploadFile(filePath, file, false);
         successCount++; // Only increment on successful upload
       }
     } catch (error) {
@@ -169,6 +160,8 @@ export async function processUploads(files, targetFolder = null) {
 
   if (successCount > 0) {
     showToast(`Successfully uploaded ${successCount} file(s).`, "success");
+
+    if (callbacks.loadFiles) await callbacks.loadFiles();
   } else {
     showToast("No files were uploaded.", "info");
   }
@@ -197,30 +190,18 @@ export function readFileAsText(file) {
 }
 
 /**
- * Reads a file as base64
- */
-export function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Remove the data URL prefix to get just the base64 data
-      const base64 = reader.result.split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
  * Uploads a file to the server
  */
-export async function uploadFile(path, content, overwrite = false, is_base64 = false) {
+export async function uploadFile(path, file, overwrite = false) {
   try {
+    const data = new FormData();
+    data.append("action", "upload_file");
+    data.append("path", path);
+    data.append("overwrite", overwrite);
+    data.append("file", file);
     await fetchWithAuth(API_BASE, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "upload_file", path, content, overwrite, is_base64 }),
+      body: data,
     });
     return true;
   } catch (error) {
@@ -276,25 +257,21 @@ export async function handleFolderUpload(event) {
     try {
       showGlobalLoading("Uploading and extracting folder...");
 
-      const zipData = await readFileAsBase64(file);
-
+      const data = new FormData();
+      data.append("action", "upload_folder");
+      data.append("path", targetPath);
+      data.append("file", file);
       const response = await fetchWithAuth(API_BASE, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "upload_folder",
-          path: targetPath,
-          zip_data: zipData,
-        }),
+        body: data,
       });
 
       hideGlobalLoading();
 
       if (response.success) {
         showToast(`Extracted ${response.files_extracted} files to ${result}`, "success");
-        if (callbacks.loadFiles) await callbacks.loadFiles();
         state.expandedFolders.add(targetPath);
-        if (callbacks.renderFileTree) callbacks.renderFileTree();
+        if (callbacks.loadFiles) await callbacks.loadFiles();
       }
     } catch (error) {
       hideGlobalLoading();

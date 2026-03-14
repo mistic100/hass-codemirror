@@ -2,10 +2,7 @@
 from __future__ import annotations
 
 import logging
-import os
-import asyncio
-import signal
-from typing import Any
+from typing import cast
 from pathlib import Path
 
 from aiohttp import web
@@ -153,9 +150,14 @@ class CodeMirrorApiView(HomeAssistantView):
         user = await self._authenticate(request)
         if not user:
             return web.Response(status=401, text="Unauthorized")
-
-        try: data = await request.json()
-        except: return json_message("Invalid JSON", status_code=400)
+        
+        if request.content_type == 'application/json':
+            try: data = await request.json()
+            except Exception: return json_message("Invalid JSON", status_code=400)
+        elif request.content_type == 'multipart/form-data':
+            data = await request.post()
+        else:
+            return json_message("Unsupported Content-Type", status_code=415)
         
         action = data.get("action")
         if not action: return json_message("Missing action", status_code=400)
@@ -171,8 +173,8 @@ class CodeMirrorApiView(HomeAssistantView):
 
         # Files
         if action == "write_file":
-            path = data.get("path")
-            content = data.get("content")
+            path = cast(str, data.get("path"))
+            content = cast(str, data.get("content"))
             response = await self.file.write_file(path, content)
             
             # Auto-reload logic
@@ -188,19 +190,39 @@ class CodeMirrorApiView(HomeAssistantView):
             
             return response
 
-        if action == "create_file": return await self.file.create_file(data.get("path"), data.get("content", ""), data.get("is_base64", False))
-        if action == "create_folder": return await self.file.create_folder(data.get("path"))
-        if action == "delete": return await self.file.delete(data.get("path"))
-        if action == "copy": return await self.file.copy(data.get("source"), data.get("destination"))
-        if action == "rename": return await self.file.rename(data.get("source"), data.get("destination"))
-        if action == "upload_file": return await self.file.upload_file(data.get("path"), data.get("content"), data.get("overwrite", False), data.get("is_base64", False))
-        if action == "upload_folder": return await self.file.upload_folder(data.get("path"), data.get("zip_data"))
+        if action == "create_file":
+            path = cast(str, data.get("path"))
+            content = cast(str, data.get("content", ""))
+            return await self.file.create_file(path, content)
+        if action == "create_folder":
+            path = cast(str, data.get("path"))
+            return await self.file.create_folder(path)
+        if action == "delete":
+            path = cast(str, data.get("path"))
+            return await self.file.delete(path)
+        if action == "copy":
+            source = cast(str, data.get("source"))
+            destination = cast(str, data.get("destination"))
+            return await self.file.copy(source, destination)
+        if action == "rename":
+            source = cast(str, data.get("source"))
+            destination = cast(str, data.get("destination"))
+            return await self.file.rename(source, destination)
+        if action == "upload_file":
+            path = cast(str, data.get("path"))
+            file = cast(web.FileField, data.get("file"))
+            overwrite = cast(bool, data.get("overwrite", False))
+            return await self.file.upload_file(path, file.file, overwrite)
+        if action == "upload_folder":
+            path = cast(str, data.get("path"))
+            file = cast(web.FileField, data.get("file"))
+            return await self.file.upload_folder(path, file.file)
         if action == "check_yaml":
-            result = await hass.async_add_executor_job(self.syntax_checker.check_yaml, data.get("content", ""))
-            return result
+            content = cast(str, data.get("content", ""))
+            return await hass.async_add_executor_job(self.syntax_checker.check_yaml, content)
         if action == "check_jinja":
-            result = await hass.async_add_executor_job(self.syntax_checker.check_jinja, data.get("content", ""))
-            return result
+            content = cast(str, data.get("content", ""))
+            return await hass.async_add_executor_job(self.syntax_checker.check_jinja, content)
 
         # Misc
         if action == "restart_home_assistant":

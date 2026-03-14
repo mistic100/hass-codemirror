@@ -16,7 +16,7 @@ ALLOWED_EXTENSIONS = {
     ".mp4", ".webm", ".mov", ".avi", ".mkv", ".flv", ".wmv", ".m4v",
 }
 
-# Binary file extensions that should be base64 encoded
+# Binary file extensions that should be streamed
 BINARY_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ico", ".pdf", ".zip",
     ".db", ".sqlite",

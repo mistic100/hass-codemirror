@@ -62,13 +62,11 @@
  *
  * ARCHITECTURE NOTES:
  * - Uses elements.assetPreview panel for all previews
- * - Binary content is base64 encoded from server
  * - Markdown renderer is lightweight regex-based (no dependencies)
  * - Image navigation finds files in same directory
  * - All previews include download functionality
  *
  * COMMON PATTERNS:
- * - Set base64 data URL: `data:${tab.mimeType};base64,${tab.content}`
  * - Build toolbar HTML with controls
  * - Add event listeners with getElementById()
  * - Download: callbacks.downloadFile(url, filename)

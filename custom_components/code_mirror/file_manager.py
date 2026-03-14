@@ -1,16 +1,13 @@
 """File management for CodeMirror."""
 from __future__ import annotations
 
-import base64
 import io
 import logging
 import os
 import shutil
 import zipfile
 import mimetypes
-import time
 from pathlib import Path
-from typing import Any
 
 from aiohttp import web
 from homeassistant.core import HomeAssistant
@@ -313,10 +310,9 @@ class FileManager:
         if not self._is_file_allowed(safe_path): return json_message("Not allowed", status_code=403)
         try:
             if safe_path.suffix.lower() in BINARY_EXTENSIONS:
-                content = await self.hass.async_add_executor_job(safe_path.read_bytes)
-                return json_response({"content": base64.b64encode(content).decode(), "is_base64": True, "mime_type": mimetypes.guess_type(safe_path.name)[0] or "application/octet-stream", "mtime": safe_path.stat().st_mtime})
+                raise Exception("Cannot read binary file content")
             content = await self.hass.async_add_executor_job(safe_path.read_text, "utf-8")
-            return json_response({"content": content, "is_base64": False, "mime_type": mimetypes.guess_type(safe_path.name)[0] or "text/plain;charset=utf-8", "mtime": safe_path.stat().st_mtime})
+            return json_response({"content": content, "mime_type": mimetypes.guess_type(safe_path.name)[0] or "text/plain;charset=utf-8", "mtime": safe_path.stat().st_mtime})
         except Exception as e: return json_message(str(e), status_code=500)
 
     async def serve_file(self, path: str) -> web.StreamResponse:
@@ -352,7 +348,7 @@ class FileManager:
             return json_response({"success": True, "mtime": safe_path.stat().st_mtime})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def create_file(self, path: str, content: str, is_base64: bool = False) -> web.Response:
+    async def create_file(self, path: str, content: str) -> web.Response:
         """Create a new file."""
         safe_path = get_safe_path(self._get_root_dir(), path)
         if not safe_path or not self._is_file_allowed(safe_path): return json_message("Not allowed", status_code=403)
@@ -362,8 +358,7 @@ class FileManager:
             if not safe_path.parent.exists():
                 await self.hass.async_add_executor_job(safe_path.parent.mkdir, 0o755, True, True)
 
-            if is_base64: await self.hass.async_add_executor_job(safe_path.write_bytes, base64.b64decode(content))
-            else: await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
+            await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)
 
@@ -436,18 +431,17 @@ class FileManager:
         buf.seek(0)
         return buf
 
-    async def upload_file(self, path: str, content: str, overwrite: bool, is_base64: bool = False) -> web.Response:
+    async def upload_file(self, path: str, file: io.BufferedReader, overwrite: bool) -> web.Response:
         """Upload/create a file with content."""
         safe_path = get_safe_path(self._get_root_dir(), path)
         if not safe_path or not self._is_file_allowed(safe_path): return json_message("Not allowed", status_code=403)
         if safe_path.exists() and not overwrite: return json_message("File already exists", status_code=409)
         try:
-            if is_base64: await self.hass.async_add_executor_job(safe_path.write_bytes, base64.b64decode(content))
-            else: await self.hass.async_add_executor_job(safe_path.write_text, content, "utf-8")
+            await self.hass.async_add_executor_job(safe_path.write_bytes, file.read())
             return json_response({"success": True, "path": path})
         except Exception as e: return json_message(str(e), status_code=500)
 
-    async def upload_folder(self, path: str, zip_data: str) -> web.Response:
+    async def upload_folder(self, path: str, file: io.BufferedReader) -> web.Response:
         """Upload ZIP and extract to folder."""
         safe_path = get_safe_path(self._get_root_dir(), path)
         if not safe_path: return json_message("Invalid path", status_code=400)
@@ -460,8 +454,7 @@ class FileManager:
                 return json_message(f"Failed to create folder: {str(e)}", status_code=500)
 
         try:
-            zip_bytes = base64.b64decode(zip_data)
-            buf = io.BytesIO(zip_bytes)
+            buf = io.BytesIO(file.read())
             files_extracted = 0
             with zipfile.ZipFile(buf) as zf:
                 for member in zf.namelist():

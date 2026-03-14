@@ -115,12 +115,12 @@ export function registerFileOperationsCallbacks(cb) {
 /**
  * Create a new file
  */
-export async function createFile(path, content = "", is_base64 = false) {
+export async function createFile(path, content = "") {
   try {
     await fetchWithAuth(API_BASE, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create_file", path, content, is_base64 }),
+      body: JSON.stringify({ action: "create_file", path, content }),
     });
     showToast(`Created ${path.split("/").pop()}`, "success");
     if (callbacks.loadFiles) await callbacks.loadFiles();
