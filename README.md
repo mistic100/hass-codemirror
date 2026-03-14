@@ -4,7 +4,10 @@ Simple yet powerful add-on to edit your configuration directly in the browser.
 
 This is a fork of [Blueprint Studio](https://github.com/soulripper13/blueprint-studio) with all heavy features removed.
 
-**Motivation**
+> [!NOTE]
+> Most of the original code is AI-generated, all my commits since the fork are not.
+
+### Motivation
 
 Blueprint Studio started as a nice alternative to the official File editor add-on and much more lighter than the VS Code add-on. However I believe it became bloated with advanced features that make it slower to start and pose potential security risks (AI and SSH terminal mainly). Being itself mostly written with AI, I don't think it is viable on the long term.
 
